@@ -91,7 +91,7 @@ export default function Header() {
 
         {/* Right side elements */} 
         <div className="ml-auto flex items-center">
-          <ModeToggle />
+          {/* <ModeToggle /> */}
         </div>
 
         {/* Mobile menu button */} 
@@ -167,9 +167,9 @@ export default function Header() {
                 </Link>
               </Button>
 
-              <div className="flex justify-end pt-2">
+              {/* <div className="flex justify-end pt-2">
                 <ModeToggle />
-              </div>
+              </div> */}
             </div>
           </div>
         )}
