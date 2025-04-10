@@ -1,103 +1,167 @@
-import Image from "next/image";
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
+import { Calculator, Clock, Flame, Shield, Sparkles, Award, Coffee } from "lucide-react"
 
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="flex flex-col gap-8 max-w-8xl mx-auto">
+      <section className="py-8 md:py-12">
+        <div className="text-center space-y-2">
+          <h1 className="text-xl font-bold tracking-tighter sm:text-3xl md:text-4xl lg:text-5xl bg-gradient-to-r from-violet-400 to-indigo-500 bg-clip-text text-transparent">
+            Welcome to BuTools
+          </h1>
+          <p className="mx-auto max-w-[600px] text-zinc-400 text-base">
+            Tools and calculators to enhance your Bless Unleashed PC experience
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </section>
+
+      <section>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Card className="card-hover bg-zinc-800/25 group">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Calculator className="h-5 w-5 text-blue-400" />
+                Calculators
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <p className="text-zinc-400 text-sm">
+                  Calculate gear scores and base attack values to maximize your character's potential.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <Button size="sm" asChild variant="default" className="bg-zinc-800 hover:bg-zinc-700 hover:border hover:border-violet-500 group-hover:bg-black group-hover:border group-hover:border-primary transition-all">
+                    <Link href="/gearscore_cal">Gear Scores</Link>
+                  </Button>
+                  <Button size="sm" asChild variant="default" className="bg-zinc-800 hover:bg-zinc-700 hover:border hover:border-violet-500 group-hover:bg-black group-hover:border group-hover:border-primary transition-all">
+                    <Link href="/baseatkcal">Base Attack</Link>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-hover bg-zinc-800/25 group">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Sparkles className="h-5 w-5 text-fuchsia-400" />
+                Runes Dreaming
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <p className="text-zinc-400 text-sm">
+                  Track and optimize your rune configurations across all gear pieces.
+                </p>
+                <Button size="sm" asChild className="bg-zinc-800 hover:bg-zinc-700 hover:border hover:border-violet-500 group-hover:bg-black group-hover:border group-hover:border-primary transition-all">
+                  <Link href="/runes_dreaming">Open Runes Dreaming</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-hover bg-zinc-800/25 group">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Clock className="h-5 w-5 text-orange-400" />
+                Timers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <p className="text-zinc-400 text-sm">
+                  Interactive timers for Backflow, Reflect, Fire, Lightning, and Fuse Storm abilities.
+                </p>
+                <Button size="sm" asChild className="bg-zinc-800 hover:bg-zinc-700 hover:border hover:border-violet-500 group-hover:bg-black group-hover:border group-hover:border-primary transition-all">
+                  <Link href="/timers">Open Timers</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-hover bg-zinc-800/25 group">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Shield className="h-5 w-5 text-emerald-400" />
+                Shape Doctor
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <p className="text-zinc-400 text-sm">
+                  Solve shape puzzles efficiently with this interactive tool.
+                </p>
+                <Button size="sm" asChild className="bg-zinc-800 hover:bg-zinc-700 hover:border hover:border-violet-500 group-hover:bg-black group-hover:border group-hover:border-primary transition-all">
+                  <Link href="/shapedoctor">Open Shape Doctor</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-hover bg-zinc-800/25 group">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Flame className="h-5 w-5 text-red-400" />
+                Skill Progression
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <p className="text-zinc-400 text-sm">
+                  View detailed information about skill level progression for different skill types.
+                </p>
+                <Button size="sm" asChild className="bg-zinc-800 hover:bg-zinc-700 hover:border hover:border-violet-500 group-hover:bg-black group-hover:border group-hover:border-primary transition-all">
+                  <Link href="/skill_level_progression">View Progression</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Donate Card */}
+          <Card className="card-hover bg-zinc-800/25 group">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Coffee className="h-5 w-5 text-yellow-600" />
+                Support BuTools
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <p className="text-zinc-400 text-sm">
+                  If you find these tools helpful, consider supporting the development and maintenance.
+                </p>
+                <Button size="sm" asChild className="bg-zinc-800 hover:bg-zinc-700 hover:border hover:border-violet-500 group-hover:bg-black group-hover:border group-hover:border-primary transition-all">
+                  {/* TODO: Replace # with your actual donation link */}
+                  <Link href="#" target="_blank" rel="noopener noreferrer">Donate</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <section className="py-4">
+        <Card className="border-dashed bg-zinc-900/30">
+          <CardContent className="pt-4">
+            <div className="text-center space-y-3">
+              <h2 className="text-lg font-medium flex items-center justify-center">
+                <Award className="h-5 w-5 mr-2 text-yellow-400" />
+                Special Thanks
+              </h2>
+              <p className="text-zinc-400 text-sm">This project wouldn't be possible without:</p>
+              <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
+                <span className="text-sm">nodamagesquad guild</span>
+                <span className="text-sm">OGWaffle</span>
+                <span className="text-sm">ffsquirrel</span>
+                <span className="text-sm">Gomar</span>
+                <span className="text-sm">Quaxko</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
     </div>
-  );
+  )
 }
