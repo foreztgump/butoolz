@@ -99,46 +99,45 @@ export default function Header() {
           {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
 
-        {/* Mobile navigation */} 
+        {/* Mobile navigation */}
         {isMenuOpen && (
-          <div className="absolute top-14 left-0 right-0 bg-background border-b md:hidden">
-            <div className="container py-3 flex flex-col gap-1">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-start cursor-pointer">
-                    <Calculator className="h-4 w-4 mr-1.5" />
-                    Calculators
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[94vw]">
-                  <DropdownMenuItem asChild>
-                    <Link href="/gearscore_cal">Gear Scores</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/baseatkcal">Base Attack</Link>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+          <div className="absolute top-14 left-0 right-0 bg-[hsl(240_10%_3.9%)] border-b border-[hsl(240_3.7%_15.9%)] md:hidden z-40">
+            <div className="container py-3 flex flex-col gap-2">
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-start cursor-pointer">
-                    <FileText className="h-4 w-4 mr-1.5" />
-                    Info
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[94vw]">
-                  <DropdownMenuItem asChild>
-                    <Link href="/skill_level_progression">Skill Level Progression</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="#" className="text-muted-foreground">
-                      Useful Recipes
-                    </Link>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* Calculators Section */}
+              <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">Calculators</div>
+              <Button variant="ghost" size="sm" asChild className="w-full justify-start pl-6">
+                <Link href="/gearscore_cal">
+                  <Calculator className="h-4 w-4 mr-1.5" />
+                  Gear Scores
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild className="w-full justify-start pl-6">
+                <Link href="/baseatkcal">
+                  <Calculator className="h-4 w-4 mr-1.5" />
+                  Base Attack
+                </Link>
+              </Button>
 
+              {/* Info Section */}
+              <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">Info</div>
+              <Button variant="ghost" size="sm" asChild className="w-full justify-start pl-6">
+                <Link href="/skill_level_progression">
+                  <FileText className="h-4 w-4 mr-1.5" />
+                  Skill Level Progression
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild className="w-full justify-start pl-6 text-muted-foreground">
+                <Link href="#">
+                  <FileText className="h-4 w-4 mr-1.5" />
+                  Useful Recipes
+                </Link>
+              </Button>
+
+              {/* Direct Links Separator (Optional) */}
+              {/* <div className="border-t my-2"></div> */}
+
+              {/* Direct Links (Keep original styling/icons) */}
               <Button variant="ghost" size="sm" asChild className="w-full justify-start">
                 <Link href="/runes_dreaming">
                   <Sparkles className="h-4 w-4 mr-1.5" />

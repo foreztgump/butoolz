@@ -132,7 +132,7 @@ export default function Home() {
                   If you find these tools helpful, consider supporting the development and maintenance.
                 </p>
                 <Button size="sm" asChild className="bg-secondary text-secondary-foreground hover:bg-secondary/80 dark:bg-zinc-800 dark:text-secondary-foreground dark:hover:bg-zinc-700 group-hover:dark:bg-black group-hover:dark:border group-hover:dark:border-primary transition-all">
-                  <Link href="#" target="_blank" rel="noopener noreferrer">Donate</Link>
+                  <Link href="/donate">Donate</Link>
                 </Button>
               </div>
             </CardContent>

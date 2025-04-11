@@ -30,6 +30,7 @@ import {
   Library,
   PlusCircle, // Import new icons
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // --- Constants & Config ---
 const TOTAL_TILES = 24;
@@ -1140,12 +1141,6 @@ export default function ShapeDoctor() {
         return;
       }
       setPotentials((prevPotentials) => {
-        if (prevPotentials.includes(shapeString)) {
-          toast.info("This shape is already in your saved potentials.", {
-            duration: 3000,
-          });
-          return prevPotentials;
-        }
         toast.success(`Shape added to potentials.`);
         return [...prevPotentials, shapeString];
       });
@@ -1164,17 +1159,22 @@ export default function ShapeDoctor() {
             Shape Doctor
           </h1>
           <p className="text-muted-foreground">
-            Visualize and solve Bless Unleashed memory puzzle shapes.
+            "Ain't nobody got time for that!"
           </p>
         </div>
         <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
           <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
             <Card className="flex flex-col flex-grow bg-card">
               <CardHeader className="pb-3 flex-shrink-0">
-                <CardTitle className="text-lg flex items-center gap-2 text-card-foreground">
-                  <Puzzle className="h-5 w-5 text-violet-400" /> Puzzle Grid
-                </CardTitle>
-                <CardDescription>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-lg flex items-center gap-2 text-card-foreground">
+                    <Puzzle className="h-5 w-5 text-violet-400" /> Puzzle Grid
+                  </CardTitle>
+                   <Button variant="outline" size="sm" className="text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive-foreground))] cursor-pointer" onClick={handleReset} disabled={isSolving}>
+                     <RefreshCw className="h-4 w-4 mr-1" /> Reset All
+                   </Button>
+                </div>
+                <CardDescription className="pt-1">
                   {currentSolutionIndex !== -1
                     ? `Viewing solution ${currentSolutionIndex + 1} / ${
                         bestSolutions.length
@@ -1185,7 +1185,7 @@ export default function ShapeDoctor() {
               <CardContent className="flex-grow p-0 overflow-hidden relative">
                 <div
                   ref={containerRef}
-                  className={`w-full h-full bg-gray-100 ${CANVAS_BG_DARK} relative rounded-b-md`}
+                  className={`w-full h-full min-h-[400px] bg-gray-100 ${CANVAS_BG_DARK} relative rounded-b-md`}
                 >
                   {isClient ? (
                     <canvas
@@ -1201,7 +1201,7 @@ export default function ShapeDoctor() {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-7 w-7 bg-card/80 text-card-foreground border-border/50 backdrop-blur-sm hover:bg-card/90"
+                      className="h-7 w-7 bg-[hsl(var(--card)_/_0.8)] text-[hsl(var(--card-foreground))] border-[hsl(var(--border)_/_0.5)] backdrop-blur-sm hover:bg-[hsl(var(--card)_/_0.9)] transition-colors cursor-pointer"
                       onClick={() =>
                         setZoom((z) => Math.min(MAX_ZOOM, z * 1.2))
                       }
@@ -1213,7 +1213,7 @@ export default function ShapeDoctor() {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-7 w-7 bg-card/80 text-card-foreground border-border/50 backdrop-blur-sm hover:bg-card/90"
+                      className="h-7 w-7 bg-[hsl(var(--card)_/_0.8)] text-[hsl(var(--card-foreground))] border-[hsl(var(--border)_/_0.5)] backdrop-blur-sm hover:bg-[hsl(var(--card)_/_0.9)] transition-colors cursor-pointer"
                       onClick={() =>
                         setZoom((z) => Math.max(MIN_ZOOM, z / 1.2))
                       }
@@ -1225,7 +1225,7 @@ export default function ShapeDoctor() {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-7 w-7 bg-card/80 text-card-foreground border-border/50 backdrop-blur-sm hover:bg-card/90"
+                      className="h-7 w-7 bg-[hsl(var(--card)_/_0.8)] text-[hsl(var(--card-foreground))] border-[hsl(var(--border)_/_0.5)] backdrop-blur-sm hover:bg-[hsl(var(--card)_/_0.9)] transition-colors cursor-pointer"
                       onClick={handleReset}
                       aria-label="Reset View & Zoom"
                     >
@@ -1255,6 +1255,7 @@ export default function ShapeDoctor() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] cursor-pointer"
                       onClick={handlePrevSolution}
                       disabled={bestSolutions.length <= 1 || isSolving}
                     >
@@ -1264,6 +1265,7 @@ export default function ShapeDoctor() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] cursor-pointer"
                       onClick={handleNextSolution}
                       disabled={bestSolutions.length <= 1 || isSolving}
                     >
@@ -1273,6 +1275,7 @@ export default function ShapeDoctor() {
                     <Button
                       variant="secondary"
                       size="sm"
+                      className="bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] transition-colors hover:bg-[hsl(var(--primary)_/_0.9)] cursor-pointer"
                       onClick={handleBackToEdit}
                       disabled={isSolving}
                     >
@@ -1284,7 +1287,7 @@ export default function ShapeDoctor() {
                   <>
                     <Button
                       size="sm"
-                      className="bg-violet-600 hover:bg-violet-700 text-primary-foreground"
+                      className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary)_/_0.9)] transition-colors cursor-pointer"
                       onClick={handleSavePotential}
                       disabled={
                         isSolving ||
@@ -1299,6 +1302,7 @@ export default function ShapeDoctor() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] cursor-pointer"
                       onClick={handleClearSelection}
                       disabled={isSolving || selectedTiles.size === 0}
                     >
@@ -1308,7 +1312,7 @@ export default function ShapeDoctor() {
                     <Button
                       variant="default"
                       size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-primary-foreground min-w-[90px]"
+                      className="bg-green-600 hover:bg-green-700 text-primary-foreground min-w-[90px] transition-colors cursor-pointer"
                       onClick={handleSolve}
                       disabled={isSolving || potentials.length === 0}
                     >
@@ -1324,7 +1328,7 @@ export default function ShapeDoctor() {
               </CardFooter>
             </Card>
           </div>
-          <div className="lg:col-span-1 flex flex-col gap-4 min-h-0 overflow-hidden">
+          <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
              <Card className="flex-shrink-0 bg-card">
                <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2 text-card-foreground">
@@ -1334,12 +1338,6 @@ export default function ShapeDoctor() {
                </CardHeader>
                <CardContent className="space-y-4 text-sm">
                   <div className="space-y-1 text-card-foreground">
-                      <div className="flex justify-between">
-                          <span>Selected:</span>
-                          <span className="font-mono text-xs ml-2 break-all text-right text-muted-foreground">
-                              {selectedTiles.size > 0 ? Array.from(selectedTiles).sort((a, b) => a - b).join(", ") : "None"}
-                          </span>
-                      </div>
                       <div className="flex justify-between">
                           <span>Saved Potentials:</span>
                           <span className="font-semibold">{potentials.length}</span>
@@ -1368,82 +1366,75 @@ export default function ShapeDoctor() {
                   <div className="border-t border-border/50 pt-3">
                       <h3 className="font-medium mb-1 text-card-foreground text-sm">How to Use</h3>
                       <ol className="text-muted-foreground space-y-0.5 list-decimal pl-4 text-xs">
-                          <li>Select up to 4 connected hexes OR click a predefined shape below.</li>
+                          <li>Select up to 4 connected hexes OR browse "Predefined Shapes" tab.</li>
                           <li>Manually selected shapes: Click "Save Potential".</li>
-                          <li>Added/Saved shapes appear in "Saved Potentials" card below.</li>
+                          <li>Added/Saved shapes appear in "Saved Potentials" tab.</li>
                           <li>Click "Solve" to find placements for saved potentials.</li>
                           <li>Use Next/Prev to view solutions on the grid.</li>
                           <li>Wheel=Zoom, Drag=Pan grid.</li>
                       </ol>
                    </div>
                </CardContent>
-               <CardFooter className="border-t border-border/50 pt-3">
-                   <Button variant="outline" size="sm" className="w-full text-muted-foreground hover:text-destructive hover:border-destructive/50" onClick={handleReset} disabled={isSolving}>
-                     <RefreshCw className="h-4 w-4 mr-1" /> Reset Everything
-                   </Button>
-               </CardFooter>
              </Card>
-             <Card className="flex-shrink-0 bg-card">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2 text-card-foreground">
-                        <Library className="h-4 w-4 text-violet-400" /> Predefined Shapes
-                    </CardTitle>
-                    <CardDescription className="text-xs">Click a shape to add it to Saved Potentials below.</CardDescription>
-                </CardHeader>
-                <CardContent className="p-3 overflow-y-auto max-h-60 scrollbar-thin scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent">
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                        {isClient && PREDEFINED_SHAPES.map((shapeString, index) => (
-                             <Button
-                                key={`predefined-${index}`}
-                                variant="outline"
-                                size="icon"
-                                className="w-14 h-14 p-1 border-border/50 hover:bg-muted/80 focus-visible:ring-violet-500"
-                                onClick={() => handleAddPredefinedPotential(shapeString)}
-                                disabled={isSolving}
-                                aria-label={`Add predefined shape ${index + 1}`}
-                            >
-                                <canvas
-                                    ref={(el) => setPredefinedCanvasRef(index, el)}
-                                    width="48"
-                                    height="48"
-                                    className={`border-none rounded-sm ${PREVIEW_BG}`}
-                                />
-                            </Button>
-                        ))}
-                         {!isClient && Array.from({ length: 12 }).map((_, i) => (
-                            <div key={`skel-predefined-${i}`} className="w-14 h-14 bg-muted/50 rounded animate-pulse"></div>
-                        ))}
-                    </div>
-                </CardContent>
-             </Card>
-            {potentials.length > 0 && (
-                <Card className="flex-grow min-h-0 flex flex-col bg-card">
-                    <CardHeader className="pb-2 flex-shrink-0">
-                        <CardTitle className="text-base text-card-foreground">
-                            <Save className="h-4 w-4 mr-1 inline-block" /> Saved Potentials ({potentials.length})
-                        </CardTitle>
-                         <CardDescription className="text-xs">These shapes will be used by the solver.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-grow overflow-y-auto space-y-2 p-3 scrollbar-thin scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent">
+             <Tabs defaultValue="predefined" className="flex-grow min-h-0 flex flex-col">
+               <TabsList className="grid w-full grid-cols-2 flex-shrink-0 mb-4">
+                 <TabsTrigger value="predefined" className="flex items-center gap-1 transition-colors duration-150 hover:text-violet-200 hover:bg-violet-900/30 data-[state=active]:text-violet-300 data-[state=active]:shadow-inner data-[state=active]:bg-violet-900/50 cursor-pointer">
+                   <Library className="h-4 w-4 mr-1" /> Predefined
+                 </TabsTrigger>
+                 <TabsTrigger value="saved" className="flex items-center gap-1 transition-colors duration-150 hover:text-violet-200 hover:bg-violet-900/30 data-[state=active]:text-violet-300 data-[state=active]:shadow-inner data-[state=active]:bg-violet-900/50 cursor-pointer">
+                   <Save className="h-4 w-4 mr-1" /> Saved ({potentials.length})
+                 </TabsTrigger>
+               </TabsList>
+
+               <TabsContent
+                 value="predefined"
+                 className="flex-grow min-h-0 overflow-y-auto mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md p-3 bg-card border border-border scrollbar-thin scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent"
+               >
+                  <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                     {isClient && PREDEFINED_SHAPES.map((shapeString, index) => (
+                         <Button
+                            key={`predefined-${index}`}
+                            variant="outline"
+                            size="icon"
+                            className="w-14 h-14 p-1 border-[hsl(var(--border)_/_0.5)] text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] focus-visible:ring-[hsl(var(--primary))] cursor-pointer"
+                            onClick={() => handleAddPredefinedPotential(shapeString)}
+                            disabled={isSolving}
+                            aria-label={`Add predefined shape ${index + 1}`}
+                        >
+                            <canvas
+                                ref={(el) => setPredefinedCanvasRef(index, el)}
+                                width="48"
+                                height="48"
+                                className={`border-none rounded-sm ${PREVIEW_BG}`}
+                            />
+                        </Button>
+                     ))}
+                      {!isClient && Array.from({ length: 12 }).map((_, i) => (
+                         <div key={`skel-predefined-${i}`} className="w-14 h-14 bg-muted/50 rounded animate-pulse"></div>
+                     ))}
+                 </div>
+               </TabsContent>
+
+               <TabsContent
+                 value="saved"
+                 className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md p-3 bg-card border border-border"
+               >
+                 {potentials.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-2 max-h-[calc(7*(48px+theme(spacing.2)))] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent pr-1">
                         {potentials.map((potentialString, index) => (
-                            <div key={`saved-${index}`} className="flex items-center justify-between gap-3 p-2 bg-muted/50 rounded-md border border-border/50 group flex-shrink-0">
-                                <div className="flex items-center gap-2 flex-grow min-w-0">
-                                    <div className="flex-shrink-0 w-[48px] h-[48px]">
-                                        <canvas
-                                            ref={(el) => setPotentialCanvasRef(index, el)}
-                                            width="48"
-                                            height="48"
-                                            className={`border rounded ${PREVIEW_BG}`}
-                                        />
-                                    </div>
-                                    <div className="flex-grow min-w-0">
-                                        <div className="text-xs font-medium truncate text-card-foreground">Potential {index + 1}</div>
-                                    </div>
+                            <div key={`saved-${index}`} className="flex items-center justify-between p-2 bg-muted/50 rounded-md border border-border/50 group flex-shrink-0">
+                                <div className="flex-shrink-0 w-[48px] h-[48px]">
+                                    <canvas
+                                        ref={(el) => setPotentialCanvasRef(index, el)}
+                                        width="48"
+                                        height="48"
+                                        className={`border rounded ${PREVIEW_BG}`}
+                                    />
                                 </div>
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="flex-shrink-0 h-7 w-7 text-muted-foreground hover:text-destructive opacity-50 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                                    className="flex-shrink-0 h-7 w-7 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)] opacity-50 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity transition-colors cursor-pointer"
                                     onClick={() => handleDeletePotential(index)}
                                     disabled={isSolving}
                                     aria-label={`Delete potential ${index + 1}`}
@@ -1452,9 +1443,14 @@ export default function ShapeDoctor() {
                                 </Button>
                             </div>
                         ))}
-                    </CardContent>
-                </Card>
-            )}
+                    </div>
+                 ) : (
+                    <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+                         No potentials saved yet. Select tiles or add from "Predefined".
+                    </div>
+                 )}
+               </TabsContent>
+             </Tabs>
           </div>
         </div>
         <footer className="text-center text-xs text-muted-foreground mt-auto pt-8 flex-shrink-0">
