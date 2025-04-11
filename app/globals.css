@@ -34,7 +34,7 @@
     --foreground: 0 0% 98%;
     --card: 240 10% 6%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 4%;
+    --popover: 240 10% 6%;
     --popover-foreground: 0 0% 98%;
     --primary: 250 95% 65%; /* Keep original dark mode primary */
     --primary-foreground: 240 5.9% 10%;
@@ -42,7 +42,7 @@
     --secondary-foreground: 0 0% 98%;
     --muted: 240 3.7% 12%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 12%;
+    --accent: 240 3.7% 15.9%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
@@ -65,13 +65,32 @@
   }
 }
 
-.card-hover {
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 200ms;
-}
-.card-hover:hover {
-  transform: scale(1.02);
-  box-shadow: 0 10px 15px -3px rgba(var(--primary-rgb), 0.1), 0 4px 6px -2px rgba(var(--primary-rgb), 0.05);
-  border-color: hsl(var(--primary));
+/* Move custom styles into appropriate layers */
+@layer components {
+  .card-hover {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+  .card-hover:hover {
+    transform: scale(1.02);
+    box-shadow: 0 10px 15px -3px rgba(var(--primary-rgb), 0.1), 0 4px 6px -2px rgba(var(--primary-rgb), 0.05);
+    border-color: hsl(var(--primary));
+  }
+
+  /* Force styles for Radix Select, specifically for dark theme */
+  html.dark [data-radix-select-content] { /* Reverted selector */
+    /* Reverted background color */
+    background-color: hsl(var(--popover)) !important; 
+    border-color: hsl(var(--border)) !important;
+    border-width: 1px !important;
+    z-index: 999 !important;
+  }
+
+  /* Keep item override commented for now
+  html.dark [data-radix-select-item][data-highlighted] {
+    background-color: hsl(var(--border)) !important;
+    color: hsl(var(--accent-foreground)) !important;
+  }
+  */
 }

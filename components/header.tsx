@@ -27,7 +27,7 @@ export default function Header() {
           {/* Calculators Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="cursor-pointer">
                 <Calculator className="h-4 w-4 mr-1.5" />
                 Calculators
               </Button>
@@ -45,7 +45,7 @@ export default function Header() {
           {/* Info Dropdown */} 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="cursor-pointer">
                 <FileText className="h-4 w-4 mr-1.5" />
                 Info
               </Button>
@@ -105,7 +105,7 @@ export default function Header() {
             <div className="container py-3 flex flex-col gap-1">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-start">
+                  <Button variant="ghost" size="sm" className="w-full justify-start cursor-pointer">
                     <Calculator className="h-4 w-4 mr-1.5" />
                     Calculators
                   </Button>
@@ -122,7 +122,7 @@ export default function Header() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-start">
+                  <Button variant="ghost" size="sm" className="w-full justify-start cursor-pointer">
                     <FileText className="h-4 w-4 mr-1.5" />
                     Info
                   </Button>

@@ -1,9 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import {
   Sword,
@@ -11,13 +17,21 @@ import {
   HardHatIcon as Helmet,
   Calculator,
   Award,
-  HeartIcon as Chest,
-  PenIcon as Pants,
-  DockIcon as Boots,
-  GlassesIcon as Gloves,
-  HandIcon as Shoulder,
-  BellIcon as Belt,
+  Shirt as Chest,
+  RectangleHorizontal as Pants,
+  Footprints as Boots,
+  HandMetal as Gloves,
+  Square as Shoulder,
+  Minus as Belt,
 } from "lucide-react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 // Gear score lookup tables from the Django constants
 const W_GEAR_SCORES = [
@@ -109,7 +123,7 @@ export default function GearScoreCalculator() {
   })
 
   // Handle form input changes
-  const handleChange = (field, value) => {
+  const handleChange = (field: string, value: string) => {
     setGearValues((prev) => ({
       ...prev,
       [field]: value,
@@ -289,82 +303,23 @@ export default function GearScoreCalculator() {
     })
   }
 
-  // Create a reusable gear item component
-  const GearItem = ({ title, icon, gearRank, fortRank, fortLevel, score, onChange }) => (
-    <Card className="card-hover">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center">
-          {icon}
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="space-y-1.5">
-          <Label htmlFor={`${title.toLowerCase()}-gear-rank`} className="text-sm">
-            Gear Rank
-          </Label>
-          <Select
-            value={gearRank}
-            onValueChange={(value) => onChange(`${title.toLowerCase().replace(" ", "_")}_gear_rank`, value)}
-          >
-            <SelectTrigger id={`${title.toLowerCase()}-gear-rank`} className="h-9">
-              <SelectValue placeholder="Select rank" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0">-</SelectItem>
-              <SelectItem value="1">A Gear</SelectItem>
-              <SelectItem value="2">S/S+ Gear</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor={`${title.toLowerCase()}-fort-rank`} className="text-sm">
-            Fortify Rank
-          </Label>
-          <Select
-            value={fortRank}
-            onValueChange={(value) => onChange(`${title.toLowerCase().replace(" ", "_")}_fort_rank`, value)}
-          >
-            <SelectTrigger id={`${title.toLowerCase()}-fort-rank`} className="h-9">
-              <SelectValue placeholder="Select rank" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0">-</SelectItem>
-              <SelectItem value="1">Legendary</SelectItem>
-              <SelectItem value="2">Mystic</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor={`${title.toLowerCase()}-fort-level`} className="text-sm">
-            Fortify Level
-          </Label>
-          <Select
-            value={fortLevel}
-            onValueChange={(value) => onChange(`${title.toLowerCase().replace(" ", "_")}_fort_level`, value)}
-          >
-            <SelectTrigger id={`${title.toLowerCase()}-fort-level`} className="h-9">
-              <SelectValue placeholder="Select level" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0">-</SelectItem>
-              <SelectItem value="1">+0</SelectItem>
-              <SelectItem value="2">+1</SelectItem>
-              <SelectItem value="3">+2</SelectItem>
-              <SelectItem value="4">+3</SelectItem>
-              <SelectItem value="5">+4</SelectItem>
-              <SelectItem value="6">+5</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+  // Add useEffect to calculate scores whenever gearValues changes
+  useEffect(() => {
+    calculateGearScores()
+  }, [gearValues])
 
-        <div className="pt-1 flex justify-between items-center">
-          <span className="text-sm text-muted-foreground">Gear Score:</span>
-          <span className="text-lg font-medium text-primary">{score}</span>
-        </div>
-      </CardContent>
-    </Card>
-  )
+  // Add gear slots configuration
+  const gearSlots = [
+    { title: "Weapon", icon: <Sword className="h-4 w-4 mr-1.5 text-violet-500" />, fieldPrefix: "w", scoreKey: "w_gear_score" },
+    { title: "Off-Hand", icon: <Shield className="h-4 w-4 mr-1.5 text-violet-500" />, fieldPrefix: "off", scoreKey: "oh_gear_score" },
+    { title: "Helm", icon: <Helmet className="h-4 w-4 mr-1.5 text-violet-500" />, fieldPrefix: "head", scoreKey: "head_gear_score" },
+    { title: "Chest", icon: <Chest className="h-4 w-4 mr-1.5 text-violet-500" />, fieldPrefix: "chest", scoreKey: "chest_gear_score" },
+    { title: "Pants", icon: <Pants className="h-4 w-4 mr-1.5 text-violet-500" />, fieldPrefix: "pants", scoreKey: "pants_gear_score" },
+    { title: "Boots", icon: <Boots className="h-4 w-4 mr-1.5 text-violet-500" />, fieldPrefix: "boots", scoreKey: "boots_gear_score" },
+    { title: "Gloves", icon: <Gloves className="h-4 w-4 mr-1.5 text-violet-500" />, fieldPrefix: "gloves", scoreKey: "gloves_gear_score" },
+    { title: "Shoulder", icon: <Shoulder className="h-4 w-4 mr-1.5 text-violet-500" />, fieldPrefix: "shoulder", scoreKey: "shoulder_gear_score" },
+    { title: "Belt", icon: <Belt className="h-4 w-4 mr-1.5 text-violet-500" />, fieldPrefix: "belt", scoreKey: "belt_gear_score" },
+  ]
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -376,122 +331,98 @@ export default function GearScoreCalculator() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Weapon */}
-          <GearItem
-            title="Weapon"
-            icon={<Sword className="h-4 w-4 mr-1.5 text-primary" />}
-            gearRank={gearValues.w_gear_rank}
-            fortRank={gearValues.w_fort_rank}
-            fortLevel={gearValues.w_fort_level}
-            score={scores.w_gear_score}
-            onChange={handleChange}
-          />
+        {/* Replace grid with Table inside a Card */}
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[150px]">Slot</TableHead>
+                <TableHead>Gear Rank</TableHead>
+                <TableHead>Fortify Rank</TableHead>
+                <TableHead>Fortify Level</TableHead>
+                <TableHead className="text-right">Score</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {gearSlots.map((slot) => {
+                const gearRankKey = `${slot.fieldPrefix}_gear_rank` as keyof typeof gearValues
+                const fortRankKey = `${slot.fieldPrefix}_fort_rank` as keyof typeof gearValues
+                const fortLevelKey = `${slot.fieldPrefix}_fort_level` as keyof typeof gearValues
+                const scoreKey = slot.scoreKey as keyof typeof scores
 
-          {/* Off-Hand */}
-          <GearItem
-            title="Off-Hand"
-            icon={<Shield className="h-4 w-4 mr-1.5 text-primary" />}
-            gearRank={gearValues.off_gear_rank}
-            fortRank={gearValues.off_fort_rank}
-            fortLevel={gearValues.off_fort_level}
-            score={scores.oh_gear_score}
-            onChange={handleChange}
-          />
+                return (
+                  <TableRow key={slot.fieldPrefix}>
+                    <TableCell className="font-medium flex items-center">{slot.icon}{slot.title}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={gearValues[gearRankKey]}
+                        onValueChange={(value) => handleChange(gearRankKey, value)}
+                      >
+                        <SelectTrigger className="h-9 w-[110px]">
+                          <SelectValue placeholder="Select rank" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[999] border border-[hsl(240_3.7%_15.9%)] bg-[hsl(240_10%_4%)]">
+                          <SelectItem value="0" className="hover:bg-[hsl(240_3.7%_15.9%)]">-</SelectItem>
+                          <SelectItem value="1" className="hover:bg-[hsl(240_3.7%_15.9%)]">A Gear</SelectItem>
+                          <SelectItem value="2" className="hover:bg-[hsl(240_3.7%_15.9%)]">S/S+ Gear</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={gearValues[fortRankKey]}
+                        onValueChange={(value) => handleChange(fortRankKey, value)}
+                      >
+                        <SelectTrigger className="h-9 w-[120px]">
+                          <SelectValue placeholder="Select rank" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[999] border border-[hsl(240_3.7%_15.9%)] bg-[hsl(240_10%_4%)]">
+                          <SelectItem value="0" className="hover:bg-[hsl(240_3.7%_15.9%)]">-</SelectItem>
+                          <SelectItem value="1" className="hover:bg-[hsl(240_3.7%_15.9%)]">Legendary</SelectItem>
+                          <SelectItem value="2" className="hover:bg-[hsl(240_3.7%_15.9%)]">Mystic</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={gearValues[fortLevelKey]}
+                        onValueChange={(value) => handleChange(fortLevelKey, value)}
+                      >
+                        <SelectTrigger className="h-9 w-[90px]">
+                          <SelectValue placeholder="Select level" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[999] border border-[hsl(240_3.7%_15.9%)] bg-[hsl(240_10%_4%)]">
+                          <SelectItem value="0" className="hover:bg-[hsl(240_3.7%_15.9%)]">-</SelectItem>
+                          <SelectItem value="1" className="hover:bg-[hsl(240_3.7%_15.9%)]">+0</SelectItem>
+                          <SelectItem value="2" className="hover:bg-[hsl(240_3.7%_15.9%)]">+1</SelectItem>
+                          <SelectItem value="3" className="hover:bg-[hsl(240_3.7%_15.9%)]">+2</SelectItem>
+                          <SelectItem value="4" className="hover:bg-[hsl(240_3.7%_15.9%)]">+3</SelectItem>
+                          <SelectItem value="5" className="hover:bg-[hsl(240_3.7%_15.9%)]">+4</SelectItem>
+                          <SelectItem value="6" className="hover:bg-[hsl(240_3.7%_15.9%)]">+5</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-violet-600">{scores[scoreKey]}</TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </Card>
 
-          {/* Helm */}
-          <GearItem
-            title="Helm"
-            icon={<Helmet className="h-4 w-4 mr-1.5 text-primary" />}
-            gearRank={gearValues.head_gear_rank}
-            fortRank={gearValues.head_fort_rank}
-            fortLevel={gearValues.head_fort_level}
-            score={scores.head_gear_score}
-            onChange={handleChange}
-          />
-
-          {/* Chest */}
-          <GearItem
-            title="Chest"
-            icon={<Chest className="h-4 w-4 mr-1.5 text-primary" />}
-            gearRank={gearValues.chest_gear_rank}
-            fortRank={gearValues.chest_fort_rank}
-            fortLevel={gearValues.chest_fort_level}
-            score={scores.chest_gear_score}
-            onChange={handleChange}
-          />
-
-          {/* Pants */}
-          <GearItem
-            title="Pants"
-            icon={<Pants className="h-4 w-4 mr-1.5 text-primary" />}
-            gearRank={gearValues.pants_gear_rank}
-            fortRank={gearValues.pants_fort_rank}
-            fortLevel={gearValues.pants_fort_level}
-            score={scores.pants_gear_score}
-            onChange={handleChange}
-          />
-
-          {/* Boots */}
-          <GearItem
-            title="Boots"
-            icon={<Boots className="h-4 w-4 mr-1.5 text-primary" />}
-            gearRank={gearValues.boots_gear_rank}
-            fortRank={gearValues.boots_fort_rank}
-            fortLevel={gearValues.boots_fort_level}
-            score={scores.boots_gear_score}
-            onChange={handleChange}
-          />
-
-          {/* Gloves */}
-          <GearItem
-            title="Gloves"
-            icon={<Gloves className="h-4 w-4 mr-1.5 text-primary" />}
-            gearRank={gearValues.gloves_gear_rank}
-            fortRank={gearValues.gloves_fort_rank}
-            fortLevel={gearValues.gloves_fort_level}
-            score={scores.gloves_gear_score}
-            onChange={handleChange}
-          />
-
-          {/* Shoulder */}
-          <GearItem
-            title="Shoulder"
-            icon={<Shoulder className="h-4 w-4 mr-1.5 text-primary" />}
-            gearRank={gearValues.shoulder_gear_rank}
-            fortRank={gearValues.shoulder_fort_rank}
-            fortLevel={gearValues.shoulder_fort_level}
-            score={scores.shoulder_gear_score}
-            onChange={handleChange}
-          />
-
-          {/* Belt */}
-          <GearItem
-            title="Belt"
-            icon={<Belt className="h-4 w-4 mr-1.5 text-primary" />}
-            gearRank={gearValues.belt_gear_rank}
-            fortRank={gearValues.belt_fort_rank}
-            fortLevel={gearValues.belt_fort_level}
-            score={scores.belt_gear_score}
-            onChange={handleChange}
-          />
-        </div>
-
+        {/* Keep the Total Score Card */}
         <div className="flex flex-col items-center gap-4 mt-4">
-          <Button size="sm" className="px-8 flex items-center" onClick={calculateGearScores}>
-            <Calculator className="h-4 w-4 mr-1.5" />
-            Calculate Gear Score
-          </Button>
-
           <Card className="w-full max-w-xs">
             <CardContent className="pt-6 pb-6">
-              <div className="text-center space-y-1">
-                <p className="text-sm text-muted-foreground flex items-center justify-center">
-                  <Award className="h-4 w-4 mr-1.5" />
+              <CardHeader>
+                <CardTitle className="flex items-center justify-center gap-2">
+                  <Award size={24} className="text-violet-500" />
                   Total Gear Score
-                </p>
-                <div className="text-4xl font-bold text-primary">{scores.total_score}</div>
-              </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-3xl font-bold text-violet-600">{scores.total_score}</p>
+              </CardContent>
             </CardContent>
           </Card>
         </div>
