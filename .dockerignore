@@ -1,0 +1,15 @@
+Dockerfile
+.dockerignore
+node_modules
+npm-debug.log
+README.md
+.next
+.git
+.github
+.env*
+.env*.local
+*.tsbuildinfo
+
+# Optional: uncomment if you don't want to include these
+# .vscode/
+# .idea/ 
