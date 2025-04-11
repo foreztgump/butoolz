@@ -34,7 +34,7 @@ export default function RootLayout({
             <main className="flex-1 container mx-auto px-4 py-8">{children}</main>
             <Footer />
           </div>
-          <Toaster />
+          <Toaster position="top-center" richColors closeButton theme="dark" />
         </ThemeProvider>
       </body>
     </html>
