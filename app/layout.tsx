@@ -1,11 +1,13 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import Script from "next/script"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { Toaster } from "@/components/ui/sonner"
+import CookieConsentBanner from "@/components/cookie-consent"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -35,7 +37,25 @@ export default function RootLayout({
             <Footer />
           </div>
           <Toaster position="top-center" richColors closeButton theme="dark" />
+          <CookieConsentBanner />
         </ThemeProvider>
+        <Script
+          strategy="afterInteractive"
+          src={`https://www.googletagmanager.com/gtag/js?id=G-V5TV59NQZT`}
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            
+            // Config call now happens based on Consent Mode status handled in CookieConsentBanner
+            // gtag('config', 'G-V5TV59NQZT'); 
+            // We still need the initial config call for GA to load, 
+            // Consent Mode will gate the actual data collection.
+            gtag('config', 'G-V5TV59NQZT');
+          `}
+        </Script>
       </body>
     </html>
   )
