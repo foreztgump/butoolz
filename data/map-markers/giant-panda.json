@@ -1,0 +1,37 @@
+[
+  {
+    "lat": 28.67131,
+    "lng": 65.61035,
+    "popup": "Giant Panda<br> Spawns once every 6 hours per channel",
+    "title": "Panda in Padana",
+    "img": "/BlessMap/MountsLocations/Panda1.webp"
+  },
+  {
+    "lat": -43.69171,
+    "lng": 24.36768,
+    "popup": "Giant Panda<br> Spawns once every 6 hours per channel",
+    "title": "Panda in Carzacor",
+    "img": "/BlessMap/MountsLocations/Panda2.webp"
+  },
+  {
+    "lat": -76.0214,
+    "lng": -24.08203,
+    "popup": "Giant Panda<br> Spawns once every 6 hours per channel",
+    "title": "Panda in Gnoll",
+    "img": "/BlessMap/MountsLocations/Panda3.webp"
+  },
+  {
+    "lat": -80.53568,
+    "lng": -39.83643,
+    "popup": "Giant Panda<br> Spawns once every 6 hours per channel",
+    "title": "Panda in Timeless",
+    "img": "/BlessMap/MountsLocations/Panda4.webp"
+  },
+  {
+    "lat": -82.15746,
+    "lng": -63.98438,
+    "popup": "Giant Panda<br> Spawns once every 6 hours per channel",
+    "title": "Panda in Zenkala",
+    "img": "/BlessMap/MountsLocations/Panda5.webp"
+  }
+]

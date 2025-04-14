@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { Calculator, Clock, Flame, Shield, Sparkles, Award, Coffee } from "lucide-react"
+import { Calculator, Clock, Flame, Shield, Sparkles, Award, Coffee, Map, Puzzle } from "lucide-react"
 
 export default function Home() {
   return (
@@ -103,17 +103,17 @@ export default function Home() {
           <Card className="card-hover group border bg-zinc-800/25">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-xl">
-                <Flame className="h-5 w-5 text-red-400" />
-                Skill Progression
+                <Map className="h-5 w-5 text-green-500" />
+                Interactive Map
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <p className="text-muted-foreground text-sm">
-                  View detailed information about skill level progression for different skill types.
+                  Explore the interactive map of Bless Unleashed with locations, markers, and filters.
                 </p>
                 <Button size="sm" asChild className="bg-secondary text-secondary-foreground hover:bg-secondary/80 dark:bg-zinc-800 dark:text-secondary-foreground dark:hover:bg-zinc-700 group-hover:dark:bg-black group-hover:dark:border group-hover:dark:border-primary transition-all">
-                  <Link href="/skill_level_progression">View Progression</Link>
+                  <Link href="/map">View Map</Link>
                 </Button>
               </div>
             </CardContent>

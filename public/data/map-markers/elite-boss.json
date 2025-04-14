@@ -1,0 +1,289 @@
+[
+  {
+    "lat": -15.66561,
+    "lng": 38.09401,
+    "popup": "Wolf King<br>Pasture's Crossing",
+    "title": "Wolf King",
+    "img": ""
+  },
+  {
+    "lat": -43.58399,
+    "lng": 42.82112,
+    "popup": "Corrupted Treant<br> Castra Magnus",
+    "title": "Corrupted Treant",
+    "img": ""
+  },
+  {
+    "lat": -32.4168,
+    "lng": 7.38422,
+    "popup": "Shield Maiden<br> Western Hills",
+    "title": "Shield Maiden",
+    "img": ""
+  },
+  {
+    "lat": -56.12451,
+    "lng": -31.31446,
+    "popup": "Dustwind Bandit Champion<br> South of Navarran Military Camp.",
+    "title": "Dustwind Bandit Champion",
+    "img": ""
+  },
+  {
+    "lat": -55.35748,
+    "lng": -24.08319,
+    "popup": "Sunpiercer<br> Barrens near Navarran Military Camp.",
+    "title": "Sunpiercer",
+    "img": ""
+  },
+  {
+    "lat": -35.04876,
+    "lng": -34.1209,
+    "popup": "Stone Zephyr (Navarra)<br> Near the entrance of Outlaw Fortress.",
+    "title": "Stone Zephyr (Navarra)",
+    "img": ""
+  },
+  {
+    "lat": -74.7364,
+    "lng": -41.74658,
+    "popup": "Greenwarden<br> The Lost City",
+    "title": "Greenwarden",
+    "img": ""
+  },
+  {
+    "lat": -66.28488,
+    "lng": -40.8656,
+    "popup": "Kobold Foreman (Gnoll Wastes), North of Ragemane Village",
+    "title": "Kobold Foreman",
+    "img": ""
+  },
+  {
+    "lat": -70.0367,
+    "lng": -39.12922,
+    "popup": "Desert Flame Giant 1 (Gnoll Wastes)<br> Center of Gnoll Wastes, Drysand Barrens",
+    "title": "Desert Flame Giant (Gnoll Wastes)",
+    "img": ""
+  },
+  {
+    "lat": -71.81513,
+    "lng": -27.68555,
+    "popup": "Desert Flame Giant 2 (Gnoll Wastes)<br> Center of Gnoll Wastes, Drysand Barrens",
+    "title": "Desert Flame Giant (Gnoll Wastes)",
+    "img": ""
+  },
+  {
+    "lat": -66.98413,
+    "lng": -5.72691,
+    "popup": "Stone Zephyr (Gnoll wastes)<br> South-east of Roughclaw Village",
+    "title": "Stone Zephyr (Gnoll wastes)",
+    "img": ""
+  },
+  {
+    "lat": -76.18595,
+    "lng": 30.02549,
+    "popup": "Noxious Ghoul<br> between Rift Survey Camp and Tristezza temple ruins",
+    "title": "Noxious Ghoul",
+    "img": ""
+  },
+  {
+    "lat": -69.20885,
+    "lng": 46.77389,
+    "popup": "Black Knight<br> west of Ruins of Sorrow",
+    "title": "Black Knight",
+    "img": ""
+  },
+  {
+    "lat": -74.68393,
+    "lng": 28.66271,
+    "popup": "Revived Murderer<br> North-east of Rift Survey Camp",
+    "title": "Revived Murderer",
+    "img": ""
+  },
+  {
+    "lat": -63.4113,
+    "lng": 40.26255,
+    "popup": "Lesser Frost Giant (Tristezza)<br> North of Ruins of Sorrow",
+    "title": "Lesser Frost Giant (Tristezza)",
+    "img": ""
+  },
+  {
+    "lat": -82.93527,
+    "lng": -46.11696,
+    "popup": "Emissary of Flame<br> Altar of Flames",
+    "title": "Emissary of Flame",
+    "img": ""
+  },
+  {
+    "lat": -81.54745,
+    "lng": -41.787,
+    "popup": "Skaniss<br> Oathkeeper Bosk",
+    "title": "Skaniss",
+    "img": ""
+  },
+  {
+    "lat": -80.50655,
+    "lng": -48.227,
+    "popup": "Jadeshell Pagar Warrior<br> Oathkeeper Bosk",
+    "title": "Jadeshell Pagar Warrior",
+    "img": ""
+  },
+  {
+    "lat": -80.99448,
+    "lng": -11.37309,
+    "popup": "Mecha Boxer<br> Stardust Crater",
+    "title": "Mecha Boxer",
+    "img": ""
+  },
+  {
+    "lat": -84.6539,
+    "lng": -59.36462,
+    "popup": "Stonescale Wyvern<br> Tomb of Avarice",
+    "title": "Stonescale Wyvern",
+    "img": ""
+  },
+  {
+    "lat": -78.92514,
+    "lng": -83.77896,
+    "popup": "Volcanic Wyvern<br> Mining Sector 2",
+    "title": "Volcanic Wyvern",
+    "img": ""
+  },
+  {
+    "lat": -81.3122,
+    "lng": -79.82445,
+    "popup": "Thunder Wyvern<br> Stonemoss Lake",
+    "title": "Thunder Wyvern",
+    "img": ""
+  },
+  {
+    "lat": -76.65074,
+    "lng": -76.53267,
+    "popup": "Deathtail Sovereign<br> Chittering Cavern",
+    "title": "Deathtail Sovereign",
+    "img": ""
+  },
+  {
+    "lat": -70.87382,
+    "lng": -57.01485,
+    "popup": "Desert Marauder<br> East of Energy Tower Telepost",
+    "title": "Desert Marauder",
+    "img": ""
+  },
+  {
+    "lat": -74.84602,
+    "lng": -62.77348,
+    "popup": "Gamilla<br> South of Energy Tower Telepost",
+    "title": "Gamilla",
+    "img": ""
+  },
+  {
+    "lat": 81.75438,
+    "lng": 66.16325,
+    "popup": "Executioner Mantis<br> East of Sorrow's End",
+    "title": "Executioner Mantis",
+    "img": ""
+  },
+  {
+    "lat": 79.2081,
+    "lng": 59.70384,
+    "popup": "Stone Zephyr (Beoran)<br> Sorrow's Path",
+    "title": "Stone Zephyr (Beoran)",
+    "img": ""
+  },
+  {
+    "lat": 84.19409,
+    "lng": 55.00003,
+    "popup": "Knight of Regret<br> Garden of Nightmares",
+    "title": "Knight of Regret",
+    "img": ""
+  },
+  {
+    "lat": 83.65246,
+    "lng": 6.74552,
+    "popup": "Steelspine Pagar Warrior<br> The Skittering Forest (West)",
+    "title": "Steelspine Pagar Warrior",
+    "img": ""
+  },
+  {
+    "lat": 82.05129,
+    "lng": 10.39366,
+    "popup": "Bloodband Raider Captain<br> Redshroom Valley",
+    "title": "Bloodband Raider Captain",
+    "img": ""
+  },
+  {
+    "lat": 81.19789,
+    "lng": 19.20713,
+    "popup": "Kobold Foreman<br> Ostium Quarry",
+    "title": "Kobold Foreman",
+    "img": ""
+  },
+  {
+    "lat": 84.64049,
+    "lng": -25.1303,
+    "popup": "Desert Flame Giant<br> Rabin Village",
+    "title": "Desert Flame Giant",
+    "img": ""
+  },
+  {
+    "lat": 78.45274,
+    "lng": -42.58205,
+    "popup": "Wandering Mountain Giant<br> Egil Farm",
+    "title": "Wandering Mountain Giant",
+    "img": ""
+  },
+  {
+    "lat": 81.84859,
+    "lng": -6.51826,
+    "popup": "Specimen - MX0206<br> Ancient Ruin Digsite",
+    "title": "Specimen - MX0206",
+    "img": ""
+  },
+  {
+    "lat": 65.84681,
+    "lng": 33.57737,
+    "popup": "Herbati Champion<br> Dre'Zinen Ruins",
+    "title": "Herbati Champion",
+    "img": ""
+  },
+  {
+    "lat": 68.72808,
+    "lng": 76.8208,
+    "popup": "Two Headed Wyvern<br> ",
+    "title": "Two Headed Wyvern",
+    "img": ""
+  },
+  {
+    "lat": 73.83667,
+    "lng": 39.04934,
+    "popup": "General of a Fallen Kingdom<br> IronFist Basin",
+    "title": "General of a Fallen Kingdom",
+    "img": ""
+  },
+  {
+    "lat": 21.5534,
+    "lng": 48.82707,
+    "popup": "Cool Banum<br> Tremont Plains",
+    "title": "Cool Banum",
+    "img": ""
+  },
+  {
+    "lat": 38.51379,
+    "lng": 93.55957,
+    "popup": "Bloodband Captain<br> The Asgra Village",
+    "title": "Bloodband Captain",
+    "img": ""
+  },
+  {
+    "lat": 84.60171,
+    "lng": 97.65098,
+    "popup": "Knyix<br> Hidden Encampment",
+    "title": "Knyix",
+    "img": ""
+  },
+  {
+    "lat": 81.38089,
+    "lng": 35.15378,
+    "popup": "Dragon Newt Blade master<br> Draggon deez n.... (i had to)",
+    "title": "Dragon Newt blade master",
+    "img": ""
+  }
+]

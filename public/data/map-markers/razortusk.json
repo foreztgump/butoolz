@@ -1,0 +1,37 @@
+[
+  {
+    "lat": 83.11634,
+    "lng": 40.49561,
+    "popup": "Razortusk<br> Spawns once every 12 hours per channel",
+    "title": "Razor in Ostium",
+    "img": "/BlessMap/MountsLocations/Razortusk1.webp"
+  },
+  {
+    "lat": 80.63989,
+    "lng": 75.49805,
+    "popup": "Razortusk<br> Spawns once every 12 hours per channel",
+    "title": "-",
+    "img": "/BlessMap/MountsLocations/Razortusk2.webp"
+  },
+  {
+    "lat": 66.41675,
+    "lng": 90.41748,
+    "popup": "Razortusk<br> Spawns once every 12 hours per channel",
+    "title": "Razor in Kannus Mountains",
+    "img": "/BlessMap/MountsLocations/Razortusk3.webp"
+  },
+  {
+    "lat": 4.69688,
+    "lng": 37.50732,
+    "popup": "Razortusk<br> Spawns once every 12 hours per channel",
+    "title": "Razor in South Sperios",
+    "img": "/BlessMap/MountsLocations/Razortusk4.webp"
+  },
+  {
+    "lat": -35.33529,
+    "lng": -10.12939,
+    "popup": "Razortusk<br> Spawns once every 12 hours per channel",
+    "title": "Razor in Navarra",
+    "img": "/BlessMap/MountsLocations/Razortusk5.webp"
+  }
+]

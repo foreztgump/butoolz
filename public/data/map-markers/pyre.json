@@ -1,0 +1,541 @@
+[
+  {
+    "lat": -18.16673,
+    "lng": 29.94873,
+    "popup": "Pyre",
+    "title": "Carzacor 1",
+    "img": ""
+  },
+  {
+    "lat": -15.74996,
+    "lng": 35.57373,
+    "popup": "Pyre",
+    "title": "Carzacor 2",
+    "img": ""
+  },
+  {
+    "lat": -28.42039,
+    "lng": 41.74805,
+    "popup": "Pyre",
+    "title": "Carzacor 3",
+    "img": ""
+  },
+  {
+    "lat": -36.35053,
+    "lng": 31.44287,
+    "popup": "Pyre",
+    "title": "Carzacor 4",
+    "img": ""
+  },
+  {
+    "lat": -34.37971,
+    "lng": 17.20459,
+    "popup": "Pyre",
+    "title": "Carzacor 5",
+    "img": ""
+  },
+  {
+    "lat": -37.77071,
+    "lng": 14.89746,
+    "popup": "Pyre",
+    "title": "Carzacor 6",
+    "img": ""
+  },
+  {
+    "lat": -44.60611,
+    "lng": 11.90918,
+    "popup": "Pyre",
+    "title": "Carzacor 7",
+    "img": ""
+  },
+  {
+    "lat": -50.49945,
+    "lng": 8.50342,
+    "popup": "Pyre",
+    "title": "Carzacor 8",
+    "img": ""
+  },
+  {
+    "lat": -54.4828,
+    "lng": 24.45557,
+    "popup": "Pyre",
+    "title": "Carzacor 9",
+    "img": ""
+  },
+  {
+    "lat": -50.6808,
+    "lng": 38.54004,
+    "popup": "Pyre",
+    "title": "Carzacor 10",
+    "img": ""
+  },
+  {
+    "lat": -57.32652,
+    "lng": 34.56299,
+    "popup": "Pyre",
+    "title": "Carzacor 11",
+    "img": ""
+  },
+  {
+    "lat": -33.57801,
+    "lng": -5.03174,
+    "popup": "Pyre",
+    "title": "Navarra 1",
+    "img": ""
+  },
+  {
+    "lat": -39.92659,
+    "lng": -29.729,
+    "popup": "Pyre",
+    "title": "Navarra 2",
+    "img": ""
+  },
+  {
+    "lat": -45.32125,
+    "lng": -13.0957,
+    "popup": "Pyre",
+    "title": "Navarra 3",
+    "img": ""
+  },
+  {
+    "lat": -43.14909,
+    "lng": -38.07861,
+    "popup": "Pyre",
+    "title": "Navarra 4",
+    "img": ""
+  },
+  {
+    "lat": -34.88593,
+    "lng": -40.31982,
+    "popup": "Pyre",
+    "title": "Navarra 5",
+    "img": ""
+  },
+  {
+    "lat": -52.84259,
+    "lng": -28.19092,
+    "popup": "Pyre",
+    "title": "Navarra 6",
+    "img": ""
+  },
+  {
+    "lat": -59.25399,
+    "lng": -24.36498,
+    "popup": "Pyre",
+    "title": "Navarra 7",
+    "img": ""
+  },
+  {
+    "lat": -61.31245,
+    "lng": -25.70801,
+    "popup": "Pyre",
+    "title": "Navarra 8",
+    "img": ""
+  },
+  {
+    "lat": -65.51296,
+    "lng": -24.91699,
+    "popup": "Pyre",
+    "title": "Gnoll Wastes 1",
+    "img": ""
+  },
+  {
+    "lat": -65.84777,
+    "lng": -35.96924,
+    "popup": "Pyre",
+    "title": "Gnoll Wastes 2",
+    "img": ""
+  },
+  {
+    "lat": -70.1702,
+    "lng": -12.32666,
+    "popup": "Pyre",
+    "title": "Gnoll Wastes 3",
+    "img": ""
+  },
+  {
+    "lat": -72.06715,
+    "lng": -48.0542,
+    "popup": "Pyre",
+    "title": "Gnoll Wastes 4",
+    "img": ""
+  },
+  {
+    "lat": -75.34228,
+    "lng": -16.34766,
+    "popup": "Pyre",
+    "title": "Gnoll Wastes 5",
+    "img": ""
+  },
+  {
+    "lat": -70.09553,
+    "lng": 2.24121,
+    "popup": "Pyre",
+    "title": "Tristezza 1",
+    "img": ""
+  },
+  {
+    "lat": -67.91688,
+    "lng": 34.73877,
+    "popup": "Pyre",
+    "title": "Tristezza 2",
+    "img": ""
+  },
+  {
+    "lat": -73.77578,
+    "lng": 43.90137,
+    "popup": "Pyre",
+    "title": "Tristezza 3",
+    "img": ""
+  },
+  {
+    "lat": -75.69393,
+    "lng": 19.84131,
+    "popup": "Pyre",
+    "title": "Tristezza 4",
+    "img": ""
+  },
+  {
+    "lat": -76.47577,
+    "lng": 32.91504,
+    "popup": "Pyre",
+    "title": "Tristezza 5",
+    "img": ""
+  },
+  {
+    "lat": 7.81985,
+    "lng": 37.33154,
+    "popup": "Pyre",
+    "title": "Sperios 1",
+    "img": ""
+  },
+  {
+    "lat": 15.55954,
+    "lng": 42.1875,
+    "popup": "Pyre",
+    "title": "Sperios 2",
+    "img": ""
+  },
+  {
+    "lat": 21.105,
+    "lng": 31.28906,
+    "popup": "Pyre",
+    "title": "Sperios 3",
+    "img": ""
+  },
+  {
+    "lat": 13.34687,
+    "lng": 25.15869,
+    "popup": "Pyre",
+    "title": "Sperios 4",
+    "img": ""
+  },
+  {
+    "lat": -2.56994,
+    "lng": 23.15918,
+    "popup": "Pyre",
+    "title": "Sperios 5",
+    "img": ""
+  },
+  {
+    "lat": 22.00417,
+    "lng": 18.21533,
+    "popup": "Pyre",
+    "title": "Sperios 6",
+    "img": ""
+  },
+  {
+    "lat": 29.38218,
+    "lng": 27.13623,
+    "popup": "Pyre",
+    "title": "Sperios 7",
+    "img": ""
+  },
+  {
+    "lat": 47.78363,
+    "lng": 22.47803,
+    "popup": "Pyre",
+    "title": "Sperios 8",
+    "img": ""
+  },
+  {
+    "lat": 34.74161,
+    "lng": 62.24854,
+    "popup": "Pyre",
+    "title": "Padana Ruins 1",
+    "img": ""
+  },
+  {
+    "lat": 38.08269,
+    "lng": 70.92773,
+    "popup": "Pyre",
+    "title": "Padana Ruins 2",
+    "img": ""
+  },
+  {
+    "lat": 38.83971,
+    "lng": 88.24219,
+    "popup": "Pyre",
+    "title": "Padana Ruins 3",
+    "img": ""
+  },
+  {
+    "lat": 55.51619,
+    "lng": 91.56006,
+    "popup": "Pyre",
+    "title": "Padana Ruins 4",
+    "img": ""
+  },
+  {
+    "lat": 47.78363,
+    "lng": 75.19043,
+    "popup": "Pyre",
+    "title": "Padana Ruins 5",
+    "img": ""
+  },
+  {
+    "lat": 53.61858,
+    "lng": 71.21338,
+    "popup": "Pyre",
+    "title": "Padana Ruins 6",
+    "img": ""
+  },
+  {
+    "lat": 66.6094,
+    "lng": 72.04834,
+    "popup": "Pyre",
+    "title": "Kannus Mountains 1",
+    "img": ""
+  },
+  {
+    "lat": 68.63255,
+    "lng": 85.45166,
+    "popup": "Pyre",
+    "title": "Kannus Mountains 2",
+    "img": ""
+  },
+  {
+    "lat": 74.18206,
+    "lng": 83.49609,
+    "popup": "Pyre",
+    "title": "Kannus Mountains 3",
+    "img": ""
+  },
+  {
+    "lat": 72.00616,
+    "lng": 72.48779,
+    "popup": "Pyre",
+    "title": "Kannus Mountains 4",
+    "img": ""
+  },
+  {
+    "lat": 74.0558,
+    "lng": 60.75439,
+    "popup": "Pyre",
+    "title": "Kannus Mountains 5",
+    "img": ""
+  },
+  {
+    "lat": 75.44203,
+    "lng": 37.66113,
+    "popup": "Pyre",
+    "title": "Kannus Valley 1",
+    "img": ""
+  },
+  {
+    "lat": 72.5545,
+    "lng": 9.47021,
+    "popup": "Pyre",
+    "title": "Kannus Valley 2",
+    "img": ""
+  },
+  {
+    "lat": 70.99551,
+    "lng": 6.43799,
+    "popup": "Pyre",
+    "title": "Kannus Valley 3",
+    "img": ""
+  },
+  {
+    "lat": -81.18123,
+    "lng": -32.36572,
+    "popup": "Pyre",
+    "title": "Timeless Jungle 1",
+    "img": ""
+  },
+  {
+    "lat": -83.27256,
+    "lng": -5.16357,
+    "popup": "Pyre",
+    "title": "Timeless Jungle 2",
+    "img": ""
+  },
+  {
+    "lat": -84.18761,
+    "lng": -30.67383,
+    "popup": "Pyre",
+    "title": "Timeless Jungle 3",
+    "img": ""
+  },
+  {
+    "lat": -80.95955,
+    "lng": -54.03076,
+    "popup": "Pyre",
+    "title": "Zenkala 1",
+    "img": ""
+  },
+  {
+    "lat": -79.20019,
+    "lng": -56.71143,
+    "popup": "Pyre",
+    "title": "Zenkala 2",
+    "img": ""
+  },
+  {
+    "lat": -81.52151,
+    "lng": -82.88086,
+    "popup": "Pyre",
+    "title": "Zenkala 3",
+    "img": ""
+  },
+  {
+    "lat": -84.51832,
+    "lng": -71.521,
+    "popup": "Pyre",
+    "title": "Zenkala 4",
+    "img": ""
+  },
+  {
+    "lat": -76.62398,
+    "lng": -88.33008,
+    "popup": "Pyre",
+    "title": "Ivory Dunes 1",
+    "img": ""
+  },
+  {
+    "lat": -72.32913,
+    "lng": -96.81152,
+    "popup": "Pyre",
+    "title": "Ivory Dunes 2",
+    "img": ""
+  },
+  {
+    "lat": -73.1058,
+    "lng": -71.12549,
+    "popup": "Pyre",
+    "title": "Ivory Dunes 3",
+    "img": ""
+  },
+  {
+    "lat": -64.56732,
+    "lng": -61.61133,
+    "popup": "Pyre",
+    "title": "Ivory Dunes 4",
+    "img": ""
+  },
+  {
+    "lat": -66.33751,
+    "lng": -93.51563,
+    "popup": "Pyre",
+    "title": "Ivory Dunes 5",
+    "img": ""
+  },
+  {
+    "lat": 81.9847,
+    "lng": 87.20947,
+    "popup": "Pyre",
+    "title": "Beoran 1",
+    "img": ""
+  },
+  {
+    "lat": 84.28908,
+    "lng": 85.62744,
+    "popup": "Pyre",
+    "title": "Beoran 2",
+    "img": ""
+  },
+  {
+    "lat": 83.96773,
+    "lng": 64.13818,
+    "popup": "Pyre",
+    "title": "Beoran 3",
+    "img": ""
+  },
+  {
+    "lat": 83.01287,
+    "lng": 58.77686,
+    "popup": "Pyre",
+    "title": "Beoran 4",
+    "img": ""
+  },
+  {
+    "lat": 80.64346,
+    "lng": 59.10645,
+    "popup": "Pyre",
+    "title": "Beoran 5",
+    "img": ""
+  },
+  {
+    "lat": 81.90464,
+    "lng": 45.19775,
+    "popup": "Pyre",
+    "title": "Ostium 1",
+    "img": ""
+  },
+  {
+    "lat": 83.62592,
+    "lng": 16.80908,
+    "popup": "Pyre",
+    "title": "Ostium 2",
+    "img": ""
+  },
+  {
+    "lat": 80.18621,
+    "lng": 10.78857,
+    "popup": "Pyre",
+    "title": "Ostium 3",
+    "img": ""
+  },
+  {
+    "lat": 78.36271,
+    "lng": -14.58984,
+    "popup": "Pyre",
+    "title": "Eidolon Forest 1",
+    "img": ""
+  },
+  {
+    "lat": 80.32381,
+    "lng": -22.67578,
+    "popup": "Pyre",
+    "title": "Eidolon Forest 2",
+    "img": ""
+  },
+  {
+    "lat": 82.46607,
+    "lng": -14.5459,
+    "popup": "Pyre",
+    "title": "Eidolon Forest 3",
+    "img": ""
+  },
+  {
+    "lat": 83.51768,
+    "lng": -28.54248,
+    "popup": "Pyre",
+    "title": "Eidolon Forest 4",
+    "img": ""
+  },
+  {
+    "lat": 81.52151,
+    "lng": -33.79395,
+    "popup": "Pyre",
+    "title": "Eidolon Forest 5",
+    "img": ""
+  },
+  {
+    "lat": 78.75494,
+    "lng": -38.73779,
+    "popup": "Pyre",
+    "title": "Eidolon Forest 6",
+    "img": ""
+  }
+]

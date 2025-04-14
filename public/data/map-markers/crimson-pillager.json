@@ -1,0 +1,37 @@
+[
+  {
+    "lat": 83.82522,
+    "lng": -19.66554,
+    "popup": "Crimson Pillager<br> Spawns once every 24 hours per channel",
+    "title": "Pilly in Eidolon",
+    "img": "/BlessMap/MountsLocations/Pilly1.webp"
+  },
+  {
+    "lat": 79.92438,
+    "lng": 40.47362,
+    "popup": "Crimson Pillager<br> Spawns once every 24 hours per channel",
+    "title": "Pilly in Ostium",
+    "img": "/BlessMap/MountsLocations/Pilly2.webp"
+  },
+  {
+    "lat": 80.86236,
+    "lng": 86.77002,
+    "popup": "Crimson Pillager<br> Spawns once every 24 hours per channel",
+    "title": "Pilly in Beoran",
+    "img": "/BlessMap/MountsLocations/Pilly3.webp"
+  },
+  {
+    "lat": 69.39578,
+    "lng": 50.1416,
+    "popup": "Crimson Pillager<br> Spawns once every 24 hours per channel",
+    "title": "Pilly in Kannus Valley",
+    "img": "/BlessMap/MountsLocations/Pilly4.webp"
+  },
+  {
+    "lat": -83.17142,
+    "lng": -33.0249,
+    "popup": "Crimson Pillager<br> Spawns once every 24 hours per channel",
+    "title": "Pilly in Timeless",
+    "img": "/BlessMap/MountsLocations/Pilly5.webp"
+  }
+]

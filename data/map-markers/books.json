@@ -1,0 +1,72 @@
+[
+  {
+    "lat": 23.64452,
+    "lng": 31.44287,
+    "popup": "Talbor Tamits Musings Book 1<br> Near the marketplace on the cabinets",
+    "title": "Book 1",
+    "img": "/BlessMap/Pages/Book1.webp"
+  },
+  {
+    "lat": -40.3298,
+    "lng": 27.26807,
+    "popup": "Talbor Tamits Musings Book 2<br> On the ground next to the piller",
+    "title": "Book 2",
+    "img": "/BlessMap/Pages/Book2.webp"
+  },
+  {
+    "lat": -39.35129,
+    "lng": -20.12695,
+    "popup": "Talbor Tamits Musings Book 3<br> Upstairs on the ground in the middle",
+    "title": "Book 3",
+    "img": "/BlessMap/Pages/Book3.webp"
+  },
+  {
+    "lat": -73.36564,
+    "lng": -19.57764,
+    "popup": "Talbor Tamits Musings Book 4<br> On the ground in between two fish racks",
+    "title": "Book 4",
+    "img": "/BlessMap/Pages/Book4.webp"
+  },
+  {
+    "lat": -74.61345,
+    "lng": 47.83447,
+    "popup": "Talbor Tamits Musings Book 5<br> Upstairs on the left on a bench",
+    "title": "Book 5",
+    "img": "/BlessMap/Pages/Book5.webp"
+  },
+  {
+    "lat": -50.42952,
+    "lng": 9.18457,
+    "popup": "Talbor Tamits Musings Book 6<br> On the table next to the NPC chopping wood",
+    "title": "Book 6",
+    "img": "/BlessMap/Pages/Book6.webp"
+  },
+  {
+    "lat": 62.94523,
+    "lng": 64.51172,
+    "popup": "Talbor Tamits Musings Book 7<br> In between the two tents on the tiny table",
+    "title": "Book 7",
+    "img": "/BlessMap/Pages/Book7.webp"
+  },
+  {
+    "lat": 76.12716,
+    "lng": 35.41992,
+    "popup": "Talbor Tamits Musings Book 8<br> On the ground next to the two anvils",
+    "title": "Book 8",
+    "img": "/BlessMap/Pages/Book8.webp"
+  },
+  {
+    "lat": -84.63462,
+    "lng": -41.55029,
+    "popup": "Talbor Tamits Musings Book 9<br> Inside the shed on the table",
+    "title": "Book 9",
+    "img": "/BlessMap/Pages/Book9.webp"
+  },
+  {
+    "lat": -84.56639,
+    "lng": -71.87256,
+    "popup": "Talbor Tamits Musings Book 10<br> On a box next to a bunch of boxes",
+    "title": "Book 10",
+    "img": "/BlessMap/Pages/Book10.webp"
+  }
+]

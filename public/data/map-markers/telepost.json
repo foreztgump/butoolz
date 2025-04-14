@@ -1,0 +1,604 @@
+[
+  {
+    "lat": -14.62611,
+    "lng": 35.06836,
+    "popup": "Telepost",
+    "title": "Carzacor 1",
+    "img": ""
+  },
+  {
+    "lat": -31.80289,
+    "lng": 39.19922,
+    "popup": "Telepost",
+    "title": "Carzacor 2",
+    "img": ""
+  },
+  {
+    "lat": -36.36822,
+    "lng": 26.56494,
+    "popup": "Telepost",
+    "title": "Carzacor 3",
+    "img": ""
+  },
+  {
+    "lat": -35.22767,
+    "lng": 12.854,
+    "popup": "Telepost",
+    "title": "Carzacor 4",
+    "img": ""
+  },
+  {
+    "lat": -43.80282,
+    "lng": 13.90869,
+    "popup": "Telepost",
+    "title": "Carzacor 5",
+    "img": ""
+  },
+  {
+    "lat": -53.64464,
+    "lng": 18.98438,
+    "popup": "Telepost",
+    "title": "Carzacor 6",
+    "img": ""
+  },
+  {
+    "lat": -49.89463,
+    "lng": 8.87695,
+    "popup": "Telepost",
+    "title": "Carzacor 7",
+    "img": ""
+  },
+  {
+    "lat": -51.17934,
+    "lng": 30.65186,
+    "popup": "Telepost",
+    "title": "Carzacor 8",
+    "img": ""
+  },
+  {
+    "lat": -47.93107,
+    "lng": 36.54053,
+    "popup": "Telepost",
+    "title": "Carzacor 9",
+    "img": ""
+  },
+  {
+    "lat": -57.11239,
+    "lng": 34.80469,
+    "popup": "Telepost",
+    "title": "Carzacor 10",
+    "img": ""
+  },
+  {
+    "lat": -58.36716,
+    "lng": 24.85107,
+    "popup": "Telepost",
+    "title": "Carzacor 11",
+    "img": ""
+  },
+  {
+    "lat": -38.32442,
+    "lng": -24.93896,
+    "popup": "Telepost",
+    "title": "Navarra 1",
+    "img": ""
+  },
+  {
+    "lat": -48.18074,
+    "lng": -26.30127,
+    "popup": "Telepost",
+    "title": "Navarra 2",
+    "img": ""
+  },
+  {
+    "lat": -44.26094,
+    "lng": -37.22168,
+    "popup": "Telepost",
+    "title": "Navarra 3",
+    "img": ""
+  },
+  {
+    "lat": -36.06686,
+    "lng": -40.53955,
+    "popup": "Telepost",
+    "title": "Navarra 4",
+    "img": ""
+  },
+  {
+    "lat": -52.62973,
+    "lng": -29.13574,
+    "popup": "Telepost",
+    "title": "Navarra 5",
+    "img": ""
+  },
+  {
+    "lat": -52.65639,
+    "lng": -18.80859,
+    "popup": "Telepost",
+    "title": "Navarra 6",
+    "img": ""
+  },
+  {
+    "lat": -58.98399,
+    "lng": -24.36768,
+    "popup": "Telepost",
+    "title": "Navarra 7",
+    "img": ""
+  },
+  {
+    "lat": -61.73153,
+    "lng": -25.00488,
+    "popup": "Telepost",
+    "title": "Gnoll Wastes 1",
+    "img": ""
+  },
+  {
+    "lat": -67.22105,
+    "lng": -25.24658,
+    "popup": "Telepost",
+    "title": "Gnoll Wastes 2",
+    "img": ""
+  },
+  {
+    "lat": -66.57448,
+    "lng": -8.96484,
+    "popup": "Telepost",
+    "title": "Gnoll Wastes 3",
+    "img": ""
+  },
+  {
+    "lat": -71.90406,
+    "lng": -45.06592,
+    "popup": "Telepost",
+    "title": "Gnoll Wastes 4",
+    "img": ""
+  },
+  {
+    "lat": -72.86793,
+    "lng": -31.72852,
+    "popup": "Telepost",
+    "title": "Gnoll Wastes 5",
+    "img": ""
+  },
+  {
+    "lat": -74.95939,
+    "lng": -17.00684,
+    "popup": "Telepost",
+    "title": "Gnoll Wastes 6",
+    "img": ""
+  },
+  {
+    "lat": -70.31134,
+    "lng": 1.03271,
+    "popup": "Telepost",
+    "title": "Tristezza 1",
+    "img": ""
+  },
+  {
+    "lat": -69.27948,
+    "lng": 33.24463,
+    "popup": "Telepost",
+    "title": "Tristezza 2",
+    "img": ""
+  },
+  {
+    "lat": -73.97714,
+    "lng": 34.93652,
+    "popup": "Telepost",
+    "title": "Tristezza 3",
+    "img": ""
+  },
+  {
+    "lat": -74.20002,
+    "lng": 46.47217,
+    "popup": "Telepost",
+    "title": "Tristezza 4",
+    "img": ""
+  },
+  {
+    "lat": -75.89345,
+    "lng": 20.98389,
+    "popup": "Telepost",
+    "title": "Tristezza 5",
+    "img": ""
+  },
+  {
+    "lat": -76.185,
+    "lng": 45.17578,
+    "popup": "Telepost",
+    "title": "Tristezza 6",
+    "img": ""
+  },
+  {
+    "lat": 16.67829,
+    "lng": 40.07813,
+    "popup": "Telepost",
+    "title": "Sperios 1",
+    "img": ""
+  },
+  {
+    "lat": 21.53485,
+    "lng": 30.19043,
+    "popup": "Telepost",
+    "title": "Sperios 2",
+    "img": ""
+  },
+  {
+    "lat": 21.2689,
+    "lng": 23.15918,
+    "popup": "Telepost",
+    "title": "Sperios 3",
+    "img": ""
+  },
+  {
+    "lat": 12.91891,
+    "lng": 24.43359,
+    "popup": "Telepost",
+    "title": "Sperios 4",
+    "img": ""
+  },
+  {
+    "lat": 26.2343,
+    "lng": 14.12842,
+    "popup": "Telepost",
+    "title": "Sperios 5",
+    "img": ""
+  },
+  {
+    "lat": 30.93992,
+    "lng": 12.19482,
+    "popup": "Telepost",
+    "title": "Sperios 6",
+    "img": ""
+  },
+  {
+    "lat": 29.87876,
+    "lng": 19.90723,
+    "popup": "Telepost",
+    "title": "Sperios 7",
+    "img": ""
+  },
+  {
+    "lat": 30.31599,
+    "lng": 28.41064,
+    "popup": "Telepost",
+    "title": "Sperios 8",
+    "img": ""
+  },
+  {
+    "lat": 44.62175,
+    "lng": 22.06055,
+    "popup": "Telepost",
+    "title": "Sperios 9",
+    "img": ""
+  },
+  {
+    "lat": 31.50363,
+    "lng": 53.34961,
+    "popup": "Telepost",
+    "title": "Padana Ruins 1",
+    "img": ""
+  },
+  {
+    "lat": 37.75334,
+    "lng": 72.20215,
+    "popup": "Telepost",
+    "title": "Padana Ruins 2",
+    "img": ""
+  },
+  {
+    "lat": 38.15184,
+    "lng": 89.25293,
+    "popup": "Telepost",
+    "title": "Padana Ruins 3",
+    "img": ""
+  },
+  {
+    "lat": 50.99993,
+    "lng": 95.47119,
+    "popup": "Telepost",
+    "title": "Padana Ruins 4",
+    "img": ""
+  },
+  {
+    "lat": 57.35024,
+    "lng": 68.18115,
+    "popup": "Telepost",
+    "title": "Padana Ruins 5",
+    "img": ""
+  },
+  {
+    "lat": 53.90434,
+    "lng": 63.83057,
+    "popup": "Telepost",
+    "title": "Padana Ruins 6",
+    "img": ""
+  },
+  {
+    "lat": 63.07487,
+    "lng": 66.07178,
+    "popup": "Telepost",
+    "title": "Kannus Mountains 1",
+    "img": ""
+  },
+  {
+    "lat": 65.64922,
+    "lng": 68.48877,
+    "popup": "Telepost",
+    "title": "Kannus Mountains 2",
+    "img": ""
+  },
+  {
+    "lat": 67.14437,
+    "lng": 81.91406,
+    "popup": "Telepost",
+    "title": "Kannus Mountains 3",
+    "img": ""
+  },
+  {
+    "lat": 71.25848,
+    "lng": 87.53906,
+    "popup": "Telepost",
+    "title": "Kannus Mountains 4",
+    "img": ""
+  },
+  {
+    "lat": 74.33704,
+    "lng": 86.68213,
+    "popup": "Telepost",
+    "title": "Kannus Mountains 5",
+    "img": ""
+  },
+  {
+    "lat": 73.84929,
+    "lng": 93.62549,
+    "popup": "Telepost",
+    "title": "Kannus Mountains 6",
+    "img": ""
+  },
+  {
+    "lat": 73.94071,
+    "lng": 60.73242,
+    "popup": "Telepost",
+    "title": "Kannus Mountains 7",
+    "img": ""
+  },
+  {
+    "lat": 75.75353,
+    "lng": 43.13232,
+    "popup": "Telepost",
+    "title": "Kannus Valley 1",
+    "img": ""
+  },
+  {
+    "lat": 73.57195,
+    "lng": 30.89355,
+    "popup": "Telepost",
+    "title": "Kannus Valley 2",
+    "img": ""
+  },
+  {
+    "lat": 71.85623,
+    "lng": 8.78906,
+    "popup": "Telepost",
+    "title": "Kannus Valley 3",
+    "img": ""
+  },
+  {
+    "lat": 68.15521,
+    "lng": 10.19531,
+    "popup": "Telepost",
+    "title": "Kannus Valley 4",
+    "img": ""
+  },
+  {
+    "lat": 64.13937,
+    "lng": 12.67822,
+    "popup": "Telepost",
+    "title": "Kannus Valley 5",
+    "img": ""
+  },
+  {
+    "lat": 69.58823,
+    "lng": 25.90576,
+    "popup": "Telepost",
+    "title": "Kannus Valley 6",
+    "img": ""
+  },
+  {
+    "lat": -79.42834,
+    "lng": -43.76953,
+    "popup": "Telepost",
+    "title": "Timeless Jungle 1",
+    "img": ""
+  },
+  {
+    "lat": -81.07278,
+    "lng": -29.4873,
+    "popup": "Telepost",
+    "title": "Timeless Jungle 2",
+    "img": ""
+  },
+  {
+    "lat": -83.24935,
+    "lng": -36.5625,
+    "popup": "Telepost",
+    "title": "Timeless Jungle 3",
+    "img": ""
+  },
+  {
+    "lat": -82.60875,
+    "lng": -7.49268,
+    "popup": "Telepost",
+    "title": "Timeless Jungle 4",
+    "img": ""
+  },
+  {
+    "lat": -82.25282,
+    "lng": -62.68799,
+    "popup": "Telepost",
+    "title": "Zenkala 1",
+    "img": ""
+  },
+  {
+    "lat": -79.64382,
+    "lng": -56.64551,
+    "popup": "Telepost",
+    "title": "Zenkala 2",
+    "img": ""
+  },
+  {
+    "lat": -79.99335,
+    "lng": -92.28516,
+    "popup": "Telepost",
+    "title": "Zenkala 3",
+    "img": ""
+  },
+  {
+    "lat": -81.10341,
+    "lng": -82.50732,
+    "popup": "Telepost",
+    "title": "Zenkala 4",
+    "img": ""
+  },
+  {
+    "lat": -83.05019,
+    "lng": -79.40918,
+    "popup": "Telepost",
+    "title": "Zenkala 5",
+    "img": ""
+  },
+  {
+    "lat": -84.53927,
+    "lng": -71.08154,
+    "popup": "Telepost",
+    "title": "Zenkala 6",
+    "img": ""
+  },
+  {
+    "lat": -76.60364,
+    "lng": -86.81396,
+    "popup": "Telepost",
+    "title": "Ivory Dunes 1",
+    "img": ""
+  },
+  {
+    "lat": -71.70509,
+    "lng": -84.15527,
+    "popup": "Telepost",
+    "title": "Ivory Dunes 2",
+    "img": ""
+  },
+  {
+    "lat": -71.53187,
+    "lng": -66.68701,
+    "popup": "Telepost",
+    "title": "Ivory Dunes 3",
+    "img": ""
+  },
+  {
+    "lat": -64.98865,
+    "lng": -62.66602,
+    "popup": "Telepost",
+    "title": "Ivory Dunes 4",
+    "img": ""
+  },
+  {
+    "lat": -65.77574,
+    "lng": -87.82471,
+    "popup": "Telepost",
+    "title": "Ivory Dunes 5",
+    "img": ""
+  },
+  {
+    "lat": 78.84457,
+    "lng": 71.85059,
+    "popup": "Telepost",
+    "title": "Beoran 1",
+    "img": ""
+  },
+  {
+    "lat": 82.1214,
+    "lng": 86.19873,
+    "popup": "Telepost",
+    "title": "Beoran 2",
+    "img": ""
+  },
+  {
+    "lat": 83.93067,
+    "lng": 83.62793,
+    "popup": "Telepost",
+    "title": "Beoran 3",
+    "img": ""
+  },
+  {
+    "lat": 83.49781,
+    "lng": 69.49951,
+    "popup": "Telepost",
+    "title": "Beoran 4",
+    "img": ""
+  },
+  {
+    "lat": 82.98609,
+    "lng": 56.03027,
+    "popup": "Telepost",
+    "title": "Beoran 5",
+    "img": ""
+  },
+  {
+    "lat": 81.81754,
+    "lng": 44.25293,
+    "popup": "Telepost",
+    "title": "Ostium 1",
+    "img": ""
+  },
+  {
+    "lat": 82.21422,
+    "lng": 19.70947,
+    "popup": "Telepost",
+    "title": "Ostium 2",
+    "img": ""
+  },
+  {
+    "lat": 83.53255,
+    "lng": 15.24902,
+    "popup": "Telepost",
+    "title": "Ostium 3",
+    "img": ""
+  },
+  {
+    "lat": 80.51036,
+    "lng": 8.76709,
+    "popup": "Telepost",
+    "title": "Ostium 4",
+    "img": ""
+  },
+  {
+    "lat": 80.48134,
+    "lng": -22.67578,
+    "popup": "Telepost",
+    "title": "Eidolon Forest 1",
+    "img": ""
+  },
+  {
+    "lat": 82.33896,
+    "lng": -14.02166,
+    "popup": "Telepost",
+    "title": "Eidolon Forest 2",
+    "img": ""
+  },
+  {
+    "lat": 83.89572,
+    "lng": -28.93799,
+    "popup": "Telepost",
+    "title": "Eidolon Forest 3",
+    "img": ""
+  },
+  {
+    "lat": 81.39752,
+    "lng": -33.75,
+    "popup": "Telepost",
+    "title": "Eidolon Forest 4",
+    "img": ""
+  }
+]

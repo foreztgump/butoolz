@@ -1,0 +1,37 @@
+[
+  {
+    "lat": 79.9013,
+    "lng": -35.88135,
+    "popup": "Golden Stag<br> Spawns once every 36 hours per channel",
+    "title": "Golden Stag in Eidolon",
+    "img": "/BlessMap/MountsLocations/GoldenStag1.webp"
+  },
+  {
+    "lat": 66.17827,
+    "lng": 3.95508,
+    "popup": "Golden Stag<br> Spawns once every 36 hours per channel",
+    "title": "Golden Stag in Kannus Valley",
+    "img": "/BlessMap/MountsLocations/GoldenStag2.webp"
+  },
+  {
+    "lat": -48.23931,
+    "lng": -19.37988,
+    "popup": "Golden Stag<br> Spawns once every 36 hours per channel",
+    "title": "Golden Stag in Navarra",
+    "img": "/BlessMap/MountsLocations/GoldenStag3.webp"
+  },
+  {
+    "lat": -69.55755,
+    "lng": -7.05322,
+    "popup": "Golden Stag<br> Spawns once every 36 hours per channel",
+    "title": "Golden Stag in Gnoll",
+    "img": "/BlessMap/MountsLocations/GoldenStag4.webp"
+  },
+  {
+    "lat": -75.44755,
+    "lng": -72.94922,
+    "popup": "Golden Stag<br> Spawns once every 36 hours per channel",
+    "title": "Golden Stag in Ivory",
+    "img": "/BlessMap/MountsLocations/GoldenStag5.webp"
+  }
+]

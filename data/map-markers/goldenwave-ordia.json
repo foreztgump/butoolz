@@ -1,0 +1,37 @@
+[
+  {
+    "lat": 82.58327,
+    "lng": -32.146,
+    "popup": "Goldenwave Ordia<br> Spawns once every 12 hours per channel",
+    "title": "Ordia in Eidolon",
+    "img": "/BlessMap/MountsLocations/Ordia1.webp"
+  },
+  {
+    "lat": 84.36078,
+    "lng": 5.44922,
+    "popup": "Goldenwave Ordia<br> Spawns once every 12 hours per channel",
+    "title": "Ordia in Ostium",
+    "img": "/BlessMap/MountsLocations/Ordia2.webp"
+  },
+  {
+    "lat": 69.61121,
+    "lng": 65.96191,
+    "popup": "Goldenwave Ordia<br> Spawns once every 12 hours per channel",
+    "title": "Ordia in Kannus Mountains",
+    "img": "/BlessMap/MountsLocations/Ordia3.webp"
+  },
+  {
+    "lat": 59.02925,
+    "lng": 89.20898,
+    "popup": "Goldenwave Ordia<br> Spawns once every 12 hours per channel",
+    "title": "Ordia in Padana",
+    "img": "/BlessMap/MountsLocations/Ordia4.webp"
+  },
+  {
+    "lat": -55.44148,
+    "lng": 26.43311,
+    "popup": "Goldenwave Ordia<br> Spawns once every 12 hours per channel",
+    "title": "Ordia in Carzacor",
+    "img": "/BlessMap/MountsLocations/Ordia5.webp"
+  }
+]

@@ -1,21 +1,28 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ModeToggle } from "@/components/mode-toggle"
-import { Menu, X, Shield, Calculator, FileText, Sparkles, Clock, Puzzle, Heart } from "lucide-react"
+import { Menu, X, Calculator, FileText, Sparkles, Clock, Puzzle, Heart, Map } from "lucide-react"
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-[1010] w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 flex h-14 items-center">
         <div className="mr-4">
           <Link href="/" className="flex items-center">
-            <Shield className="h-5 w-5 mr-1.5 text-primary" />
+            <Image 
+              src="/logo.webp" 
+              alt="BuTools Logo" 
+              width={20}
+              height={20}
+              className="mr-1.5"
+            />
             <span className="text-xl font-bold bg-gradient-to-r from-violet-400 to-indigo-500 bg-clip-text text-transparent">
               BuTools
             </span>
@@ -82,6 +89,12 @@ export default function Header() {
             </Link>
           </Button>
           <Button variant="ghost" size="sm" asChild>
+            <Link href="/map">
+              <Map className="h-4 w-4 mr-1.5" />
+              Map
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
             <Link href="/donate">
               <Heart className="h-4 w-4 mr-1.5" />
               Donate
@@ -101,7 +114,7 @@ export default function Header() {
 
         {/* Mobile navigation */}
         {isMenuOpen && (
-          <div className="absolute top-14 left-0 right-0 bg-[hsl(240_10%_3.9%)] border-b border-[hsl(240_3.7%_15.9%)] md:hidden z-40">
+          <div className="absolute top-14 left-0 right-0 bg-[hsl(240_10%_3.9%)] border-b border-[hsl(240_3.7%_15.9%)] md:hidden z-[2000]">
             <div className="container py-3 flex flex-col gap-2">
 
               {/* Calculators Section */}
@@ -156,6 +169,13 @@ export default function Header() {
                 <Link href="/shapedoctor">
                   <Puzzle className="h-4 w-4 mr-1.5" />
                   Shape Doctor
+                </Link>
+              </Button>
+
+              <Button variant="ghost" size="sm" asChild className="w-full justify-start">
+                <Link href="/map">
+                  <Map className="h-4 w-4 mr-1.5" />
+                  Map
                 </Link>
               </Button>
 

@@ -1,0 +1,72 @@
+[
+  {
+    "lat": -84.17261,
+    "lng": -19.44365,
+    "popup": "Osis<br> Forgotten Marsh",
+    "title": "Osis",
+    "img": ""
+  },
+  {
+    "lat": -75.27042,
+    "lng": 9.27602,
+    "popup": "Cyclops<br> Dimensional Rift",
+    "title": "Cyclops",
+    "img": ""
+  },
+  {
+    "lat": -62.6439,
+    "lng": 28.01946,
+    "popup": "Spider Queen<br> Venommist Canverns",
+    "title": "Spider Queen",
+    "img": ""
+  },
+  {
+    "lat": -51.75549,
+    "lng": 28.41453,
+    "popup": "Grassland Giant<br> Ribus River",
+    "title": "Grassland Giant",
+    "img": ""
+  },
+  {
+    "lat": -68.96805,
+    "lng": -22.21155,
+    "popup": "Bashal<br> Lake Azos",
+    "title": "Bashal",
+    "img": ""
+  },
+  {
+    "lat": 76.64903,
+    "lng": 99.38696,
+    "popup": "Bone Dragon<br> Stonemist Hills",
+    "title": "Bone Dragon",
+    "img": ""
+  },
+  {
+    "lat": -65.56902,
+    "lng": -64.67967,
+    "popup": "Ursa<br> Desolate Sands",
+    "title": "Ursa",
+    "img": ""
+  },
+  {
+    "lat": 79.63546,
+    "lng": 87.91557,
+    "popup": "Duke<br> Ruined Church",
+    "title": "Duke",
+    "img": ""
+  },
+  {
+    "lat": -47.10135,
+    "lng": -34.23144,
+    "popup": "Harpy Queen<br> Navarra",
+    "title": "Harpy Queen",
+    "img": ""
+  },
+  {
+    "lat": 54.37898,
+    "lng": 19.40364,
+    "popup": "Soulraiser Revennant<br> White Roc Quarry",
+    "title": "Soulraiser Revennant",
+    "img": ""
+  }
+]

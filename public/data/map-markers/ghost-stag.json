@@ -1,0 +1,37 @@
+[
+  {
+    "lat": 84.28908,
+    "lng": 63.67676,
+    "popup": "Ghost Stag<br> Spawns once every 24 hours per channel",
+    "title": "Stag in Beoran",
+    "img": "/BlessMap/MountsLocations/Stag1.webp"
+  },
+  {
+    "lat": 79.26178,
+    "lng": -42.69287,
+    "popup": "Ghost Stag<br> Spawns once every 24 hours per channel",
+    "title": "Stag in Eidolon",
+    "img": "/BlessMap/MountsLocations/Stag2.webp"
+  },
+  {
+    "lat": 56.38958,
+    "lng": 21.1377,
+    "popup": "Ghost Stag<br> Spawns once every 24 hours per channel",
+    "title": "Stag in North Sperios",
+    "img": "/BlessMap/MountsLocations/Stag3.webp"
+  },
+  {
+    "lat": -46.34693,
+    "lng": 45.9668,
+    "popup": "Ghost Stag<br> Spawns once every 24 hours per channel",
+    "title": "Stag in Carzacor",
+    "img": "/BlessMap/MountsLocations/Stag4.webp"
+  },
+  {
+    "lat": -71.35707,
+    "lng": 40.5835,
+    "popup": "Ghost Stag<br> Spawns once every 24 hours per channel",
+    "title": "Stag in Tristezza",
+    "img": "/BlessMap/MountsLocations/Stag5.webp"
+  }
+]

@@ -1,0 +1,2074 @@
+[
+  {
+    "lat": 82.75152,
+    "lng": -19.95117,
+    "popup": "Ancient Chest<br> Eidolon Forest 1",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon1.webp"
+  },
+  {
+    "lat": 83.74434,
+    "lng": -26.05957,
+    "popup": "Ancient Chest<br> Eidolon Forest 2",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon2.webp"
+  },
+  {
+    "lat": 84.5518,
+    "lng": -35.44189,
+    "popup": "Ancient Chest<br> Eidolon Forest 3",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon3.webp"
+  },
+  {
+    "lat": 82.09726,
+    "lng": -36.60645,
+    "popup": "Ancient Chest<br> Eidolon Forest 4",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon4.webp"
+  },
+  {
+    "lat": 81.36789,
+    "lng": -33.59619,
+    "popup": "Ancient Chest<br> Eidolon Forest 5",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon5.webp"
+  },
+  {
+    "lat": 81.4008,
+    "lng": -43.26416,
+    "popup": "Ancient Chest<br> Eidolon Forest 6",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon6.webp"
+  },
+  {
+    "lat": 82.22611,
+    "lng": -19.2041,
+    "popup": "Ancient Chest<br> Eidolon Forest 7",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon7.webp"
+  },
+  {
+    "lat": 82.33238,
+    "lng": -35.5957,
+    "popup": "Ancient Chest<br> Eidolon Forest 8",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon8.webp"
+  },
+  {
+    "lat": 81.88916,
+    "lng": -9.07471,
+    "popup": "Ancient Chest<br> Eidolon Forest 9",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon9.webp"
+  },
+  {
+    "lat": 81.48905,
+    "lng": -4.52637,
+    "popup": "Ancient Chest<br> Eidolon Forest 10",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon10.webp"
+  },
+  {
+    "lat": 79.37175,
+    "lng": -25.35645,
+    "popup": "Ancient Chest<br> Eidolon Forest 11",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon11.webp"
+  },
+  {
+    "lat": 78.86581,
+    "lng": -13.60107,
+    "popup": "Ancient Chest<br> Eidolon Forest 12",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon12.webp"
+  },
+  {
+    "lat": 81.22492,
+    "lng": -16.65527,
+    "popup": "Ancient Chest<br> Eidolon Forest 13",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon13.webp"
+  },
+  {
+    "lat": 80.73589,
+    "lng": -29.17969,
+    "popup": "Ancient Chest<br> Eidolon Forest 14",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon14.webp"
+  },
+  {
+    "lat": 79.01334,
+    "lng": -29.42139,
+    "popup": "Ancient Chest<br> Eidolon Forest 15",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon15.webp"
+  },
+  {
+    "lat": 78.5037,
+    "lng": -35.22217,
+    "popup": "Ancient Chest<br> Eidolon Forest 16",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon16.webp"
+  },
+  {
+    "lat": 81.70419,
+    "lng": -33.59619,
+    "popup": "Ancient Chest<br> Eidolon Forest 17",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon17.webp"
+  },
+  {
+    "lat": 83.89747,
+    "lng": -16.44232,
+    "popup": "Ancient Chest<br> Eidolon Forest 18",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon18.webp"
+  },
+  {
+    "lat": 84.05256,
+    "lng": -38.86963,
+    "popup": "Ancient Chest<br> Eidolon Forest 19",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon19.webp"
+  },
+  {
+    "lat": 83.67875,
+    "lng": -36.65716,
+    "popup": "Ancient Chest<br> Eidolon Forest 20",
+    "title": "-",
+    "img": "/BlessMap/Eidolon/Eidolon20.webp"
+  },
+  {
+    "lat": 82.0882,
+    "lng": 47.28516,
+    "popup": "Ancient Chest<br> Ostium 1",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium1.webp"
+  },
+  {
+    "lat": 80.077,
+    "lng": 11.79932,
+    "popup": "Ancient Chest<br> Ostium 2",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium2.webp"
+  },
+  {
+    "lat": 84.16085,
+    "lng": 6.24023,
+    "popup": "Ancient Chest<br> Ostium 3",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium3.webp"
+  },
+  {
+    "lat": 82.85612,
+    "lng": 5.95459,
+    "popup": "Ancient Chest<br> Ostium 4",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium4.webp"
+  },
+  {
+    "lat": 81.28838,
+    "lng": 18.94043,
+    "popup": "Ancient Chest<br> Ostium 5",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium5.webp"
+  },
+  {
+    "lat": 81.05571,
+    "lng": 26.41113,
+    "popup": "Ancient Chest<br> Ostium 6",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium6.webp"
+  },
+  {
+    "lat": 81.34808,
+    "lng": 33.04688,
+    "popup": "Ancient Chest<br> Ostium 7",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium7.webp"
+  },
+  {
+    "lat": 79.15894,
+    "lng": 45.70313,
+    "popup": "Ancient Chest<br> Ostium 8",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium8.webp"
+  },
+  {
+    "lat": 79.98189,
+    "lng": 3.18604,
+    "popup": "Ancient Chest<br> Ostium 9",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium9.webp"
+  },
+  {
+    "lat": 82.69028,
+    "lng": 27.99316,
+    "popup": "Ancient Chest<br> Ostium 10",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium10.webp"
+  },
+  {
+    "lat": 82.24689,
+    "lng": 33.42041,
+    "popup": "Ancient Chest<br> Ostium 11",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium11.webp"
+  },
+  {
+    "lat": 82.77643,
+    "lng": 35.70557,
+    "popup": "Ancient Chest<br> Ostium 12",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium12.webp"
+  },
+  {
+    "lat": 83.51768,
+    "lng": 44.78027,
+    "popup": "Ancient Chest<br> Ostium 13",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium13.webp"
+  },
+  {
+    "lat": 81.83628,
+    "lng": 49.04297,
+    "popup": "Ancient Chest<br> Ostium 14",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium14.webp"
+  },
+  {
+    "lat": 79.60821,
+    "lng": 25.92774,
+    "popup": "Ancient Chest<br> Ostium 15",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium15.webp"
+  },
+  {
+    "lat": 83.47288,
+    "lng": 16.65527,
+    "popup": "Ancient Chest<br> Ostium 16",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium16.webp"
+  },
+  {
+    "lat": 80.88328,
+    "lng": 12.23877,
+    "popup": "Ancient Chest<br> Ostium 17",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium17.webp"
+  },
+  {
+    "lat": 80.46679,
+    "lng": 11.55762,
+    "popup": "Ancient Chest<br> Ostium 18",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium18.webp"
+  },
+  {
+    "lat": 84.52461,
+    "lng": 13.71094,
+    "popup": "Ancient Chest<br> Ostium 19",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium19.webp"
+  },
+  {
+    "lat": 79.4122,
+    "lng": 44.45068,
+    "popup": "Ancient Chest<br> Ostium 20",
+    "title": "-",
+    "img": "/BlessMap/Ostium/Ostium20.webp"
+  },
+  {
+    "lat": 78.03013,
+    "lng": 71.54297,
+    "popup": "Ancient Chest<br> Beoran 1",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran1.webp"
+  },
+  {
+    "lat": 81.81754,
+    "lng": 78.94775,
+    "popup": "Ancient Chest<br> Beoran 2",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran2.webp"
+  },
+  {
+    "lat": 82.24986,
+    "lng": 77.21191,
+    "popup": "Ancient Chest<br> Beoran 3",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran3.webp"
+  },
+  {
+    "lat": 83.1949,
+    "lng": 64.33594,
+    "popup": "Ancient Chest<br> Beoran 4",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran4.webp"
+  },
+  {
+    "lat": 82.32065,
+    "lng": 64.00635,
+    "popup": "Ancient Chest<br> Beoran 5",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran5.webp"
+  },
+  {
+    "lat": 81.39094,
+    "lng": 62.62207,
+    "popup": "Ancient Chest<br> Beoran 6",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran6.webp"
+  },
+  {
+    "lat": 79.67144,
+    "lng": 59.08447,
+    "popup": "Ancient Chest<br> Beoran 7",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran7.webp"
+  },
+  {
+    "lat": 82.56623,
+    "lng": 68.20313,
+    "popup": "Ancient Chest<br> Beoran 8",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran8.webp"
+  },
+  {
+    "lat": 84.05028,
+    "lng": 53.08594,
+    "popup": "Ancient Chest<br> Beoran 9",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran9.webp"
+  },
+  {
+    "lat": 80.9768,
+    "lng": 72.68555,
+    "popup": "Ancient Chest<br> Beoran 10",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran10.webp"
+  },
+  {
+    "lat": 79.26178,
+    "lng": 88.74756,
+    "popup": "Ancient Chest<br> Beoran 11",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran11.webp"
+  },
+  {
+    "lat": 81.17449,
+    "lng": 83.73779,
+    "popup": "Ancient Chest<br> Beoran 12",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran12.webp"
+  },
+  {
+    "lat": 82.70982,
+    "lng": 87.20947,
+    "popup": "Ancient Chest<br> Beoran 13",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran13.webp"
+  },
+  {
+    "lat": 83.04487,
+    "lng": 93.16406,
+    "popup": "Ancient Chest<br> Beoran 14",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran14.webp"
+  },
+  {
+    "lat": 83.68903,
+    "lng": 90.17578,
+    "popup": "Ancient Chest<br> Beoran 15",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran15.webp"
+  },
+  {
+    "lat": 84.82036,
+    "lng": 80.22217,
+    "popup": "Ancient Chest<br> Beoran 16",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran16.webp"
+  },
+  {
+    "lat": 81.52799,
+    "lng": 97.77832,
+    "popup": "Ancient Chest<br> Beoran 17",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran17.webp"
+  },
+  {
+    "lat": 81.62082,
+    "lng": 100.42515,
+    "popup": "Ancient Chest<br> Beoran 18",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran18.webp"
+  },
+  {
+    "lat": 82.35824,
+    "lng": 92.60288,
+    "popup": "Ancient Chest<br> Beoran 19",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran19.webp"
+  },
+  {
+    "lat": 84.71213,
+    "lng": 99.55811,
+    "popup": "Ancient Chest<br> Beoran 20",
+    "title": "-",
+    "img": "/BlessMap/Beoran/Beoran20.webp"
+  },
+  {
+    "lat": 75.18017,
+    "lng": 45.9668,
+    "popup": "Ancient Chest<br> Kannus Valley 1",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley1.webp"
+  },
+  {
+    "lat": 77.55631,
+    "lng": 35.33203,
+    "popup": "Ancient Chest<br> Kannus Valley 2",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley2.webp"
+  },
+  {
+    "lat": 74.85067,
+    "lng": 38.1665,
+    "popup": "Ancient Chest<br> Kannus Valley 3",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley3.webp"
+  },
+  {
+    "lat": 72.58741,
+    "lng": 43.61572,
+    "popup": "Ancient Chest<br> Kannus Valley 4",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley4.webp"
+  },
+  {
+    "lat": 72.99691,
+    "lng": 38.75977,
+    "popup": "Ancient Chest<br> Kannus Valley 5",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley5.webp"
+  },
+  {
+    "lat": 73.1377,
+    "lng": 32.62939,
+    "popup": "Ancient Chest<br> Kannus Valley 6",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley6.webp"
+  },
+  {
+    "lat": 70.10301,
+    "lng": 47.06543,
+    "popup": "Ancient Chest<br> Kannus Valley 7",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley7.webp"
+  },
+  {
+    "lat": 69.03714,
+    "lng": 50.20752,
+    "popup": "Ancient Chest<br> Kannus Valley 8",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley8.webp"
+  },
+  {
+    "lat": 75.20824,
+    "lng": 23.7085,
+    "popup": "Ancient Chest<br> Kannus Valley 9",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley9.webp"
+  },
+  {
+    "lat": 74.17371,
+    "lng": 16.72625,
+    "popup": "Ancient Chest<br> Kannus Valley 10",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley10.webp"
+  },
+  {
+    "lat": 75.71563,
+    "lng": 12.41455,
+    "popup": "Ancient Chest<br> Kannus Valley 11",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley11.webp"
+  },
+  {
+    "lat": 77.05912,
+    "lng": 9.47021,
+    "popup": "Ancient Chest<br> Kannus Valley 12",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley12.webp"
+  },
+  {
+    "lat": 71.38514,
+    "lng": 9.71191,
+    "popup": "Ancient Chest<br> Kannus Valley 13",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley13.webp"
+  },
+  {
+    "lat": 70.41471,
+    "lng": 9.7998,
+    "popup": "Ancient Chest<br> Kannus Valley 14",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley14.webp"
+  },
+  {
+    "lat": 71.2867,
+    "lng": 3.73535,
+    "popup": "Ancient Chest<br> Kannus Valley 15",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley15.webp"
+  },
+  {
+    "lat": 65.87472,
+    "lng": 9.7998,
+    "popup": "Ancient Chest<br> Kannus Valley 16",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley16.webp"
+  },
+  {
+    "lat": 66.20488,
+    "lng": 18.0835,
+    "popup": "Ancient Chest<br> Kannus Valley 17",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley17.webp"
+  },
+  {
+    "lat": 70.93818,
+    "lng": 20.83008,
+    "popup": "Ancient Chest<br> Kannus Valley 18",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley18.webp"
+  },
+  {
+    "lat": 65.12764,
+    "lng": 35.26611,
+    "popup": "Ancient Chest<br> Kannus Valley 19",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley19.webp"
+  },
+  {
+    "lat": 70.83025,
+    "lng": 31.1792,
+    "popup": "Ancient Chest<br> Kannus Valley 20",
+    "title": "-",
+    "img": "/BlessMap/KannusValley/KannusValley20.webp"
+  },
+  {
+    "lat": 61.47027,
+    "lng": 67.82959,
+    "popup": "Ancient Chest<br> Kannus Mountains 1",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains1.webp"
+  },
+  {
+    "lat": 64.09141,
+    "lng": 65.63232,
+    "popup": "Ancient Chest<br> Kannus Mountains 2",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains2.webp"
+  },
+  {
+    "lat": 65.38515,
+    "lng": 73.08105,
+    "popup": "Ancient Chest<br> Kannus Mountains 3",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains3.webp"
+  },
+  {
+    "lat": 67.30598,
+    "lng": 68.97217,
+    "popup": "Ancient Chest<br> Kannus Mountains 4",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains4.webp"
+  },
+  {
+    "lat": 68.9505,
+    "lng": 60.75439,
+    "popup": "Ancient Chest<br> Kannus Mountains 5",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains5.webp"
+  },
+  {
+    "lat": 69.38031,
+    "lng": 68.40088,
+    "popup": "Ancient Chest<br> Kannus Mountains 6",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains6.webp"
+  },
+  {
+    "lat": 71.74643,
+    "lng": 72.11426,
+    "popup": "Ancient Chest<br> Kannus Mountains 7",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains7.webp"
+  },
+  {
+    "lat": 73.5097,
+    "lng": 73.67432,
+    "popup": "Ancient Chest<br> Kannus Mountains 8",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains8.webp"
+  },
+  {
+    "lat": 73.64017,
+    "lng": 62.13867,
+    "popup": "Ancient Chest<br> Kannus Mountains 9",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains9.webp"
+  },
+  {
+    "lat": 63.9084,
+    "lng": 85.51758,
+    "popup": "Ancient Chest<br> Kannus Mountains 10",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains10.webp"
+  },
+  {
+    "lat": 64.90491,
+    "lng": 77.60742,
+    "popup": "Ancient Chest<br> Kannus Mountains 11",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains11.webp"
+  },
+  {
+    "lat": 65.0536,
+    "lng": 86.50635,
+    "popup": "Ancient Chest<br> Kannus Mountains 12",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains12.webp"
+  },
+  {
+    "lat": 68.93471,
+    "lng": 83.1665,
+    "popup": "Ancient Chest<br> Kannus Mountains 13",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains13.webp"
+  },
+  {
+    "lat": 70.37785,
+    "lng": 80.96924,
+    "popup": "Ancient Chest<br> Kannus Mountains 14",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains14.webp"
+  },
+  {
+    "lat": 71.71888,
+    "lng": 87.80273,
+    "popup": "Ancient Chest<br> Kannus Mountains 15",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains15.webp"
+  },
+  {
+    "lat": 73.94679,
+    "lng": 84.59473,
+    "popup": "Ancient Chest<br> Kannus Mountains 16",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains16.webp"
+  },
+  {
+    "lat": 76.12189,
+    "lng": 90.32959,
+    "popup": "Ancient Chest<br> Kannus Mountains 17",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains17.webp"
+  },
+  {
+    "lat": 74.53161,
+    "lng": 80.09033,
+    "popup": "Ancient Chest<br> Kannus Mountains 18",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains18.webp"
+  },
+  {
+    "lat": 75.82904,
+    "lng": 69.52148,
+    "popup": "Ancient Chest<br> Kannus Mountains 19",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains19.webp"
+  },
+  {
+    "lat": 75.62318,
+    "lng": 61.01807,
+    "popup": "Ancient Chest<br> Kannus Mountains 20",
+    "title": "-",
+    "img": "/BlessMap/KannusMountains/KannusMountains20.webp"
+  },
+  {
+    "lat": 37.25485,
+    "lng": 83.79883,
+    "popup": "Ancient Chest<br> Padana Ruins 1",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana1.webp"
+  },
+  {
+    "lat": 38.7198,
+    "lng": 80.33203,
+    "popup": "Ancient Chest<br> Padana Ruins 2",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana2.webp"
+  },
+  {
+    "lat": 57.7628,
+    "lng": 91.25244,
+    "popup": "Ancient Chest<br> Padana Ruins 3",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana3.webp"
+  },
+  {
+    "lat": 30.85837,
+    "lng": 68.48789,
+    "popup": "Ancient Chest<br> Padana Ruins 4",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana4.webp"
+  },
+  {
+    "lat": 54.22671,
+    "lng": 75.03662,
+    "popup": "Ancient Chest<br> Padana Ruins 5",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana5.webp"
+  },
+  {
+    "lat": 32.99024,
+    "lng": 87.07764,
+    "popup": "Ancient Chest<br> Padana Ruins 6",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana6.webp"
+  },
+  {
+    "lat": 33.37117,
+    "lng": 72.2139,
+    "popup": "Ancient Chest<br> Padana Ruins 7",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana7.webp"
+  },
+  {
+    "lat": 30.88337,
+    "lng": 92.06543,
+    "popup": "Ancient Chest<br> Padana Ruins 8",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana8.webp"
+  },
+  {
+    "lat": 36.17336,
+    "lng": 59.01855,
+    "popup": "Ancient Chest<br> Padana Ruins 9",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana9.webp"
+  },
+  {
+    "lat": 28.86392,
+    "lng": 65.21484,
+    "popup": "Ancient Chest<br> Padana Ruins 10",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana10.webp"
+  },
+  {
+    "lat": 51.08222,
+    "lng": 61.7569,
+    "popup": "Ancient Chest<br> Padana Ruins 11",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana11.webp"
+  },
+  {
+    "lat": 49.85215,
+    "lng": 53.65723,
+    "popup": "Ancient Chest<br> Padana Ruins 12",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana12.webp"
+  },
+  {
+    "lat": 34.34344,
+    "lng": 91.8457,
+    "popup": "Ancient Chest<br> Padana Ruins 13",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana13.webp"
+  },
+  {
+    "lat": 31.63468,
+    "lng": 88.74756,
+    "popup": "Ancient Chest<br> Padana Ruins 14",
+    "title": "-",
+    "img": "/BlessMap/Padana/Padana14.webp"
+  },
+  {
+    "lat": 26.4509,
+    "lng": 13.11768,
+    "popup": "Ancient Chest<br> North Sperios 1",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios1.webp"
+  },
+  {
+    "lat": 26.15544,
+    "lng": 15.93018,
+    "popup": "Ancient Chest<br> North Sperios 2",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios2.webp"
+  },
+  {
+    "lat": 27.8585,
+    "lng": 19.16016,
+    "popup": "Ancient Chest<br> North Sperios 3",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios3.webp"
+  },
+  {
+    "lat": 28.63275,
+    "lng": 11.66748,
+    "popup": "Ancient Chest<br> North Sperios 4",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios4.webp"
+  },
+  {
+    "lat": 32.3614,
+    "lng": 12.81006,
+    "popup": "Ancient Chest<br> North Sperios 5",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios5.webp"
+  },
+  {
+    "lat": 33.57801,
+    "lng": 14.3042,
+    "popup": "Ancient Chest<br> North Sperios 6",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios6.webp"
+  },
+  {
+    "lat": 34.83184,
+    "lng": 22.12646,
+    "popup": "Ancient Chest<br> North Sperios 7",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios7.webp"
+  },
+  {
+    "lat": 32.86113,
+    "lng": 26.521,
+    "popup": "Ancient Chest<br> North Sperios 8",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios8.webp"
+  },
+  {
+    "lat": 30.58118,
+    "lng": 29.11377,
+    "popup": "Ancient Chest<br> North Sperios 9",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios9.webp"
+  },
+  {
+    "lat": 27.8585,
+    "lng": 31.24512,
+    "popup": "Ancient Chest<br> North Sperios 10",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios10.webp"
+  },
+  {
+    "lat": 35.58585,
+    "lng": 37.0459,
+    "popup": "Ancient Chest<br> North Sperios 11",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios11.webp"
+  },
+  {
+    "lat": 40.89691,
+    "lng": 34.38721,
+    "popup": "Ancient Chest<br> North Sperios 12",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios12.webp"
+  },
+  {
+    "lat": 39.40224,
+    "lng": 38.67188,
+    "popup": "Ancient Chest<br> North Sperios 13",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios13.webp"
+  },
+  {
+    "lat": 41.98399,
+    "lng": 36.82617,
+    "popup": "Ancient Chest<br> North Sperios 14",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios14.webp"
+  },
+  {
+    "lat": 45.52174,
+    "lng": 40.71533,
+    "popup": "Ancient Chest<br> North Sperios 15",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios15.webp"
+  },
+  {
+    "lat": 42.04929,
+    "lng": 25.90576,
+    "popup": "Ancient Chest<br> North Sperios 16",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios16.webp"
+  },
+  {
+    "lat": 45.52174,
+    "lng": 20.32471,
+    "popup": "Ancient Chest<br> North Sperios 17",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios17.webp"
+  },
+  {
+    "lat": 47.50236,
+    "lng": 25.37842,
+    "popup": "Ancient Chest<br> North Sperios 18",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios18.webp"
+  },
+  {
+    "lat": 49.63918,
+    "lng": 18.45703,
+    "popup": "Ancient Chest<br> North Sperios 19",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios19.webp"
+  },
+  {
+    "lat": 52.9089,
+    "lng": 21.42334,
+    "popup": "Ancient Chest<br> North Sperios 20",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios20.webp"
+  },
+  {
+    "lat": 53.44881,
+    "lng": 15.64453,
+    "popup": "Ancient Chest<br> North Sperios 21",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios21.webp"
+  },
+  {
+    "lat": 54.91451,
+    "lng": 19.97314,
+    "popup": "Ancient Chest<br> North Sperios 22",
+    "title": "-",
+    "img": "/BlessMap/NorthSperios/NorthSperios22.webp"
+  },
+  {
+    "lat": -14.37083,
+    "lng": 31.53076,
+    "popup": "Ancient Chest<br> South Sperios 1",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios1.webp"
+  },
+  {
+    "lat": -14.68988,
+    "lng": 37.70508,
+    "popup": "Ancient Chest<br> South Sperios 2",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios2.webp"
+  },
+  {
+    "lat": -20.22097,
+    "lng": 41.02295,
+    "popup": "Ancient Chest<br> South Sperios 3",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios3.webp"
+  },
+  {
+    "lat": -11.91035,
+    "lng": 42.84668,
+    "popup": "Ancient Chest<br> South Sperios 4",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios4.webp"
+  },
+  {
+    "lat": -7.06248,
+    "lng": 46.62528,
+    "popup": "Ancient Chest<br> South Sperios 5",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios5.webp"
+  },
+  {
+    "lat": 3.22827,
+    "lng": 42.95654,
+    "popup": "Ancient Chest<br> South Sperios 6",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios6.webp"
+  },
+  {
+    "lat": 3.14052,
+    "lng": 31.31104,
+    "popup": "Ancient Chest<br> South Sperios 7",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios7.webp"
+  },
+  {
+    "lat": 6.8828,
+    "lng": 39.74854,
+    "popup": "Ancient Chest<br> South Sperios 8",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios8.webp"
+  },
+  {
+    "lat": 11.04904,
+    "lng": 50.42725,
+    "popup": "Ancient Chest<br> South Sperios 9",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios9.webp"
+  },
+  {
+    "lat": 12.49021,
+    "lng": 43.83545,
+    "popup": "Ancient Chest<br> South Sperios 10",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios10.webp"
+  },
+  {
+    "lat": 17.62308,
+    "lng": 44.16504,
+    "popup": "Ancient Chest<br> South Sperios 11",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios11.webp"
+  },
+  {
+    "lat": 21.04349,
+    "lng": 36.27686,
+    "popup": "Ancient Chest<br> South Sperios 12",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios12.webp"
+  },
+  {
+    "lat": 18.04142,
+    "lng": 33.0249,
+    "popup": "Ancient Chest<br> South Sperios 13",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios13.webp"
+  },
+  {
+    "lat": 20.01465,
+    "lng": 29.55322,
+    "popup": "Ancient Chest<br> South Sperios 14",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios14.webp"
+  },
+  {
+    "lat": 23.40276,
+    "lng": 24.19189,
+    "popup": "Ancient Chest<br> South Sperios 15",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios15.webp"
+  },
+  {
+    "lat": 19.41479,
+    "lng": 22.17041,
+    "popup": "Ancient Chest<br> South Sperios 16",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios16.webp"
+  },
+  {
+    "lat": 21.00247,
+    "lng": 12.91992,
+    "popup": "Ancient Chest<br> South Sperios 17",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios17.webp"
+  },
+  {
+    "lat": 17.97873,
+    "lng": 23.37891,
+    "popup": "Ancient Chest<br> South Sperios 18",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios18.webp"
+  },
+  {
+    "lat": 12.0823,
+    "lng": 23.7085,
+    "popup": "Ancient Chest<br> South Sperios 19",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios19.webp"
+  },
+  {
+    "lat": 8.08098,
+    "lng": 23.20313,
+    "popup": "Ancient Chest<br> South Sperios 20",
+    "title": "-",
+    "img": "/BlessMap/SouthSperios/SouthSperios20.webp"
+  },
+  {
+    "lat": -35.55011,
+    "lng": 35.68359,
+    "popup": "Ancient Chest<br> Carzacor 1",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor1.webp"
+  },
+  {
+    "lat": -32.80574,
+    "lng": 31.94824,
+    "popup": "Ancient Chest<br> Carzacor 2",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor2.webp"
+  },
+  {
+    "lat": -39.84229,
+    "lng": 26.34521,
+    "popup": "Ancient Chest<br> Carzacor 3",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor3.webp"
+  },
+  {
+    "lat": -38.04809,
+    "lng": 23.99414,
+    "popup": "Ancient Chest<br> Carzacor 4",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor4.webp"
+  },
+  {
+    "lat": -39.35129,
+    "lng": 22.47803,
+    "popup": "Ancient Chest<br> Carzacor 5",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor5.webp"
+  },
+  {
+    "lat": -39.90974,
+    "lng": 21.22559,
+    "popup": "Ancient Chest<br> Carzacor 6",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor6.webp"
+  },
+  {
+    "lat": -39.85915,
+    "lng": 20.78613,
+    "popup": "Ancient Chest<br> Carzacor 7",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor7.webp"
+  },
+  {
+    "lat": -39.04479,
+    "lng": 19.42383,
+    "popup": "Ancient Chest<br> Carzacor 8",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor8.webp"
+  },
+  {
+    "lat": -36.84446,
+    "lng": 23.53271,
+    "popup": "Ancient Chest<br> Carzacor 9",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor9.webp"
+  },
+  {
+    "lat": -32.84267,
+    "lng": 17.70996,
+    "popup": "Ancient Chest<br> Carzacor 10",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor10.webp"
+  },
+  {
+    "lat": -31.2222,
+    "lng": 16.91895,
+    "popup": "Ancient Chest<br> Carzacor 11",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor11.webp"
+  },
+  {
+    "lat": -31.3724,
+    "lng": 12.94189,
+    "popup": "Ancient Chest<br> Carzacor 12",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor12.webp"
+  },
+  {
+    "lat": -43.94537,
+    "lng": 11.75537,
+    "popup": "Ancient Chest<br> Carzacor 13",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor13.webp"
+  },
+  {
+    "lat": -49.6534,
+    "lng": 8.21777,
+    "popup": "Ancient Chest<br> Carzacor 14",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor14.webp"
+  },
+  {
+    "lat": -49.69606,
+    "lng": 14.72168,
+    "popup": "Ancient Chest<br> Carzacor 15",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor15.webp"
+  },
+  {
+    "lat": -49.85215,
+    "lng": 31.68457,
+    "popup": "Ancient Chest<br> Carzacor 16",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor16.webp"
+  },
+  {
+    "lat": -51.63166,
+    "lng": 38.45215,
+    "popup": "Ancient Chest<br> Carzacor 17",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor17.webp"
+  },
+  {
+    "lat": -49.56798,
+    "lng": 38.58398,
+    "popup": "Ancient Chest<br> Carzacor 18",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor18.webp"
+  },
+  {
+    "lat": -56.55948,
+    "lng": 38.93555,
+    "popup": "Ancient Chest<br> Carzacor 19",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor19.webp"
+  },
+  {
+    "lat": -58.82512,
+    "lng": 18.14941,
+    "popup": "Ancient Chest<br> Carzacor 20",
+    "title": "-",
+    "img": "/BlessMap/Carzacor/Carzacor20.webp"
+  },
+  {
+    "lat": -38.77122,
+    "lng": -7.49268,
+    "popup": "Ancient Chest<br> Navarra 1",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra1.webp"
+  },
+  {
+    "lat": -40.22922,
+    "lng": -6.72363,
+    "popup": "Ancient Chest<br> Navarra 2",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra2.webp"
+  },
+  {
+    "lat": -43.51669,
+    "lng": -9.646,
+    "popup": "Ancient Chest<br> Navarra 3",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra3.webp"
+  },
+  {
+    "lat": -53.34399,
+    "lng": -6.48193,
+    "popup": "Ancient Chest<br> Navarra 4",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra4.webp"
+  },
+  {
+    "lat": -60.03193,
+    "lng": -17.31445,
+    "popup": "Ancient Chest<br> Navarra 5",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra5.webp"
+  },
+  {
+    "lat": -58.35563,
+    "lng": -27.72949,
+    "popup": "Ancient Chest<br> Navarra 6",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra6.webp"
+  },
+  {
+    "lat": -57.63364,
+    "lng": -36.29883,
+    "popup": "Ancient Chest<br> Navarra 7",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra7.webp"
+  },
+  {
+    "lat": -57.563,
+    "lng": -41.74805,
+    "popup": "Ancient Chest<br> Navarra 8",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra8.webp"
+  },
+  {
+    "lat": -48.58933,
+    "lng": -42.51709,
+    "popup": "Ancient Chest<br> Navarra 9",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra9.webp"
+  },
+  {
+    "lat": -32.65788,
+    "lng": -45.52734,
+    "popup": "Ancient Chest<br> Navarra 10",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra10.webp"
+  },
+  {
+    "lat": -55.9492,
+    "lng": -22.93945,
+    "popup": "Ancient Chest<br> Navarra 11",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra11.webp"
+  },
+  {
+    "lat": -41.14557,
+    "lng": -17.24854,
+    "popup": "Ancient Chest<br> Navarra 12",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra12.webp"
+  },
+  {
+    "lat": -58.51665,
+    "lng": -16.21582,
+    "popup": "Ancient Chest<br> Navarra 13",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra13.webp"
+  },
+  {
+    "lat": -54.23955,
+    "lng": -15.5127,
+    "popup": "Ancient Chest<br> Navarra 14",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra14.webp"
+  },
+  {
+    "lat": -57.02877,
+    "lng": -20.45654,
+    "popup": "Ancient Chest<br> Navarra 15",
+    "title": "-",
+    "img": "/BlessMap/Navarra/Navarra15.webp"
+  },
+  {
+    "lat": -77.19131,
+    "lng": -43.41797,
+    "popup": "Ancient Chest<br> Gnoll Wastes 1",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll1.webp"
+  },
+  {
+    "lat": -65.44913,
+    "lng": -42.9126,
+    "popup": "Ancient Chest<br> Gnoll Wastes 2",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll2.webp"
+  },
+  {
+    "lat": -66.91283,
+    "lng": -43.70361,
+    "popup": "Ancient Chest<br> Gnoll Wastes 3",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll3.webp"
+  },
+  {
+    "lat": -65.86574,
+    "lng": -31.28906,
+    "popup": "Ancient Chest<br> Gnoll Wastes 4",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll4.webp"
+  },
+  {
+    "lat": -63.66576,
+    "lng": -25.26855,
+    "popup": "Ancient Chest<br> Gnoll Wastes 5",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll5.webp"
+  },
+  {
+    "lat": -62.76478,
+    "lng": -19.51172,
+    "popup": "Ancient Chest<br> Gnoll Wastes 6",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll6.webp"
+  },
+  {
+    "lat": -68.29378,
+    "lng": -5.11963,
+    "popup": "Ancient Chest<br> Gnoll Wastes 7",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll7.webp"
+  },
+  {
+    "lat": -71.82199,
+    "lng": -15.79834,
+    "popup": "Ancient Chest<br> Gnoll Wastes 8",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll8.webp"
+  },
+  {
+    "lat": -68.81593,
+    "lng": -38.84766,
+    "popup": "Ancient Chest<br> Gnoll Wastes 9",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll9.webp"
+  },
+  {
+    "lat": -71.26554,
+    "lng": -47.3291,
+    "popup": "Ancient Chest<br> Gnoll Wastes 10",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll10.webp"
+  },
+  {
+    "lat": -76.83081,
+    "lng": -48.62549,
+    "popup": "Ancient Chest<br> Gnoll Wastes 11",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll11.webp"
+  },
+  {
+    "lat": -77.49936,
+    "lng": -38.6499,
+    "popup": "Ancient Chest<br> Gnoll Wastes 12",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll12.webp"
+  },
+  {
+    "lat": -74.67745,
+    "lng": -44.47266,
+    "popup": "Ancient Chest<br> Gnoll Wastes 13",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll13.webp"
+  },
+  {
+    "lat": -75.89345,
+    "lng": -23.51074,
+    "popup": "Ancient Chest<br> Gnoll Wastes 14",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll14.webp"
+  },
+  {
+    "lat": -75.71021,
+    "lng": -14.41406,
+    "popup": "Ancient Chest<br> Gnoll Wastes 15",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll15.webp"
+  },
+  {
+    "lat": -75.13514,
+    "lng": -14.15039,
+    "popup": "Ancient Chest<br> Gnoll Wastes 16",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll16.webp"
+  },
+  {
+    "lat": -73.92247,
+    "lng": -1.3623,
+    "popup": "Ancient Chest<br> Gnoll Wastes 17",
+    "title": "-",
+    "img": "/BlessMap/Gnoll/Gnoll17.webp"
+  },
+  {
+    "lat": -73.72044,
+    "lng": 9.66797,
+    "popup": "Ancient Chest<br> Tristezza 1",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza1.webp"
+  },
+  {
+    "lat": -68.26125,
+    "lng": 37.48535,
+    "popup": "Ancient Chest<br> Tristezza 2",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza2.webp"
+  },
+  {
+    "lat": -68.13067,
+    "lng": 37.59521,
+    "popup": "Ancient Chest<br> Tristezza 3",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza3.webp"
+  },
+  {
+    "lat": -76.31036,
+    "lng": 36.78223,
+    "popup": "Ancient Chest<br> Tristezza 4",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza4.webp"
+  },
+  {
+    "lat": -70.81581,
+    "lng": 35.37598,
+    "popup": "Ancient Chest<br> Tristezza 5",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza5.webp"
+  },
+  {
+    "lat": -75.46962,
+    "lng": 12.17285,
+    "popup": "Ancient Chest<br> Tristezza 6",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza6.webp"
+  },
+  {
+    "lat": -76.26869,
+    "lng": 40.31982,
+    "popup": "Ancient Chest<br> Tristezza 7",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza7.webp"
+  },
+  {
+    "lat": -68.92681,
+    "lng": 4.24072,
+    "popup": "Ancient Chest<br> Tristezza 8",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza8.webp"
+  },
+  {
+    "lat": -75.89391,
+    "lng": 18.27856,
+    "popup": "Ancient Chest<br> Tristezza 9",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza9.webp"
+  },
+  {
+    "lat": -67.90035,
+    "lng": 38.71582,
+    "popup": "Ancient Chest<br> Tristezza 10",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza10.webp"
+  },
+  {
+    "lat": -76.92061,
+    "lng": 40.71533,
+    "popup": "Ancient Chest<br> Tristezza 11",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza11.webp"
+  },
+  {
+    "lat": -73.3157,
+    "lng": 11.11929,
+    "popup": "Ancient Chest<br> Tristezza 12",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza12.webp"
+  },
+  {
+    "lat": -73.1759,
+    "lng": 13.73291,
+    "popup": "Ancient Chest<br> Tristezza 13",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza13.webp"
+  },
+  {
+    "lat": -73.66491,
+    "lng": 10.67871,
+    "popup": "Ancient Chest<br> Tristezza 14",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza14.webp"
+  },
+  {
+    "lat": -69.58823,
+    "lng": 33.2666,
+    "popup": "Ancient Chest<br> Tristezza 15",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza15.webp"
+  },
+  {
+    "lat": -75.87737,
+    "lng": 26.521,
+    "popup": "Ancient Chest<br> Tristezza 16",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza16.webp"
+  },
+  {
+    "lat": -76.87198,
+    "lng": 50.01812,
+    "popup": "Ancient Chest<br> Tristezza 17",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza17.webp"
+  },
+  {
+    "lat": -73.62159,
+    "lng": 29.3335,
+    "popup": "Ancient Chest<br> Tristezza 18",
+    "title": "-",
+    "img": "/BlessMap/Tristezza/Tristezza18.webp"
+  },
+  {
+    "lat": -84.15638,
+    "lng": -27.18018,
+    "popup": "Ancient Chest<br> Timeless Jungle 1",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless1.webp"
+  },
+  {
+    "lat": -82.76537,
+    "lng": -10.96436,
+    "popup": "Ancient Chest<br> Timeless Jungle 2",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless2.webp"
+  },
+  {
+    "lat": -83.73476,
+    "lng": -27.09229,
+    "popup": "Ancient Chest<br> Timeless Jungle 3",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless3.webp"
+  },
+  {
+    "lat": -83.26998,
+    "lng": -15.11719,
+    "popup": "Ancient Chest<br> Timeless Jungle 4",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless4.webp"
+  },
+  {
+    "lat": -83.51272,
+    "lng": -35.44189,
+    "popup": "Ancient Chest<br> Timeless Jungle 5",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless5.webp"
+  },
+  {
+    "lat": -80.41937,
+    "lng": -47.3291,
+    "popup": "Ancient Chest<br> Timeless Jungle 6",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless6.webp"
+  },
+  {
+    "lat": -83.28285,
+    "lng": -2.87842,
+    "popup": "Ancient Chest<br> Timeless Jungle 7",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless7.webp"
+  },
+  {
+    "lat": -83.73236,
+    "lng": -2.85645,
+    "popup": "Ancient Chest<br> Timeless Jungle 8",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless8.webp"
+  },
+  {
+    "lat": -82.31509,
+    "lng": -21.40006,
+    "popup": "Ancient Chest<br> Timeless Jungle 9",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless9.webp"
+  },
+  {
+    "lat": -83.72516,
+    "lng": -35.28809,
+    "popup": "Ancient Chest<br> Timeless Jungle 10",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless10.webp"
+  },
+  {
+    "lat": -81.69784,
+    "lng": -6.76758,
+    "popup": "Ancient Chest<br> Timeless Jungle 11",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless11.webp"
+  },
+  {
+    "lat": -81.08641,
+    "lng": -35.24414,
+    "popup": "Ancient Chest<br> Timeless Jungle 12",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless12.webp"
+  },
+  {
+    "lat": -81.6915,
+    "lng": -35.15625,
+    "popup": "Ancient Chest<br> Timeless Jungle 13",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless13.webp"
+  },
+  {
+    "lat": -82.36456,
+    "lng": -26.25732,
+    "popup": "Ancient Chest<br> Timeless Jungle 14",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless14.webp"
+  },
+  {
+    "lat": -80.43398,
+    "lng": -39.28711,
+    "popup": "Ancient Chest<br> Timeless Jungle 15",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless15.webp"
+  },
+  {
+    "lat": -80.34963,
+    "lng": -33.15674,
+    "popup": "Ancient Chest<br> Timeless Jungle 16",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless16.webp"
+  },
+  {
+    "lat": -79.4743,
+    "lng": -41.8658,
+    "popup": "Ancient Chest<br> Timeless Jungle 17",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless17.webp"
+  },
+  {
+    "lat": -81.9755,
+    "lng": -24.49951,
+    "popup": "Ancient Chest<br> Timeless Jungle 18",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless18.webp"
+  },
+  {
+    "lat": -83.73236,
+    "lng": -39.24316,
+    "popup": "Ancient Chest<br> Timeless Jungle 19",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless19.webp"
+  },
+  {
+    "lat": -83.73715,
+    "lng": -15.0293,
+    "popup": "Ancient Chest<br> Timeless Jungle 20",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless20.webp"
+  },
+  {
+    "lat": -83.72035,
+    "lng": -10.92041,
+    "popup": "Ancient Chest<br> Timeless Jungle 21",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless21.webp"
+  },
+  {
+    "lat": -82.77919,
+    "lng": -6.89941,
+    "popup": "Ancient Chest<br> Timeless Jungle 22",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless22.webp"
+  },
+  {
+    "lat": -82.9834,
+    "lng": -47.5708,
+    "popup": "Ancient Chest<br> Timeless Jungle 23",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless23.webp"
+  },
+  {
+    "lat": -84.16085,
+    "lng": -42.78076,
+    "popup": "Ancient Chest<br> Timeless Jungle 24",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless24.webp"
+  },
+  {
+    "lat": -81.69784,
+    "lng": -39.17725,
+    "popup": "Ancient Chest<br> Timeless Jungle 25",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless25.webp"
+  },
+  {
+    "lat": -81.72951,
+    "lng": -27.66357,
+    "popup": "Ancient Chest<br> Timeless Jungle 26",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless26.webp"
+  },
+  {
+    "lat": -80.58973,
+    "lng": -50.11963,
+    "popup": "Ancient Chest<br> Timeless Jungle 27",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless27.webp"
+  },
+  {
+    "lat": -80.63632,
+    "lng": -7.86621,
+    "popup": "Ancient Chest<br> Timeless Jungle 28",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless28.webp"
+  },
+  {
+    "lat": -81.06596,
+    "lng": -16.80908,
+    "popup": "Ancient Chest<br> Timeless Jungle 29",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless29.webp"
+  },
+  {
+    "lat": -83.71795,
+    "lng": -19.16016,
+    "popup": "Ancient Chest<br> Timeless Jungle 30",
+    "title": "-",
+    "img": "/BlessMap/Timeless/Timeless30.webp"
+  },
+  {
+    "lat": -80.4777,
+    "lng": -89.2749,
+    "popup": "Ancient Chest<br> Zenkala 1",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala1.webp"
+  },
+  {
+    "lat": -80.01242,
+    "lng": -89.36279,
+    "popup": "Ancient Chest<br> Zenkala 2",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala2.webp"
+  },
+  {
+    "lat": -78.67756,
+    "lng": -80.81543,
+    "popup": "Ancient Chest<br> Zenkala 3",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala3.webp"
+  },
+  {
+    "lat": -78.77207,
+    "lng": -71.80664,
+    "popup": "Ancient Chest<br> Zenkala 4",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala4.webp"
+  },
+  {
+    "lat": -79.30672,
+    "lng": -55.06348,
+    "popup": "Ancient Chest<br> Zenkala 5",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala5.webp"
+  },
+  {
+    "lat": -79.9013,
+    "lng": -57.59033,
+    "popup": "Ancient Chest<br> Zenkala 6",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala6.webp"
+  },
+  {
+    "lat": -80.64703,
+    "lng": -62.16064,
+    "popup": "Ancient Chest<br> Zenkala 7",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala7.webp"
+  },
+  {
+    "lat": -81.245,
+    "lng": -77.62939,
+    "popup": "Ancient Chest<br> Zenkala 8",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala8.webp"
+  },
+  {
+    "lat": -81.82379,
+    "lng": -94.08691,
+    "popup": "Ancient Chest<br> Zenkala 9",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala9.webp"
+  },
+  {
+    "lat": -82.59177,
+    "lng": -77.43164,
+    "popup": "Ancient Chest<br> Zenkala 10",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala10.webp"
+  },
+  {
+    "lat": -82.59177,
+    "lng": -69.30176,
+    "popup": "Ancient Chest<br> Zenkala 11",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala11.webp"
+  },
+  {
+    "lat": -83.42273,
+    "lng": -59.87549,
+    "popup": "Ancient Chest<br> Zenkala 12",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala12.webp"
+  },
+  {
+    "lat": -84.77453,
+    "lng": -58.22754,
+    "popup": "Ancient Chest<br> Zenkala 13",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala13.webp"
+  },
+  {
+    "lat": -84.77653,
+    "lng": -71.65283,
+    "popup": "Ancient Chest<br> Zenkala 14",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala14.webp"
+  },
+  {
+    "lat": -84.39951,
+    "lng": -80.22217,
+    "popup": "Ancient Chest<br> Zenkala 15",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala15.webp"
+  },
+  {
+    "lat": -84.58923,
+    "lng": -85.62744,
+    "popup": "Ancient Chest<br> Zenkala 16",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala16.webp"
+  },
+  {
+    "lat": -83.43279,
+    "lng": -90.70313,
+    "popup": "Ancient Chest<br> Zenkala 17",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala17.webp"
+  },
+  {
+    "lat": -83.63811,
+    "lng": -74.20166,
+    "popup": "Ancient Chest<br> Zenkala 18",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala18.webp"
+  },
+  {
+    "lat": -81.73267,
+    "lng": -73.95996,
+    "popup": "Ancient Chest<br> Zenkala 19",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala19.webp"
+  },
+  {
+    "lat": -82.82599,
+    "lng": -60.57861,
+    "popup": "Ancient Chest<br> Zenkala 20",
+    "title": "-",
+    "img": "/BlessMap/Zenkala/Zenkala20.webp"
+  },
+  {
+    "lat": -68.32626,
+    "lng": -93.40576,
+    "popup": "Ancient Chest<br> Ivory Dunes 1",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory1.webp"
+  },
+  {
+    "lat": -69.79081,
+    "lng": -97.26331,
+    "popup": "Ancient Chest<br> Ivory Dunes 2",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory2.webp"
+  },
+  {
+    "lat": -71.33598,
+    "lng": -78.68408,
+    "popup": "Ancient Chest<br> Ivory Dunes 3",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory3.webp"
+  },
+  {
+    "lat": -71.2867,
+    "lng": -76.77246,
+    "popup": "Ancient Chest<br> Ivory Dunes 4",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory4.webp"
+  },
+  {
+    "lat": -70.40412,
+    "lng": -80.52015,
+    "popup": "Ancient Chest<br> Ivory Dunes 5",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory5.webp"
+  },
+  {
+    "lat": -73.76964,
+    "lng": -72.70752,
+    "popup": "Ancient Chest<br> Ivory Dunes 6",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory6.webp"
+  },
+  {
+    "lat": -69.58823,
+    "lng": -71.25732,
+    "popup": "Ancient Chest<br> Ivory Dunes 7",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory7.webp"
+  },
+  {
+    "lat": -65.83878,
+    "lng": -65.32471,
+    "popup": "Ancient Chest<br> Ivory Dunes 8",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory8.webp"
+  },
+  {
+    "lat": -65.65929,
+    "lng": -92.89106,
+    "popup": "Ancient Chest<br> Ivory Dunes 9",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory9.webp"
+  },
+  {
+    "lat": -73.74506,
+    "lng": -62.8418,
+    "popup": "Ancient Chest<br> Ivory Dunes 10",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory10.webp"
+  },
+  {
+    "lat": -66.17827,
+    "lng": -79.51904,
+    "popup": "Ancient Chest<br> Ivory Dunes 11",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory11.webp"
+  },
+  {
+    "lat": -70.00557,
+    "lng": -86.19873,
+    "popup": "Ancient Chest<br> Ivory Dunes 12",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory12.webp"
+  },
+  {
+    "lat": -74.91371,
+    "lng": -96.54785,
+    "popup": "Ancient Chest<br> Ivory Dunes 13",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory13.webp"
+  },
+  {
+    "lat": -76.77563,
+    "lng": -75.87158,
+    "popup": "Ancient Chest<br> Ivory Dunes 14",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory14.webp"
+  },
+  {
+    "lat": -75.19141,
+    "lng": -82.17773,
+    "popup": "Ancient Chest<br> Ivory Dunes 15",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory15.webp"
+  },
+  {
+    "lat": -64.56732,
+    "lng": -89.67041,
+    "popup": "Ancient Chest<br> Ivory Dunes 16",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory16.webp"
+  },
+  {
+    "lat": -70.59072,
+    "lng": -56.57959,
+    "popup": "Ancient Chest<br> Ivory Dunes 17",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory17.webp"
+  },
+  {
+    "lat": -72.50172,
+    "lng": -91.34033,
+    "popup": "Ancient Chest<br> Ivory Dunes 18",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory18.webp"
+  },
+  {
+    "lat": -72.51493,
+    "lng": -85.23193,
+    "popup": "Ancient Chest<br> Ivory Dunes 19",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory19.webp"
+  },
+  {
+    "lat": -74.74118,
+    "lng": -79.60693,
+    "popup": "Ancient Chest<br> Ivory Dunes 20",
+    "title": "-",
+    "img": "/BlessMap/Ivory/Ivory20.webp"
+  }
+]

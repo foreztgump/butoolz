@@ -1,0 +1,156 @@
+[
+  {
+    "lat": 19.89072,
+    "lng": 37.24365,
+    "popup": "The Journey Home Page 1<br> On the table to the right",
+    "title": "Page 1",
+    "img": "/BlessMap/Pages/Page1.webp"
+  },
+  {
+    "lat": -39.3003,
+    "lng": 27.99316,
+    "popup": "The Journey Home Page 2<br> On the ground to the left in front of the bookshelf",
+    "title": "Page 2",
+    "img": "/BlessMap/Pages/Page2.webp"
+  },
+  {
+    "lat": -41.07935,
+    "lng": -37.66113,
+    "popup": "The Journey Home Page 3<br> On the ground next to the barrel and clothesline",
+    "title": "Page 3",
+    "img": "/BlessMap/Pages/Page3.webp"
+  },
+  {
+    "lat": -65.55846,
+    "lng": -24.93896,
+    "popup": "The Journey Home Page 4<br> On the ground next to the pyre",
+    "title": "Page 4",
+    "img": "/BlessMap/Pages/Page4.webp"
+  },
+  {
+    "lat": 68.52823,
+    "lng": 85.5835,
+    "popup": "The Journey Home Page 5<br> On the shelve with towels on it near the pyre",
+    "title": "Page 5",
+    "img": "/BlessMap/Pages/Page5.webp"
+  },
+  {
+    "lat": -67.85898,
+    "lng": 34.01367,
+    "popup": "The Journey Home Page 6<br> Next to the small tent on the table",
+    "title": "Page 6",
+    "img": "/BlessMap/Pages/Page6.webp"
+  },
+  {
+    "lat": 22.1874,
+    "lng": 28.125,
+    "popup": "The Journey Home Page 7<br> Next to the NPC on the cabinets",
+    "title": "Page 7",
+    "img": "/BlessMap/Pages/Page7.webp"
+  },
+  {
+    "lat": -79.24129,
+    "lng": -56.51367,
+    "popup": "The Journey Home Page 8<br> Behind the blacksmith on the table",
+    "title": "Page 8",
+    "img": "/BlessMap/Pages/Page8.webp"
+  },
+  {
+    "lat": 70.4809,
+    "lng": 10.45898,
+    "popup": "The Journey Home Page 9<br> At the top of the tower on the ground next to a box",
+    "title": "Page 9",
+    "img": "/BlessMap/Pages/Page9.webp"
+  },
+  {
+    "lat": -44.00862,
+    "lng": 12.39258,
+    "popup": "The Journey Home Page 10<br> On the right next to a NPC called Poly on the ground",
+    "title": "Page 10",
+    "img": "/BlessMap/Pages/Page10.webp"
+  },
+  {
+    "lat": 81.56352,
+    "lng": 47.26318,
+    "popup": "The Journey Home Page 11<br> On a box near the general goods merchant",
+    "title": "Page 11",
+    "img": "/BlessMap/Pages/Page11.webp"
+  },
+  {
+    "lat": 83.08731,
+    "lng": 58.88672,
+    "popup": "The Journey Home Page 12<br> On the ground next to the food vendor",
+    "title": "Page 12",
+    "img": "/BlessMap/Pages/Page12.webp"
+  },
+  {
+    "lat": 53.52725,
+    "lng": 71.10352,
+    "popup": "The Journey Home Page 13<br> On the ground next to the tent",
+    "title": "Page 13",
+    "img": "/BlessMap/Pages/Page13.webp"
+  },
+  {
+    "lat": -84.0366,
+    "lng": -4.15283,
+    "popup": "The Journey Home Page 14<br> On the ground at the end of the dock",
+    "title": "Page 14",
+    "img": "/BlessMap/Pages/Page14.webp"
+  },
+  {
+    "lat": -70.11048,
+    "lng": -30.60791,
+    "popup": "The Journey Home Page 15<br> On the ground in between the tree and bushe",
+    "title": "Page 15",
+    "img": "/BlessMap/Pages/Page15.webp"
+  },
+  {
+    "lat": 83.57203,
+    "lng": -28.01514,
+    "popup": "The Journey Home Page 16<br> On the ground next to a NPC called Kunchaire",
+    "title": "Page 16",
+    "img": "/BlessMap/Pages/Page16.webp"
+  },
+  {
+    "lat": 75.66676,
+    "lng": 38.62793,
+    "popup": "The Giant Kannus Page 1<br> On the ground next to the tent",
+    "title": "Kannus Page 1",
+    "img": "/BlessMap/Pages/KannusPage1.webp"
+  },
+  {
+    "lat": 75.3867,
+    "lng": 38.51807,
+    "popup": "The Giant Kannus Page 2<br> On the ground next to the tent",
+    "title": "Kannus Page 2",
+    "img": "/BlessMap/Pages/KannusPage2.webp"
+  },
+  {
+    "lat": 75.40332,
+    "lng": 36.27686,
+    "popup": "The Giant Kannus Page 3<br> On the ground next to the tent",
+    "title": "Kannus Page 3",
+    "img": "/BlessMap/Pages/KannusPage3.webp"
+  },
+  {
+    "lat": 75.1633,
+    "lng": 40.53955,
+    "popup": "The Giant Kannus Page 4<br> On the ground next to the weapon stand",
+    "title": "Kannus Page 4",
+    "img": "/BlessMap/Pages/KannusPage4.webp"
+  },
+  {
+    "lat": 76.28433,
+    "lng": 42.05566,
+    "popup": "The Giant Kannus Page 5<br> On the ground next to the wounded skaa villagers",
+    "title": "Kannus Page 5",
+    "img": "/BlessMap/Pages/KannusPage5.webp"
+  },
+  {
+    "lat": 76.34152,
+    "lng": 37.44141,
+    "popup": "The Giant Kannus Page 6<br> On the ground next to the hut with a torch",
+    "title": "Kannus Page 6",
+    "img": "/BlessMap/Pages/KannusPage6.webp"
+  }
+]

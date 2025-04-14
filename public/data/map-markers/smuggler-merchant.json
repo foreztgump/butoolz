@@ -1,0 +1,100 @@
+[
+  {
+    "lat": 83.50775,
+    "lng": -26.58691,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Eidolon",
+    "img": "/BlessMap/SmugglerLocations/Eidolon.webp"
+  },
+  {
+    "lat": 84.25399,
+    "lng": 9.95361,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Ostium",
+    "img": "/BlessMap/SmugglerLocations/Ostium.webp"
+  },
+  {
+    "lat": 70.65633,
+    "lng": 6.30615,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Kannus Valley",
+    "img": "/BlessMap/SmugglerLocations/KannusValley.webp"
+  },
+  {
+    "lat": 67.33986,
+    "lng": 69.27979,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Kannus Mountains",
+    "img": "/BlessMap/SmugglerLocations/KannusMountains.webp"
+  },
+  {
+    "lat": 43.75523,
+    "lng": 96.92139,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Padana",
+    "img": "/BlessMap/SmugglerLocations/Padana.webp"
+  },
+  {
+    "lat": 8.38543,
+    "lng": 41.50635,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Sperios",
+    "img": "/BlessMap/SmugglerLocations/Sperios.webp"
+  },
+  {
+    "lat": -37.53016,
+    "lng": 20.25986,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Carzacor",
+    "img": "/BlessMap/SmugglerLocations/Carzacor.webp"
+  },
+  {
+    "lat": -51.19312,
+    "lng": -29.06982,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Navarra",
+    "img": "/BlessMap/SmugglerLocations/Navarra.webp"
+  },
+  {
+    "lat": -66.97307,
+    "lng": -9.86572,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Gnoll",
+    "img": "/BlessMap/SmugglerLocations/Gnoll.webp"
+  },
+  {
+    "lat": -73.27103,
+    "lng": 42.53906,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Tristezza",
+    "img": "/BlessMap/SmugglerLocations/Tristezza.webp"
+  },
+  {
+    "lat": -83.81576,
+    "lng": -4.04297,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Timeless 1",
+    "img": "/BlessMap/SmugglerLocations/Timeless1.webp"
+  },
+  {
+    "lat": -84.65549,
+    "lng": -41.78966,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Timeless 2",
+    "img": "/BlessMap/SmugglerLocations/Timeless2.webp"
+  },
+  {
+    "lat": -84.80645,
+    "lng": -71.82861,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Zenkala",
+    "img": "/BlessMap/SmugglerLocations/Zenkala.webp"
+  },
+  {
+    "lat": -65.70352,
+    "lng": -92.90039,
+    "popup": "Smuggler<br> Spawn location",
+    "title": "Smuggler Ivory",
+    "img": "/BlessMap/SmugglerLocations/Ivory.webp"
+  }
+]

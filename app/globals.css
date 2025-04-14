@@ -36,9 +36,9 @@
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 6%;
     --popover-foreground: 0 0% 98%;
-    --primary: 250 95% 65%; /* Keep original dark mode primary */
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 12%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 262 80% 98%;
+    --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 240 3.7% 12%;
     --muted-foreground: 240 5% 64.9%;
@@ -48,7 +48,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 250 95% 65%; /* Keep original dark mode ring */
+    --ring: 262 83% 58%; /* Ensure this is the only active --ring definition for .dark */
     
     /* RGB values for primary color (124, 58, 237) - violet-600 - Keep original for dark mode */
     --primary-rgb: 124 58 237;
@@ -93,4 +93,268 @@
     color: hsl(var(--accent-foreground)) !important;
   }
   */
+}
+
+/* Add Leaflet container background override */
+/* Apply dark background only when dark theme is active */
+.dark .leaflet-container {
+  /* background-color: #111827; */ /* Replaced hardcoded value */
+  background-color: hsl(var(--background)); /* Use theme variable */
+}
+
+/* Dark theme overrides for Leaflet Popups */
+.dark .leaflet-popup-content-wrapper {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border-radius: var(--radius); /* Optional: Use theme radius */
+  box-shadow: none; /* Remove default Leaflet shadow if using theme shadow */
+}
+
+.dark .leaflet-popup-content {
+  margin: 1rem; /* Adjust padding as needed, default is 13px */
+  width: auto !important; /* Allow content to dictate width */
+}
+
+.dark .leaflet-popup-tip {
+  background-color: hsl(var(--popover));
+  box-shadow: none;
+}
+
+/* Optional: Style the close button for dark theme if needed */
+.dark .leaflet-popup-close-button {
+  color: hsl(var(--popover-foreground));
+}
+.dark .leaflet-popup-close-button:hover {
+  color: hsl(var(--foreground)); /* Or another hover color */
+}
+
+/* Force violet color on checked Checkbox in dark mode */
+.dark button[role="checkbox"][data-state="checked"] {
+  background-color: hsl(var(--primary)) !important;
+  border-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important; /* Styles the checkmark */
+}
+
+/* Dark theme overrides for Leaflet Zoom Control */
+.dark .leaflet-control-zoom {
+  border: 1px solid hsl(var(--border)) !important;
+  border-top: none !important; /* Remove top border (connects to reset) */
+  border-radius: 0 !important; /* No radius */
+  border-bottom-left-radius: var(--radius) !important; /* Bottom radius only */
+  border-bottom-right-radius: var(--radius) !important; /* Bottom radius only */
+  box-shadow: none !important;
+}
+
+/* Zoom buttons base styles */
+.dark .leaflet-control-zoom a {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: none !important; /* Remove individual border */
+  border-radius: 0 !important;
+  width: 30px !important; 
+  height: 30px !important; 
+  line-height: 30px !important;
+}
+
+/* Zoom In (+) Button - Add bottom border separator */
+.dark .leaflet-control-zoom a:first-child {
+  border-bottom: 1px solid hsl(var(--border)) !important; 
+}
+
+/* Zoom Out (-) Button - Ensure bottom radius respects container */
+.dark .leaflet-control-zoom a:last-child {
+  border-bottom-left-radius: calc(var(--radius) - 1px) !important;
+  border-bottom-right-radius: calc(var(--radius) - 1px) !important;
+}
+
+/* Zoom Hover */
+.dark .leaflet-control-zoom a:hover {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
+
+/* Zoom Disabled */
+.dark .leaflet-control-zoom a.leaflet-disabled {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  cursor: not-allowed !important;
+}
+
+/* Style the custom reset button */
+.dark .custom-reset-button {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-bottom: none !important; /* No bottom border */
+  border-top-left-radius: var(--radius) !important; /* Top radius */
+  border-top-right-radius: var(--radius) !important; /* Top radius */
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  width: 30px !important; /* Match zoom */
+  height: 30px !important; /* Match zoom */
+  box-shadow: none !important;
+  padding: 0 !important; /* Reset padding for icon button */
+  display: inline-flex !important; /* Ensure flex properties */
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.dark .custom-reset-button:hover {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+  border-color: hsl(var(--accent)) !important;
+}
+
+/* Force styling on the collapsed sidebar toggle button */
+.dark button[aria-label="Expand sidebar"] {
+  border-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary)) !important; /* Icon color */
+  background-color: transparent !important; /* Ensure default bg doesn't interfere */
+}
+
+.dark button[aria-label="Expand sidebar"]:hover {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important; /* Icon color on hover */
+  border-color: hsl(var(--accent)) !important;
+}
+
+/* Force violet focus ring on Input component in dark mode */
+.dark input[data-slot="input"]:focus-visible {
+  outline: 2px solid transparent !important; /* Reset outline */
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--primary)) !important;
+  /* Ensure border matches ring on focus if needed */
+   border-color: hsl(var(--primary)) !important;
+}
+
+/* Dark theme overrides for Buttons inside Leaflet Popups */
+.dark .leaflet-popup-content button {
+  /* Base button styles (mimic Shadcn defaults) */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius) !important;
+  padding: 0.375rem 0.75rem !important; /* Adjusted padding for size='sm' */
+  font-size: 0.875rem !important; /* text-sm */
+  font-weight: 500 !important; /* font-medium */
+  transition: colors 0.15s ease-in-out !important;
+  border: 1px solid transparent !important; /* Default no border */
+}
+
+/* Default Button Styles */
+.dark .leaflet-popup-content button:not([data-variant="destructive"]) { /* Target non-destructive */
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+.dark .leaflet-popup-content button:not([data-variant="destructive"]):hover {
+  background-color: hsl(var(--primary) / 0.9) !important; /* Slightly transparent primary on hover */
+}
+
+/* Destructive Button Styles */
+.dark .leaflet-popup-content button[data-variant="destructive"] {
+  background-color: hsl(var(--destructive)) !important;
+  color: hsl(var(--destructive-foreground)) !important;
+  /* Special handling for icon size */
+  padding: 0.5rem !important; /* Keep padding for size='icon' */
+}
+.dark .leaflet-popup-content button[data-variant="destructive"]:hover {
+  background-color: hsl(var(--destructive) / 0.9) !important; /* Slightly transparent destructive on hover */
+}
+
+/* Ensure Trash icon within destructive button has correct color */
+.dark .leaflet-popup-content button[data-variant="destructive"] svg {
+ color: hsl(var(--destructive-foreground)) !important;
+}
+
+/* Remove default margins between controls in bottom-right corner */
+.dark .leaflet-bottom.leaflet-right .leaflet-control {
+  margin: 0 !important;
+  box-shadow: none !important; /* Also remove shadow from container */
+}
+
+/* --- RESET VIEW BUTTON STYLES --- */
+.dark .leaflet-control-reset-view { 
+  border: 1px solid hsl(var(--border)) !important;
+  border-bottom: none !important; /* Remove bottom border */
+  border-top-left-radius: var(--radius) !important;
+  border-top-right-radius: var(--radius) !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+.dark .leaflet-control-reset-view .leaflet-control-reset-view-button {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: none !important; /* No individual border */
+  border-radius: 0 !important; /* No individual radius */
+  /* Ensure top corners respect container radius */
+  border-top-left-radius: calc(var(--radius) - 1px) !important; 
+  border-top-right-radius: calc(var(--radius) - 1px) !important;
+  width: 30px !important;
+  height: 30px !important;
+  box-shadow: none !important;
+  line-height: 30px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+
+.dark .leaflet-control-reset-view .leaflet-control-reset-view-button:hover {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
+
+/* Force background and hover on custom map control buttons */
+.dark div.absolute.bottom-4.right-4 button {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark div.absolute.bottom-4.right-4 button:hover {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+  border-color: hsl(var(--accent)) !important;
+}
+
+.dark div.absolute.bottom-4.right-4 button:disabled {
+   background-color: hsl(var(--muted)) !important;
+   color: hsl(var(--muted-foreground)) !important;
+   border-color: hsl(var(--border)) !important;
+   opacity: 0.5 !important;
+   cursor: not-allowed !important;
+}
+
+/* Force styles for Clear Markers button in sidebar */
+.dark div.absolute.top-4.left-4 button.mt-auto.w-full {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-color: hsl(var(--primary)) !important; /* Ensure border matches */
+}
+
+.dark div.absolute.top-4.left-4 button.mt-auto.w-full:hover {
+  /* Use a slightly transparent version for hover, common Shadcn pattern */
+  background-color: hsl(var(--primary) / 0.9) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-color: hsl(var(--primary) / 0.9) !important;
+}
+
+.dark div.absolute.top-4.left-4 button.mt-auto.w-full:disabled {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* Ensure icon color matches text color */
+.dark div.absolute.top-4.left-4 button.mt-auto.w-full svg {
+  color: hsl(var(--primary-foreground)) !important;
+}
+.dark div.absolute.top-4.left-4 button.mt-auto.w-full:hover svg {
+  color: hsl(var(--primary-foreground)) !important; /* Color usually doesn't change on hover */
+}
+.dark div.absolute.top-4.left-4 button.mt-auto.w-full:disabled svg {
+  color: hsl(var(--muted-foreground)) !important;
 }

@@ -1,0 +1,592 @@
+[
+  {
+    "country": "North Sperios",
+    "lat": 45,
+    "lng": 28.5,
+    "cities": [
+      {
+        "lat": 53.39643,
+        "lng": 8.59131,
+        "text": "Albada Ridge"
+      },
+      {
+        "lat": 53.35711,
+        "lng": 38.93555,
+        "text": "Firefly Peak"
+      },
+      {
+        "lat": 51.54975,
+        "lng": 26.58691,
+        "text": "Callen Highlands"
+      },
+      {
+        "lat": 41.42625,
+        "lng": 39.26514,
+        "text": "Torbellino Hills"
+      }
+    ]
+  },
+  {
+    "country": "South Sperios",
+    "lat": 0,
+    "lng": 28.5,
+    "cities": [
+      {
+        "lat": 35.26356,
+        "lng": 9.55811,
+        "text": "Snake Tail Trail"
+      },
+      {
+        "lat": 32.13841,
+        "lng": 24.32373,
+        "text": "South Sperios"
+      },
+      {
+        "lat": -8.37053,
+        "lng": 24.07685,
+        "text": "Hermit Hill"
+      },
+      {
+        "lat": 15.11455,
+        "lng": 47.63672,
+        "text": "Tremont Plains"
+      },
+      {
+        "lat": 5.3754,
+        "lng": 28.65234,
+        "text": "Termont Fishing Hole"
+      },
+      {
+        "lat": -8.36369,
+        "lng": 41.13281,
+        "text": "Avera Plains"
+      },
+      {
+        "lat": 12.0823,
+        "lng": 25.75195,
+        "text": "Old Town"
+      }
+    ]
+  },
+  {
+    "country": "Carzacor",
+    "lat": -45,
+    "lng": 32,
+    "cities": [
+      {
+        "lat": -31.03411,
+        "lng": 39.35303,
+        "text": "Carzacor Harbor"
+      },
+      {
+        "lat": -35.69299,
+        "lng": 26.78467,
+        "text": "Carzacor"
+      },
+      {
+        "lat": -41.32898,
+        "lng": 26.08112,
+        "text": "Carzacor Outskirts"
+      },
+      {
+        "lat": -38.30718,
+        "lng": 8.89893,
+        "text": "Western Hills"
+      },
+      {
+        "lat": -47.04018,
+        "lng": 28.65234,
+        "text": "Ribus River"
+      },
+      {
+        "lat": -44.9648,
+        "lng": 38.47412,
+        "text": "Eastern Farmlands"
+      },
+      {
+        "lat": -53.81359,
+        "lng": 10.43719,
+        "text": "Southern Farmlands"
+      },
+      {
+        "lat": -57.77452,
+        "lng": 33.57422,
+        "text": "Alicorno Forest"
+      }
+    ]
+  },
+  {
+    "country": "Navarra",
+    "lat": -45,
+    "lng": -18,
+    "cities": [
+      {
+        "lat": -35.79999,
+        "lng": -23.44482,
+        "text": "Navarra City"
+      },
+      {
+        "lat": -36.89719,
+        "lng": -38.43018,
+        "text": "West Barrens"
+      },
+      {
+        "lat": -41.73853,
+        "lng": -13.16162,
+        "text": "Eastern Prairies"
+      },
+      {
+        "lat": -50.14875,
+        "lng": -34.4751,
+        "text": "Western Prairies"
+      },
+      {
+        "lat": -55.76421,
+        "lng": -24.30176,
+        "text": "Dead Barrens"
+      }
+    ]
+  },
+  {
+    "country": "Gnoll Wastes",
+    "lat": -70,
+    "lng": -22,
+    "cities": [
+      {
+        "lat": -65.31183,
+        "lng": -25.86182,
+        "text": "Dead Barrens"
+      },
+      {
+        "lat": -70.14036,
+        "lng": -39.77051,
+        "text": "Drysand Barrens"
+      },
+      {
+        "lat": -69.70287,
+        "lng": -14.83154,
+        "text": "Lake Azos"
+      },
+      {
+        "lat": -74.41988,
+        "lng": -24.45557,
+        "text": "Ribus River"
+      },
+      {
+        "lat": -75.52464,
+        "lng": -17.49023,
+        "text": "Jade Reach"
+      }
+    ]
+  },
+  {
+    "country": "Ruins of Tristezza",
+    "lat": -70,
+    "lng": 32,
+    "cities": [
+      {
+        "lat": -67.30598,
+        "lng": 10.7666,
+        "text": "Hunters Hill"
+      },
+      {
+        "lat": -67.16995,
+        "lng": 40.51758,
+        "text": "Ruins of Sorrow"
+      },
+      {
+        "lat": -70.75797,
+        "lng": 23.8623,
+        "text": "Ribus River"
+      },
+      {
+        "lat": -74.49641,
+        "lng": 11.46973,
+        "text": "Dimensional Rift"
+      },
+      {
+        "lat": -73.82482,
+        "lng": 38.18848,
+        "text": "Tristezza"
+      }
+    ]
+  },
+  {
+    "country": "Timeless Jungle",
+    "lat": -82,
+    "lng": -25,
+    "cities": [
+      {
+        "lat": -80.68979,
+        "lng": -37.08984,
+        "text": "Oathkeeper Bosk"
+      },
+      {
+        "lat": -82.42546,
+        "lng": -8.56891,
+        "text": "Red Sun Settlement"
+      },
+      {
+        "lat": -83.95617,
+        "lng": -40.51758,
+        "text": "Forest of Umbra"
+      },
+      {
+        "lat": -83.78253,
+        "lng": -21.48926,
+        "text": "Forgotten Marsh"
+      }
+    ]
+  },
+  {
+    "country": "Zenkala",
+    "lat": -82,
+    "lng": -70,
+    "cities": [
+      {
+        "lat": -78.92083,
+        "lng": -73.52051,
+        "text": "Shimmerscale Mine"
+      },
+      {
+        "lat": -78.98819,
+        "lng": -63.7207,
+        "text": "Machi Mine"
+      },
+      {
+        "lat": -79.42431,
+        "lng": -57.74414,
+        "text": "Sombera Forest"
+      },
+      {
+        "lat": -80.16371,
+        "lng": -89.82422,
+        "text": "Creadle of the Sleeping God"
+      },
+      {
+        "lat": -81.25503,
+        "lng": -80.1123,
+        "text": "Stonemoss Lake"
+      },
+      {
+        "lat": -81.1136,
+        "lng": -69.74121,
+        "text": "Ankasa Jungle"
+      },
+      {
+        "lat": -81.56352,
+        "lng": -60.29297,
+        "text": "Primal Forest"
+      },
+      {
+        "lat": -82.69307,
+        "lng": -75.71777,
+        "text": "Terrasol"
+      },
+      {
+        "lat": -82.86431,
+        "lng": -93.60352,
+        "text": "Kuat Ran Temple"
+      },
+      {
+        "lat": -84.21868,
+        "lng": -87.49512,
+        "text": "Azurethorn Woods"
+      },
+      {
+        "lat": -84.01602,
+        "lng": -72.6416,
+        "text": "Albando Shore"
+      }
+    ]
+  },
+  {
+    "country": "Ivory Dunes",
+    "lat": -70.5,
+    "lng": -75,
+    "cities": [
+      {
+        "lat": -66.14274,
+        "lng": -77.34375,
+        "text": "Desolate Sands"
+      },
+      {
+        "lat": -72.94543,
+        "lng": -85.42969,
+        "text": "Dawnstar Canyons"
+      },
+      {
+        "lat": -74.54333,
+        "lng": -64.46777,
+        "text": "Jagged Pass"
+      }
+    ]
+  },
+  {
+    "country": "Padana Ruins",
+    "lat": 45,
+    "lng": 78,
+    "cities": [
+      {
+        "lat": 54.23955,
+        "lng": 92.94434,
+        "text": "Goldstone Ascent"
+      },
+      {
+        "lat": 50.81982,
+        "lng": 69.30176,
+        "text": "Mount Margrave"
+      },
+      {
+        "lat": 40.38003,
+        "lng": 89.42871,
+        "text": "The Asgra Village"
+      },
+      {
+        "lat": 33.54139,
+        "lng": 63.89648,
+        "text": "Padana Village"
+      }
+    ]
+  },
+  {
+    "country": "Kannus Mountains",
+    "lat": 73,
+    "lng": 80,
+    "cities": [
+      {
+        "lat": 75.43098,
+        "lng": 62.31445,
+        "text": "Rutus Defense Line"
+      },
+      {
+        "lat": 75.41992,
+        "lng": 89.20898,
+        "text": "Stonemist Hills"
+      },
+      {
+        "lat": 70.69995,
+        "lng": 80.33203,
+        "text": "Northern Slopes"
+      },
+      {
+        "lat": 68.97416,
+        "lng": 64.33594,
+        "text": "Rutus Road"
+      },
+      {
+        "lat": 67.85898,
+        "lng": 85.7373,
+        "text": "Herbati Territories"
+      },
+      {
+        "lat": 64.24459,
+        "lng": 63.06152,
+        "text": "Whistling Gorge"
+      }
+    ]
+  },
+  {
+    "country": "Kannus Valley",
+    "lat": 72,
+    "lng": 28,
+    "cities": [
+      {
+        "lat": 74.54333,
+        "lng": 36.51855,
+        "text": "Ironfist Basin"
+      },
+      {
+        "lat": 73.37821,
+        "lng": 17.22656,
+        "text": "Nightspire Grounds"
+      },
+      {
+        "lat": 72.20868,
+        "lng": 36.21094,
+        "text": "The Shadehills"
+      },
+      {
+        "lat": 66.30221,
+        "lng": 33.61816,
+        "text": "Dreizinen Ruins"
+      },
+      {
+        "lat": 65.29347,
+        "lng": 11.95313,
+        "text": "Upper Ribbus River"
+      }
+    ]
+  },
+  {
+    "country": "Beoran",
+    "lat": 82.5,
+    "lng": 82,
+    "cities": [
+      {
+        "lat": 84.53299,
+        "lng": 66.84082,
+        "text": "Northern Beoran"
+      },
+      {
+        "lat": 81.04546,
+        "lng": 88.72559,
+        "text": "Eastern Beoran"
+      },
+      {
+        "lat": 84.04702,
+        "lng": 86.38733,
+        "text": "Arduun Forest"
+      },
+      {
+        "lat": 83.08881,
+        "lng": 64.89807,
+        "text": "Dawnbringer Plain"
+      },
+      {
+        "lat": 81.04546,
+        "lng": 88.72559,
+        "text": "Eastern Beoran"
+      },
+      {
+        "lat": 80.34226,
+        "lng": 74.22363,
+        "text": "Road of Silence"
+      },
+      {
+        "lat": 80.68114,
+        "lng": 60.28382,
+        "text": "Forest of Sorrow"
+      }
+    ]
+  },
+  {
+    "country": "Ostium",
+    "lat": 82.5,
+    "lng": 32.5,
+    "cities": [
+      {
+        "lat": 84.03889,
+        "lng": 9.8877,
+        "text": "The Skittering Forest West"
+      },
+      {
+        "lat": 83.35443,
+        "lng": 41.61621,
+        "text": "The Skittering Forest East"
+      },
+      {
+        "lat": 82.92411,
+        "lng": 29.13574,
+        "text": "Ostium Fortress"
+      },
+      {
+        "lat": 82.46031,
+        "lng": 11.07422,
+        "text": "Redshroom Valley"
+      },
+      {
+        "lat": 82.2617,
+        "lng": 44.34082,
+        "text": "Oscarta Fork"
+      },
+      {
+        "lat": 80.37171,
+        "lng": 39.55078,
+        "text": "Blackshale Pass"
+      },
+      {
+        "lat": 80.19369,
+        "lng": 22.10449,
+        "text": "Ostium Quarry"
+      },
+      {
+        "lat": 80.37905,
+        "lng": 7.03125,
+        "text": "Pinewind Woods"
+      }
+    ]
+  },
+  {
+    "country": "Eidolon Forest",
+    "lat": 82.5,
+    "lng": -23,
+    "cities": [
+      {
+        "lat": 83.41014,
+        "lng": -25.83977,
+        "text": "Eidolon Forest"
+      },
+      {
+        "lat": 81.04546,
+        "lng": 88.72559,
+        "text": "Eastern Beoran"
+      },
+      {
+        "lat": 83.93067,
+        "lng": -29.61914,
+        "text": "Rabin Village"
+      },
+      {
+        "lat": 83.54985,
+        "lng": -17.90771,
+        "text": "Rabin Farmstead"
+      },
+      {
+        "lat": 82.47841,
+        "lng": -34.82257,
+        "text": "Phantasmal Forest"
+      },
+      {
+        "lat": 82.43514,
+        "lng": -14.21222,
+        "text": "Oscarta Digsite"
+      },
+      {
+        "lat": 82.14632,
+        "lng": -6.52179,
+        "text": "Ancient Ruin Digsite"
+      },
+      {
+        "lat": 81.38107,
+        "lng": -17.88574,
+        "text": "Burnt Fairy Tree"
+      },
+      {
+        "lat": 80.80637,
+        "lng": -29.99268,
+        "text": "Fairy Forest"
+      },
+      {
+        "lat": 81.63095,
+        "lng": -34.03564,
+        "text": "Rosewood Digsite"
+      },
+      {
+        "lat": 81.29503,
+        "lng": -40.18799,
+        "text": "Timorris Mine"
+      },
+      {
+        "lat": 80.33857,
+        "lng": -21.88477,
+        "text": "Niaren Shelter"
+      },
+      {
+        "lat": 79.00915,
+        "lng": -37.11182,
+        "text": "Egil Faarm"
+      },
+      {
+        "lat": 79.11339,
+        "lng": -26.69678,
+        "text": "Niaren Village"
+      },
+      {
+        "lat": 79.10924,
+        "lng": -11.7334,
+        "text": "Niaren Cemetery"
+      }
+    ]
+  }
+]

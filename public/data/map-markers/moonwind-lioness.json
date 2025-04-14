@@ -1,0 +1,37 @@
+[
+  {
+    "lat": 76.40881,
+    "lng": 39.68262,
+    "popup": "Moonwind Lioness<br> Spawns once every 6 hours per channel",
+    "title": "Moonwind in Kannus Valley",
+    "img": "/BlessMap/MountsLocations/Moonwind1.webp"
+  },
+  {
+    "lat": 69.28726,
+    "lng": 89.84619,
+    "popup": "Moonwind Lioness<br> Spawns once every 6 hours per channel",
+    "title": "Moonwind in Kannus Mountains",
+    "img": "/BlessMap/MountsLocations/Moonwind2.webp"
+  },
+  {
+    "lat": 44.30813,
+    "lng": 65.72021,
+    "popup": "Moonwind Lioness<br> Spawns once every 6 hours per channel",
+    "title": "Moonwind in Padana",
+    "img": "/BlessMap/MountsLocations/Moonwind3.webp"
+  },
+  {
+    "lat": 35.85344,
+    "lng": 37.99072,
+    "popup": "Moonwind Lioness<br> Spawns once every 6 hours per channel",
+    "title": "Moonwind in North Sperios",
+    "img": "/BlessMap/MountsLocations/Moonwind4.webp"
+  },
+  {
+    "lat": -61.75233,
+    "lng": -36.10107,
+    "popup": "Moonwind Lioness<br> Spawns once every 6 hours per channel",
+    "title": "Moonwind in Gnoll",
+    "img": "/BlessMap/MountsLocations/Moonwind5.webp"
+  }
+]
