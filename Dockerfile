@@ -29,6 +29,9 @@ RUN npm run build
 # Prune development dependencies
 RUN npm prune --production
 
+# Debug: Check if scripts directory exists before builder stage ends
+RUN echo "---> Listing /app contents:" && ls -la /app && echo "---> Listing /app/scripts contents:" && ls -la /app/scripts || echo "---> /app/scripts not found before end of builder stage!"
+
 # Stage 3: Production image
 FROM node:20-alpine AS runner
 WORKDIR /app
