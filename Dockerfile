@@ -14,15 +14,14 @@ COPY --from=deps /app/node_modules ./node_modules
 # Set environment variables if needed (e.g., NEXT_PUBLIC_API_URL)
 # ENV NEXT_PUBLIC_API_URL=your_api_url
 
-# Copy essential config files first
-COPY package.json ./package.json # Need this for npm run build
-COPY next.config.ts ./next.config.ts
-COPY tsconfig.json ./tsconfig.json
-COPY tailwind.config.ts ./tailwind.config.ts
-COPY postcss.config.mjs ./postcss.config.mjs
-# Add any other root config files needed for the build
+# Remove the incremental copies - copy everything at once
+# COPY package.json package-lock.json* ./
+# COPY next.config.ts ./next.config.ts
+# COPY tsconfig.json ./tsconfig.json
+# COPY tailwind.config.ts ./tailwind.config.ts
+# COPY postcss.config.mjs ./postcss.config.mjs
 
-# Copy the rest of the source code
+# Copy the entire source code context
 COPY . .
 
 RUN npm run build
