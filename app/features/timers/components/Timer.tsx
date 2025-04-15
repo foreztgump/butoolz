@@ -501,15 +501,26 @@ const Timer: React.FC<TimerProps> = React.memo(({
   }, [isRunning, clearIntervalRef, id]);
 
   const handleReset = useCallback(() => {
-      clearIntervalRef();
-      setIsRunning(false);
-      setTimeLeft(preset.initialTime);
-      timeElapsedBeforePauseRef.current = 0;
-      startTimeTimestampRef.current = 0;
-      lastWholeSecondNotifiedRef.current = null;
-      soundPlayedForSecondRef.current.clear();
-      console.log(`[${id}] Reset.`);
-  }, [preset.initialTime, clearIntervalRef, id]);
+      if (isRunning) {
+          // Timer is running: Reset time tracking but keep interval running
+          timeElapsedBeforePauseRef.current = 0;
+          startTimeTimestampRef.current = performance.now(); // Reset start time to now
+          lastWholeSecondNotifiedRef.current = Math.floor(preset.initialTime); // Reset notification tracking
+          soundPlayedForSecondRef.current.clear(); // Clear played sounds for the new cycle
+          // NOTE: We don't call setTimeLeft directly, the next interval tick will update it based on the reset refs.
+          console.log(`[${id}] Reset while running.`);
+      } else {
+          // Timer is stopped: Perform the original full reset
+          clearIntervalRef();
+          setIsRunning(false);
+          setTimeLeft(preset.initialTime);
+          timeElapsedBeforePauseRef.current = 0;
+          startTimeTimestampRef.current = 0;
+          lastWholeSecondNotifiedRef.current = null;
+          soundPlayedForSecondRef.current.clear();
+          console.log(`[${id}] Reset while stopped.`);
+      }
+  }, [isRunning, preset.initialTime, clearIntervalRef, id]); // Add isRunning dependency
 
   const handleDragStop = useCallback((e: DraggableEvent, data: DraggableData) => {
      console.log(`[${id}] Drag stopped at x: ${data.x}, y: ${data.y}`);
@@ -668,7 +679,7 @@ const Timer: React.FC<TimerProps> = React.memo(({
                          <Pause className="w-4 h-4 mr-1" /> Pause
                       </Button>
                     )}
-                    <Button size="sm" onClick={handleReset} variant="secondary" className="px-2 py-0.5 h-6" title="Reset Timer">
+                    <Button size="sm" onClick={handleReset} variant="outline" className="px-2 py-0.5 h-6 hover:bg-blue-500 hover:text-white" title="Reset Timer">
                       <RotateCcw className="w-4 h-4 mr-1" /> Reset
                     </Button>
                  </div>
