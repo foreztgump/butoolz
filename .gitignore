@@ -65,4 +65,12 @@ node_modules/
 # Task files
 tasks.json
 tasks/ 
-scripts/
+scripts/dev.js
+scripts/example_prd.txt
+scripts/extract-location-data.mjs
+scripts/extract-marker-data.mjs
+scripts/prd.txt
+scripts/README.md
+scripts/task-complexity-report.json
+
+
