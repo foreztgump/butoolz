@@ -45,8 +45,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/next.config.ts ./next.config.ts
 
 # Copy the ecosystem config and scripts
+# Copy ecosystem.config.cjs from the current build context (it's not in the builder stage)
 COPY --chown=nextjs:nodejs ecosystem.config.cjs ./
-COPY --chown=nextjs:nodejs scripts ./scripts
+# Copy scripts directory FROM THE BUILDER STAGE
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 
 USER nextjs
 
