@@ -326,3 +326,80 @@ self.onmessage = (event: MessageEvent<{ potentials: string[] }>) => {
 
 // Indicate worker is ready (optional)
 // self.postMessage({ type: 'ready' });
+
+// Make sure this file is treated as a module by the bundler
+self.onmessage = (e: MessageEvent) => {
+  const { potentials } = e.data;
+
+  // console.log("[Worker] Received potentials:", potentials);
+  if (!potentials || !Array.isArray(potentials)) {
+    self.postMessage({ type: "error", message: "Invalid potentials received" });
+    return;
+  }
+
+  const initialSolution = Array(TOTAL_TILES + 1).fill(-1);
+  const allSolutions: number[][] = [];
+  const searchedStates = new Set<string>();
+
+  try {
+    const startTime = performance.now();
+    solveRecursive(potentials, initialSolution, 0, allSolutions, searchedStates);
+    const endTime = performance.now();
+    // console.log(
+    //   `[Worker] Recursive solve finished in ${(endTime - startTime).toFixed(2)}ms`
+    // );
+    // console.log(`[Worker] Searched ${searchedStates.size} states.`);
+    // console.log(`[Worker] Found ${allSolutions.length} raw solutions.`);
+
+    // Filter for complete solutions (all tiles filled)
+    const completeSolutions = allSolutions.filter((sol) =>
+      sol.slice(1).every((tile) => tile !== -1)
+    );
+    // console.log(
+    //   `[Worker] Found ${completeSolutions.length} complete solutions.`
+    // );
+
+    // If no complete solutions, consider partial ones (find the one with fewest empty tiles)
+    let solutionsToSend = completeSolutions;
+    if (completeSolutions.length === 0 && allSolutions.length > 0) {
+      console.log("[Worker] No complete solutions, checking partials...");
+      let minEmpty = TOTAL_TILES + 1;
+      allSolutions.forEach((sol) => {
+        const emptyCount = sol.slice(1).filter((t) => t === -1).length;
+        minEmpty = Math.min(minEmpty, emptyCount);
+      });
+      console.log(`[Worker] Fewest empty tiles in partials: ${minEmpty}`);
+      solutionsToSend = allSolutions.filter(
+        (sol) => sol.slice(1).filter((t) => t === -1).length === minEmpty
+      );
+      console.log(
+        `[Worker] Sending ${solutionsToSend.length} best partial solutions.`
+      );
+    } else {
+      // console.log(
+      //   `[Worker] Sending ${solutionsToSend.length} complete solutions.`
+      // );
+    }
+
+    // Color the selected best solutions
+    const coloredBestSolutions = solutionsToSend.map((sol) =>
+      colorSolution(sol, NUM_HEX_COLORS)
+    );
+
+    // console.log(
+    //   "[Worker] Sending colored solutions:",
+    //   coloredBestSolutions.length
+    // );
+    self.postMessage({
+      type: "result",
+      bestSolutions: coloredBestSolutions,
+      searchedCount: searchedStates.size,
+    });
+  } catch (error: any) {
+    console.error("[Worker] Error during solving:", error);
+    self.postMessage({ type: "error", message: error.message || "Unknown error" });
+  }
+};
+
+// Add an empty export statement to ensure the file is treated as an ES module.
+export {};

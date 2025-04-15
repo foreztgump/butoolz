@@ -22,6 +22,8 @@ const RUNE_OPTIONS = [
 
 // Gear pieces with their rune slots
 const GEAR_PIECES = [
+  { id: "main_hand", label: "Main Hand", slots: 5, icon: "⚔️" },
+  { id: "off_hand", label: "Off Hand", slots: 5, icon: "🗡️" },
   { id: "head", label: "Head", slots: 5, icon: "👑" },
   { id: "chest", label: "Chest", slots: 5, icon: "🛡️" },
   { id: "pants", label: "Pants", slots: 5, icon: "👖" },
@@ -73,6 +75,16 @@ const PRESETS = [
       belt_rune_3: "red",
       belt_rune_4: "green",
       belt_rune_5: "purple",
+      main_hand_rune_1: "yellow",
+      main_hand_rune_2: "red",
+      main_hand_rune_3: "green",
+      main_hand_rune_4: "purple",
+      main_hand_rune_5: "white",
+      off_hand_rune_1: "red",
+      off_hand_rune_2: "green",
+      off_hand_rune_3: "purple",
+      off_hand_rune_4: "white",
+      off_hand_rune_5: "yellow",
     },
   },
   {
@@ -115,6 +127,16 @@ const PRESETS = [
       belt_rune_3: "yellow",
       belt_rune_4: "yellow",
       belt_rune_5: "green",
+      main_hand_rune_1: "red",
+      main_hand_rune_2: "red",
+      main_hand_rune_3: "yellow",
+      main_hand_rune_4: "yellow",
+      main_hand_rune_5: "purple",
+      off_hand_rune_1: "red",
+      off_hand_rune_2: "red",
+      off_hand_rune_3: "yellow",
+      off_hand_rune_4: "yellow",
+      off_hand_rune_5: "purple",
     },
   },
   {
@@ -157,6 +179,16 @@ const PRESETS = [
       belt_rune_3: "white",
       belt_rune_4: "white",
       belt_rune_5: "yellow",
+      main_hand_rune_1: "green",
+      main_hand_rune_2: "green",
+      main_hand_rune_3: "white",
+      main_hand_rune_4: "white",
+      main_hand_rune_5: "purple",
+      off_hand_rune_1: "green",
+      off_hand_rune_2: "green",
+      off_hand_rune_3: "white",
+      off_hand_rune_4: "white",
+      off_hand_rune_5: "purple",
     },
   },
 ]
@@ -549,7 +581,7 @@ export default function RunesDreaming() {
                   <CheckCircle2 className="h-4 w-4 text-primary" />
                   Preset Configurations & Info
                 </CardTitle>
-                <CardDescription>Apply pre-made configurations or learn about rune effects.</CardDescription>
+                <CardDescription>Apply pre-made build configurations or learn about rune effects and strategies.</CardDescription>
               </CardHeader>
               <CardContent>
                 <h3 className="text-base font-semibold mb-3">Apply a Preset:</h3>
@@ -584,68 +616,69 @@ export default function RunesDreaming() {
                 </div>
 
                 <div className="mt-8 space-y-4">
-                  <h3 className="text-base font-semibold mb-3 border-t pt-6">Rune Effects Guide:</h3>
+                  <h3 className="text-base font-semibold mb-3 border-t pt-6">Rune Effects & Strategy Guide:</h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                     <div className="space-y-2 p-3 bg-muted/50 rounded-md">
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded-full bg-purple-500 flex-shrink-0"></div>
-                        <h4 className="font-medium">Purple Runes</h4>
+                        <h4 className="font-medium">Purple Runes (Magic/Crit Dmg)</h4>
                       </div>
                       <p className="text-muted-foreground">
-                        Enhance critical hit damage and provide magical damage bonuses. Excellent for burst damage builds and mage classes.
+                        Typically enhance magical properties, critical damage multipliers, or special effects. Good for burst damage or caster builds.
                       </p>
                     </div>
 
                     <div className="space-y-2 p-3 bg-muted/50 rounded-md">
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded-full bg-gray-100 dark:bg-gray-300 border border-gray-300 dark:border-gray-500 flex-shrink-0"></div>
-                        <h4 className="font-medium">White Runes</h4>
+                        <h4 className="font-medium">White Runes (Utility/Balance)</h4>
                       </div>
                       <p className="text-muted-foreground">
-                        Provide balanced stats and enhance blessing effects. Versatile and work well in any build configuration.
+                        Often provide utility, balanced stats, or enhance support abilities. Versatile for filling gaps or specialized support roles.
                       </p>
                     </div>
 
                     <div className="space-y-2 p-3 bg-muted/50 rounded-md">
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded-full bg-yellow-400 flex-shrink-0"></div>
-                        <h4 className="font-medium">Yellow Runes</h4>
+                        <h4 className="font-medium">Yellow Runes (Speed/Crit Rate)</h4>
                       </div>
                       <p className="text-muted-foreground">
-                        Boost critical hit rate and attack speed. Ideal for DPS builds focused on consistent damage output.
+                        Usually boost speed, critical hit chance, or precision. Ideal for builds focused on consistent damage or landing criticals.
                       </p>
                     </div>
 
                     <div className="space-y-2 p-3 bg-muted/50 rounded-md">
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded-full bg-red-500 flex-shrink-0"></div>
-                        <h4 className="font-medium">Red Runes</h4>
+                        <h4 className="font-medium">Red Runes (Attack/Power)</h4>
                       </div>
                       <p className="text-muted-foreground">
-                        Increase physical attack power and penetration. Perfect for warrior and berserker classes.
+                        Generally increase raw attack power, physical damage, or penetration. Core runes for melee or physical damage dealers.
                       </p>
                     </div>
 
                     <div className="space-y-2 p-3 bg-muted/50 rounded-md">
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded-full bg-green-500 flex-shrink-0"></div>
-                        <h4 className="font-medium">Green Runes</h4>
+                        <h4 className="font-medium">Green Runes (Defense/Survival)</h4>
                       </div>
                       <p className="text-muted-foreground">
-                        Enhance defense, HP recovery, and damage reduction. Essential for tank builds and survival-focused players.
+                        Enhance defense, health, regeneration, or damage reduction. Essential for tanks or increasing survivability.
                       </p>
                     </div>
                   </div>
 
                   <div className="p-4 bg-muted rounded-lg mt-6 border-t pt-6">
                     <h4 className="text-base font-semibold mb-3">Rune Optimization Tips:</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1.5 list-disc pl-5"> {/* Adjusted list style */}
-                      <li>Focus on 2-3 rune colors that complement your class and playstyle.</li>
-                      <li>For PvP, consider balancing offensive (red/yellow) and defensive (green) runes.</li>
-                      <li>For PvE, maximize damage output with red, yellow, and purple runes.</li>
-                      <li>White runes work well as fillers when you're unsure about optimization.</li>
-                      <li>Some blessing effects are enhanced by specific rune combinations (refer to external guides for details).</li>
+                    <ul className="text-sm text-muted-foreground space-y-1.5 list-disc pl-5">
+                      <li><strong>Identify Core Needs:</strong> Determine the primary role (Damage, Tank, Support) and select 2-3 core rune colors that best serve that role.</li>
+                      <li><strong>Synergy Matters:</strong> Look for rune combinations that amplify each other (e.g., Crit Rate from Yellow + Crit Damage from Purple).</li>
+                      <li><strong>Balance Offense & Defense:</strong> Especially for general content or PvP, find a balance between damage-dealing runes (Red, Yellow, Purple) and survival runes (Green).</li>
+                      <li><strong>Consider Content Type:</strong> Maximize damage (Red/Yellow/Purple) for PvE farming, but prioritize survivability (Green) for challenging bosses or PvP.</li>
+                      <li><strong>White Rune Flexibility:</strong> Use White runes as versatile fillers when unsure or when specific utility bonuses are needed.</li>
+                      <li><strong>External Knowledge:</strong> Refer to community guides or build simulators for specific game mechanics or advanced rune interactions not covered here.</li>
                     </ul>
                   </div>
                 </div>

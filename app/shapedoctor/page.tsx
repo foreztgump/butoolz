@@ -775,23 +775,13 @@ export default function ShapeDoctor() {
       duration: 10000,
     }); // Longer duration maybe
 
-    // Ensure worker URL is handled correctly
-    let worker: Worker | null = null;
-    try {
-      // Use 'new URL' for standard environments, fallback for others if needed (though unlikely in modern setups)
-      worker = new Worker(
-        new URL("./solver.worker.ts", import.meta.url),
-        { type: "module" }
-      ); // Explicitly set type module if needed
-    } catch (e) {
-      console.error("Failed to create worker:", e);
-      toast.error("Failed to initialize solver.", { duration: 5000 });
-      setIsSolving(false);
-      return;
-    }
-    solverWorkerRef.current = worker;
+    // Initialize worker
+    // Use new URL() syntax for proper module worker handling in Next.js/Webpack
+    solverWorkerRef.current = new Worker(
+      new URL("./solver.worker.ts", import.meta.url)
+    );
 
-    worker.onmessage = (event: MessageEvent) => {
+    solverWorkerRef.current.onmessage = (event: MessageEvent) => {
       const {
         type,
         bestSolutions: coloredBestSolutions,
@@ -835,7 +825,7 @@ export default function ShapeDoctor() {
         setSolveProgress(count); // Update progress
       }
     };
-    worker.onerror = (error) => {
+    solverWorkerRef.current.onerror = (error) => {
       console.error("[Main] Worker onerror:", error);
       setIsSolving(false);
       setSolveProgress(0);
@@ -845,7 +835,7 @@ export default function ShapeDoctor() {
       solverWorkerRef.current = null;
     };
     // Post message *after* setting up handlers
-    worker.postMessage({ potentials });
+    solverWorkerRef.current.postMessage({ potentials });
   }, [
     potentials,
     setIsSolving,
