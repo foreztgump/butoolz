@@ -154,6 +154,16 @@ interface DraggableWrapperProps {
 type DraggableEvent = MouseEvent | TouchEvent; // Basic placeholder
 type DraggableData = { x: number; y: number; deltaX: number; deltaY: number; lastX: number; lastY: number }; // Basic placeholder
 
+// Helper to get coordinates from Mouse or Touch events
+function getEventCoordinates(e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent): { x: number, y: number } | null {
+    if ('touches' in e && e.touches.length > 0) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    } else if ('clientX' in e) {
+      return { x: e.clientX, y: e.clientY };
+    }
+    return null; // Should not happen for supported event types
+}
+
 // Simple internal DraggableWrapper using basic state
 const DraggableWrapper: React.FC<DraggableWrapperProps> = React.memo(({ children, defaultPosition = {x:0, y:0}, onStop, handleClassName }) => {
   const [position, setPosition] = useState(defaultPosition);
@@ -162,120 +172,157 @@ const DraggableWrapper: React.FC<DraggableWrapperProps> = React.memo(({ children
   const posStartRef = useRef<{ x: number, y: number } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null); // Ref for the draggable element
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // --- Unified Drag Start Logic ---
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    const coords = getEventCoordinates(e);
+    if (!coords) return;
+
     const targetElement = e.target as HTMLElement;
 
-    // --- Prevent drag start on interactive elements ---
+    // --- Prevent drag start on interactive elements AND RESIZE HANDLE ---
     let currentElement: HTMLElement | null = targetElement;
+    let isHandleOrInteractive = false;
     while (currentElement && currentElement !== wrapperRef.current) {
       const tagName = currentElement.tagName.toUpperCase();
       const role = currentElement.getAttribute('role');
-      if (tagName === 'BUTTON' || tagName === 'INPUT' || tagName === 'A' || role === 'slider') {
-        console.log('Clicked on interactive element, preventing drag start.');
-        return;
+      const isResizeHandle = currentElement.classList.contains('react-resizable-handle');
+      if (tagName === 'BUTTON' || tagName === 'INPUT' || tagName === 'A' || role === 'slider' || isResizeHandle) {
+        // console.log('Clicked on interactive/resize element, preventing drag start.');
+        isHandleOrInteractive = true;
+        break;
       }
       currentElement = currentElement.parentElement;
     }
+    if (isHandleOrInteractive) return;
     // --- End Check ---
 
+    // Determine if the event target is within the designated handle area (if specified)
     const dragInitiatorElement = handleClassName ? wrapperRef.current?.querySelector(`.${handleClassName}`) : wrapperRef.current;
+    const canStartDrag = dragInitiatorElement?.contains(targetElement);
 
-    if (dragInitiatorElement?.contains(targetElement) && e.button === 0) { // Only react to left-click
+    // Check for left mouse button on mouse events
+    const isLeftMouseButton = !('touches' in e) && e.button !== 0;
+
+    if (canStartDrag && !isLeftMouseButton) {
       setIsDragging(true);
-      dragStartRef.current = { x: e.clientX, y: e.clientY };
-      posStartRef.current = { ...position }; // Use spread to copy position
-      document.body.style.userSelect = 'none';
-      document.body.style.cursor = 'grabbing'; // Indicate dragging system-wide
-      e.stopPropagation();
+      dragStartRef.current = coords;
+      posStartRef.current = { ...position };
+      document.body.style.userSelect = 'none'; // Prevent text selection during drag
+      document.body.style.cursor = 'grabbing';
+      e.stopPropagation(); // Prevent potential parent handlers
+      // For touch events, prevent default page scroll/zoom behavior
+      if ('touches' in e) {
+        // e.preventDefault(); // Caution: might prevent intended scroll on handle-less elements
+      }
     }
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  // --- Unified Drag Move Logic ---
+  const handleDragMove = useCallback((e: MouseEvent | TouchEvent) => {
     if (!isDragging || !dragStartRef.current || !posStartRef.current) return;
 
-    const deltaX = e.clientX - dragStartRef.current.x;
-    const deltaY = e.clientY - dragStartRef.current.y;
+    const coords = getEventCoordinates(e);
+    if (!coords) return;
+
+    // Prevent page scroll during touch drag
+    if ('touches' in e) {
+        e.preventDefault();
+    }
+
+    const deltaX = coords.x - dragStartRef.current.x;
+    const deltaY = coords.y - dragStartRef.current.y;
     const newPos = {
       x: posStartRef.current.x + deltaX,
       y: posStartRef.current.y + deltaY,
     };
     setPosition(newPos);
-  }, [isDragging]); // No need for position dependency here
+  }, [isDragging]); // Dependency: only isDragging
 
-  const handleMouseUp = useCallback((e: MouseEvent) => {
+  // --- Unified Drag End Logic ---
+  const handleDragEnd = useCallback((e: MouseEvent | TouchEvent) => {
     if (!isDragging || !dragStartRef.current || !posStartRef.current) return;
 
-    const deltaX = e.clientX - dragStartRef.current.x;
-    const deltaY = e.clientY - dragStartRef.current.y;
-    const finalPos = {
-      x: posStartRef.current.x + deltaX,
-      y: posStartRef.current.y + deltaY,
-    };
+    // Get final coordinates, use dragStart if move event didn't provide coords (e.g., simple tap)
+    // Note: For touch end, there are no coords in the event itself.
+    // We rely on the last position calculated during touchmove.
+    const lastKnownPos = position; // Use the latest state
+
+    const deltaX = lastKnownPos.x - posStartRef.current.x;
+    const deltaY = lastKnownPos.y - posStartRef.current.y;
 
     const data: DraggableData = {
-        x: finalPos.x,
-        y: finalPos.y,
+        x: lastKnownPos.x,
+        y: lastKnownPos.y,
         deltaX: deltaX,
         deltaY: deltaY,
         lastX: posStartRef.current.x,
         lastY: posStartRef.current.y
     };
-    // Using setTimeout might help ensure the state update propagates *after* the mouseup event cycle
-    // but could potentially be removed if direct calls work reliably with Zustand.
-    setTimeout(() => onStop?.(e, data), 0);
 
+    // Call onStop callback
+    // Need to pass a generic or placeholder event if the original isn't suitable
+    onStop?.(e as DraggableEvent, data);
+
+    // Reset state
     setIsDragging(false);
     dragStartRef.current = null;
     posStartRef.current = null;
     document.body.style.userSelect = '';
-    document.body.style.cursor = ''; // Reset cursor
-  }, [isDragging, onStop]); // Removed posStartRef/dragStartRef deps
+    document.body.style.cursor = '';
+  }, [isDragging, onStop, position]); // Add position dependency for calculating final delta
 
+
+  // --- Attach/Detach Event Listeners ---
   useEffect(() => {
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp, { once: true }); // Use once for mouseup
+      // Use window listeners for broader capture area
+      window.addEventListener('mousemove', handleDragMove, { passive: false });
+      window.addEventListener('mouseup', handleDragEnd);
+      window.addEventListener('touchmove', handleDragMove, { passive: false }); // passive: false to allow preventDefault
+      window.addEventListener('touchend', handleDragEnd);
+      window.addEventListener('touchcancel', handleDragEnd); // Handle cancellation
     } else {
-        // Ensure removal happens cleanly
-       window.removeEventListener('mousemove', handleMouseMove);
-       window.removeEventListener('mouseup', handleMouseUp);
-       // Reset styles just in case mouseup didn't fire correctly
+       window.removeEventListener('mousemove', handleDragMove);
+       window.removeEventListener('mouseup', handleDragEnd);
+       window.removeEventListener('touchmove', handleDragMove);
+       window.removeEventListener('touchend', handleDragEnd);
+       window.removeEventListener('touchcancel', handleDragEnd);
+       // Reset styles just in case end didn't fire correctly
        document.body.style.userSelect = '';
        document.body.style.cursor = '';
     }
     // Cleanup function
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleDragMove);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchmove', handleDragMove);
+      window.removeEventListener('touchend', handleDragEnd);
+      window.removeEventListener('touchcancel', handleDragEnd);
       // Ensure styles are reset on unmount if dragging
       if (isDragging) {
-           document.body.style.userSelect = '';
-           document.body.style.cursor = '';
+         document.body.style.userSelect = '';
+         document.body.style.cursor = '';
       }
     };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isDragging, handleDragMove, handleDragEnd]); // Add handlers to dependency array
 
+  // Use useMemo for transform style to avoid recalculation on every render
+  const transformStyle = useMemo(() => ({
+    transform: `translate(${position.x}px, ${position.y}px)`,
+    position: 'absolute' as 'absolute',
+    left: 0,
+    top: 0,
+    cursor: isDragging ? 'grabbing' : (handleClassName ? 'grab' : 'default')
+    // Apply grab cursor only if a handle is defined or if dragging
+  }), [position, isDragging, handleClassName]);
 
   return (
     <div
       ref={wrapperRef}
-      style={{
-          position: 'absolute',
-          left: position.x,
-          top: position.y,
-          cursor: isDragging ? 'grabbing' : (handleClassName ? 'default' : 'grab'), // Grab cursor if draggable
-          zIndex: isDragging ? 1000 : 50 // Ensure draggable is above others
-        }}
-      onMouseDown={handleMouseDown}
+      style={transformStyle}
+      onMouseDown={handleDragStart} // Attach unified handler
+      onTouchStart={handleDragStart} // Attach unified handler
     >
-      {/* Apply grab cursor specifically to handle if it exists */}
-      {handleClassName && (
-          <style jsx global>{`
-            .${handleClassName} {
-              cursor: ${isDragging ? 'grabbing' : 'grab'} !important;
-            }
-          `}</style>
-      )}
       {children}
     </div>
   );
