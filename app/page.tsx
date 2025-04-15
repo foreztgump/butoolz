@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import { Calculator, Clock, Flame, Shield, Sparkles, Award, Coffee, Map, Puzzle } from "lucide-react"
+import SupporterList from "@/components/SupporterList"
 
 export default function Home() {
   return (
@@ -140,11 +141,16 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="py-4">
-        <Card className="border-dashed bg-zinc-900/30">
-          <CardContent className="pt-4">
+      {/* Combined Supporters and Special Thanks Section */}
+      <section className="py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Supporter List Card (will be updated next) */}
+        <SupporterList />
+
+        {/* Special Thanks Card */}
+        <Card className="border-dashed bg-zinc-900/30 h-full"> {/* Add h-full for consistent height */}
+          <CardContent className="pt-4 flex flex-col justify-center h-full"> {/* Center content vertically */}
             <div className="text-center space-y-3">
-              <h2 className="text-lg font-medium flex items-center justify-center">
+              <h2 className="text-lg font-medium flex items-center justify-center text-zinc-200"> {/* Match text color */}
                 <Award className="h-5 w-5 mr-2 text-yellow-400" />
                 Special Thanks
               </h2>

@@ -24,6 +24,9 @@ RUN npm prune --production
 FROM node:20-alpine AS runner
 WORKDIR /app
 
+# Add pm2 globally
+RUN npm install -g pm2
+
 ENV NODE_ENV=production
 # Uncomment the following line in case you want to disable telemetry during runtime.
 # ENV NEXT_TELEMETRY_DISABLED 1
@@ -41,12 +44,20 @@ COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/next.config.ts ./next.config.ts
 
+# Copy the ecosystem config and scripts
+COPY --chown=nextjs:nodejs ecosystem.config.cjs ./
+COPY --chown=nextjs:nodejs scripts ./scripts
+
 USER nextjs
 
 EXPOSE 4001
 
 ENV PORT=4001
 
-# server.js is created by next build from the standalone output
-# https://nextjs.org/docs/pages/api-reference/next-config-js/output
-CMD ["node", "server.js"] 
+# Use pm2-runtime to start processes defined in ecosystem.config.cjs
+CMD ["pm2-runtime", "ecosystem.config.cjs"]
+
+# PREVIOUS CMD:
+# # server.js is created by next build from the standalone output
+# # https://nextjs.org/docs/pages/api-reference/next-config-js/output
+# CMD ["node", "server.js"] 

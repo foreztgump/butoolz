@@ -116,7 +116,7 @@ export default function DonatePage() {
               <li>
                 Domain name (yes, I have to pay yearly just to use "butools")
               </li>
-              <li>Coffee Beer (coding fuel isn't free)</li>
+              <li><span className="line-through">Coffee</span> Beer (coding fuel isn't free)</li>
               <li>My sanity (priceless, but donations help)</li>
             </ul>
             <div className="p-4 bg-primary/5 rounded-lg border border-primary/10 text-sm">
