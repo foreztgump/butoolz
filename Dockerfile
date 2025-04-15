@@ -14,22 +14,18 @@ COPY --from=deps /app/node_modules ./node_modules
 # Set environment variables if needed (e.g., NEXT_PUBLIC_API_URL)
 # ENV NEXT_PUBLIC_API_URL=your_api_url
 
-# Copy source code needed for build first (e.g., package.json, tsconfig, next.config, src/app/components etc.)
-# Minimal copy example, adjust based on what `npm run build` actually needs
-COPY package.json ./package.json
+# Copy essential config files first
+COPY package.json ./package.json # Need this for npm run build
 COPY next.config.ts ./next.config.ts
 COPY tsconfig.json ./tsconfig.json
 COPY tailwind.config.ts ./tailwind.config.ts
 COPY postcss.config.mjs ./postcss.config.mjs
-COPY components ./components
-COPY lib ./lib
-COPY app ./app
-COPY public ./public # Often needed for build process too
+# Add any other root config files needed for the build
+
+# Copy the rest of the source code
+COPY . .
 
 RUN npm run build
-
-# Now copy the rest of the source code (including scripts) AFTER the build
-COPY . .
 
 # Prune development dependencies
 RUN npm prune --production
