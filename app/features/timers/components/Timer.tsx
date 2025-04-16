@@ -493,11 +493,19 @@ const Timer: React.FC<TimerProps> = React.memo(({
           }
 
           if (newTimeLeft <= 0) {
-              const playFinalSound = preset.completionTime !== undefined && preset.completionTime === 0 && !soundPlayedThisTick && !isMuted && isAudioReady;
+              // Play final sound ONLY if completionTime > 0 AND sound for second 0 wasn't already played by countdown logic
+              const playFinalSound = preset.completionTime !== undefined 
+                                  && preset.completionTime > 0 
+                                  && !soundPlayedForSecondRef.current.has(0) 
+                                  && !isMuted 
+                                  && isAudioReady;
+                                  
               if (playFinalSound) {
                     let finalSoundToPlay: string | null = null;
+                    // Determine sound based on mode (only needed if completionTime > 0 now)
                     if (localAudioMode === 'voice' && preset.completionSound) finalSoundToPlay = preset.completionSound;
-                    else if (localAudioMode === 'beep') finalSoundToPlay = 'beep-long';
+                    else if (localAudioMode === 'beep') finalSoundToPlay = 'beep-long'; // Assuming beep mode uses beep-long for completion > 0
+                    
                     if(finalSoundToPlay) playSound(finalSoundToPlay);
               }
 
