@@ -47,7 +47,7 @@ export default function TimersPage() {
             className="border border-[#7F00FF] bg-[#000000] text-primary-foreground transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] cursor-pointer"
           >
             <a
-              href="https://github.com/foreztgump/butools-timer-desktop/releases/download/v1.1.0/BuTools-Timer.Setup.1.1.0.exe"
+              href="https://github.com/foreztgump/butools-timer-desktop/releases/download/v1.1.1/BuTools-Timer.Setup.1.1.1.exe"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -69,6 +69,7 @@ export default function TimersPage() {
             </a>
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground mt-1 mb-3">Current Release: BuTools-Timer v1.1.1 (4/16/25)</p>
         <ul className="list-disc list-outside pl-5 space-y-1.5 text-sm">
           <li><strong>Launcher:</strong> Open the app to see the main control window.</li>
           <li><strong>Add Timer:</strong> Click `(+) Add Timer` {'->'} Choose a preset (e.g., Backflow) to open its timer window.</li>
