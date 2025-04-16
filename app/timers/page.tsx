@@ -47,7 +47,7 @@ export default function TimersPage() {
             className="border border-[#7F00FF] bg-[#000000] text-primary-foreground transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] cursor-pointer"
           >
             <a
-              href="https://github.com/foreztgump/butools-timer-desktop/releases/download/v1.0.0/BuTools-Timer.Setup.1.0.0.exe"
+              href="https://github.com/foreztgump/butools-timer-desktop/releases/download/v1.1.0/BuTools-Timer.Setup.1.1.0.exe"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -75,6 +75,7 @@ export default function TimersPage() {
           <li><strong>Control Timer Window:</strong> Use Play/Pause/Reset buttons. Manage audio (mute, volume, sound type). Border changes color near end. Close with 'X'. Drag top bar to move, resize from corners (position saved per preset).</li>
           <li><strong>Manage in Launcher:</strong> View active timers. Click 'Focus' to bring a timer forward or 'X' to close it. Use global audio controls for all timers.</li>
           <li><strong>Shortcuts (Cmd/Ctrl + Shift + Key):</strong> `B` Backflow, `F` Fire, `L` Lightning, `R` Reflect, `S` Fuse Storm.</li>
+          <li><strong>Shortcuts (Timer Control):</strong> Cycle timers with `Ctrl+Shift+Left/Right`. Start focused timer with `Ctrl+Shift+Up`. Pause focused timer with `Ctrl+Shift+Down`. Reset focused timer with `Ctrl+Shift+End`.</li>
           <li><strong>Help/Support:</strong> Use the FAQ and Donate buttons in the Launcher.</li>
         </ul>
       </div>
