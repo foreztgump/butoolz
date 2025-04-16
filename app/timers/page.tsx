@@ -29,6 +29,56 @@ export default function TimersPage() {
         Add timers for game mechanics. Drag to move, resize from the bottom-right corner. Audio alerts included.
       </p>
 
+      {/* Tip Section */}
+      <div className="mb-6 p-3 border border-dashed rounded-md bg-accent/50 text-accent-foreground">
+        <p className="text-sm italic">
+          <strong>Tip:</strong> Don't have a second monitor? Open this web page on your phone! The web timers work great on mobile OR use the desktop app on your main screen over the game.
+        </p>
+      </div>
+
+      {/* How to Use Section */}
+      <div className="mb-6 p-4 border rounded-md bg-card text-card-foreground">
+        <h2 className="text-lg font-semibold mb-2">How to Use BuTools-Timer (Desktop Version)</h2>
+        <div className="flex flex-wrap gap-3 mb-4">
+          <Button
+            asChild
+            variant="default"
+            size="sm"
+            className="border border-[#7F00FF] bg-[#000000] text-primary-foreground transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] cursor-pointer"
+          >
+            <a
+              href="https://github.com/foreztgump/butools-timer-desktop/releases/download/v1.0.0/BuTools-Timer.Setup.1.0.0.exe"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Download Desktop App (Windows)
+            </a>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="border border-input bg-background text-foreground transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] cursor-pointer"
+          >
+            <a
+              href="https://github.com/foreztgump/butools-timer-desktop"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View Source Code
+            </a>
+          </Button>
+        </div>
+        <ul className="list-disc list-outside pl-5 space-y-1.5 text-sm">
+          <li><strong>Launcher:</strong> Open the app to see the main control window.</li>
+          <li><strong>Add Timer:</strong> Click `(+) Add Timer` {'->'} Choose a preset (e.g., Backflow) to open its timer window.</li>
+          <li><strong>Control Timer Window:</strong> Use Play/Pause/Reset buttons. Manage audio (mute, volume, sound type). Border changes color near end. Close with 'X'. Drag top bar to move, resize from corners (position saved per preset).</li>
+          <li><strong>Manage in Launcher:</strong> View active timers. Click 'Focus' to bring a timer forward or 'X' to close it. Use global audio controls for all timers.</li>
+          <li><strong>Shortcuts (Cmd/Ctrl + Shift + Key):</strong> `B` Backflow, `F` Fire, `L` Lightning, `R` Reflect, `S` Fuse Storm.</li>
+          <li><strong>Help/Support:</strong> Use the FAQ and Donate buttons in the Launcher.</li>
+        </ul>
+      </div>
+
       {/* Buttons to add timers based on presets */}
       <div className="mb-6 flex flex-wrap gap-2">
         {timerPresets.map((preset: TimerPreset) => (
