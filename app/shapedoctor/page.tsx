@@ -33,7 +33,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // --- Constants & Config ---
-const TOTAL_TILES = 24;
+const TOTAL_TILES = 44;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 5;
 const ZOOM_SENSITIVITY = 0.001;
@@ -60,96 +60,109 @@ const HEX_SIZE = 30;
 const HEX_HEIGHT = Math.sqrt(3) * HEX_SIZE;
 const HEX_WIDTH = 2 * HEX_SIZE;
 
+// Updated with 69 unique shapes generated for the 44-tile grid
 const PREDEFINED_SHAPES = [
-  "111010000000000000000000",
-  "110100100000000000000000",
-  "110100001000000000000000",
-  "110010100000000000000000",
-  "110010010000000000000000",
-  "110010000100000000000000",
-  "110000101000000000000000",
-  "110000100100000000000000",
-  "110000100001000000000000",
-  "101011000000000000000000",
-  "101010010000000000000000",
-  "101001010000000000000000",
-  "101001000010000000000000",
-  "101000010100000000000000",
-  "101000010010000000000000",
-  "101000010000100000000000",
-  "100110100000000000000000",
-  "100011010000000000000000",
-  "100010101000000000000000",
-  "100010100100000000000000",
-  "100010100001000000000000",
-  "100010010100000000000000",
-  "100010010010000000000000",
-  "100010010000100000000000",
-  "100010000101000000000000",
-  "100010000100100000000000",
-  "100010000100001000000000",
-  "011011000000000000000000",
-  "011010100000000000000000",
-  "011010010000000000000000",
-  "010011010000000000000000",
-  "010010010010000000000000",
-  "001110100000000000000000",
-  "001010101000000000000000",
+    '11101000000000000000000000000000000000000000',
+    '11010010000000000000000000000000000000000000',
+    '11010001000000000000000000000000000000000000',
+    '11010000001000000000000000000000000000000000',
+    '11001001000000000000000000000000000000000000',
+    '11001000100000000000000000000000000000000000',
+    '11001000000100000000000000000000000000000000',
+    '11000001001000000000000000000000000000000000',
+    '11000001000100000000000000000000000000000000',
+    '11000001000000100000000000000000000000000000',
+    '10101001000000000000000000000000000000000000',
+    '10101000100000000000000000000000000000000000',
+    '10101000000100000000000000000000000000000000',
+    '10100100100000000000000000000000000000000000',
+    '10100100010000000000000000000000000000000000',
+    '10100100000010000000000000000000000000000000',
+    '10100000100100000000000000000000000000000000',
+    '10100000100010000000000000000000000000000000',
+    '10100000100000010000000000000000000000000000',
+    '10011001000000000000000000000000000000000000',
+    '10001100100000000000000000000000000000000000',
+    '10001001001000000000000000000000000000000000',
+    '10001001000100000000000000000000000000000000',
+    '10001001000000100000000000000000000000000000',
+    '10001000100100000000000000000000000000000000',
+    '10001000100010000000000000000000000000000000',
+    '10001000100000010000000000000000000000000000',
+    '10001000000100100000000000000000000000000000',
+    '10001000000100010000000000000000000000000000',
+    '10001000000100000010000000000000000000000000',
+    '01101100000000000000000000000000000000000000',
+    '01101000100000000000000000000000000000000000',
+    '01010011000000000000000000000000000000000000',
+    '01001100100000000000000000000000000000000000',
+    '00111001000000000000000000000000000000000000',
+    '00000011001001000000000000000000000000000000',
 ];
 
+// Updated based on the 44-tile image layout - CORRECTED
 const HEX_GRID_COORDS = [
-  { id: 1, q: 0, r: 0 },
-  { id: 2, q: -1, r: 0 },
-  { id: 3, q: 1, r: -1 },
-  { id: 4, q: -2, r: 0 },
-  { id: 5, q: 0, r: -1 },
-  { id: 6, q: 2, r: -2 },
-  { id: 7, q: -1, r: -1 },
-  { id: 8, q: 1, r: -2 },
-  { id: 9, q: -2, r: -1 },
-  { id: 10, q: 0, r: -2 },
-  { id: 11, q: 2, r: -3 },
-  { id: 12, q: -1, r: -2 },
-  { id: 13, q: 1, r: -3 },
-  { id: 14, q: -2, r: -2 },
-  { id: 15, q: 0, r: -3 },
-  { id: 16, q: 2, r: -4 },
-  { id: 17, q: -1, r: -3 },
-  { id: 18, q: 1, r: -4 },
-  { id: 19, q: -2, r: -3 },
-  { id: 20, q: 0, r: -4 },
-  { id: 21, q: 2, r: -5 },
-  { id: 22, q: -1, r: -4 },
-  { id: 23, q: 1, r: -5 },
-  { id: 24, q: 0, r: -5 },
+    { id: 1, q: 0, r: -3 },
+    { id: 2, q: -1, r: -2 }, { id: 3, q: 1, r: -3 },
+    { id: 4, q: -2, r: -1 }, { id: 5, q: 0, r: -2 }, { id: 6, q: 2, r: -3 },
+    { id: 7, q: -3, r: 0 },  { id: 8, q: -1, r: -1 }, { id: 9, q: 1, r: -2 }, { id: 10, q: 3, r: -3 },
+    { id: 11, q: -2, r: 0 }, { id: 12, q: 0, r: -1 }, { id: 13, q: 2, r: -2 }, { id: 17, q: 3, r: -2 },
+    { id: 14, q: -3, r: 1 }, { id: 15, q: -1, r: 0 }, { id: 16, q: 1, r: -1 }, { id: 20, q: 2, r: -1 }, { id: 24, q: 3, r: -1 },
+    { id: 18, q: -2, r: 1 }, { id: 19, q: 0, r: 0 }, { id: 22, q: -1, r: 1 }, { id: 23, q: 1, r: 0 }, { id: 27, q: 2, r: 0 }, { id: 31, q: 3, r: 0 },
+    { id: 21, q: -3, r: 2 }, { id: 25, q: -2, r: 2 }, { id: 26, q: 0, r: 1 }, { id: 29, q: -1, r: 2 }, { id: 30, q: 1, r: 1 }, { id: 34, q: 2, r: 1 }, { id: 38, q: 3, r: 1 },
+    { id: 28, q: -3, r: 3 }, { id: 32, q: -2, r: 3 }, { id: 33, q: 0, r: 2 }, { id: 36, q: -1, r: 3 }, { id: 37, q: 1, r: 2 }, { id: 41, q: 2, r: 2 },
+    { id: 35, q: -3, r: 4 }, { id: 39, q: -2, r: 4 }, { id: 40, q: 0, r: 3 }, { id: 42, q: -1, r: 4 }, { id: 43, q: 1, r: 3 }, { id: 44, q: 0, r: 4 }
 ];
+
+// IMPORTANT: The solver worker (solver.worker.ts) likely needs this updated list too!
 const ADJACENT_LIST = [
-  [0, 0, 0, 0, 0, 0],
-  [0, 0, 2, 5, 3, 0],
-  [0, 0, 4, 7, 5, 1],
-  [0, 1, 5, 8, 6, 0],
-  [0, 0, 0, 9, 7, 2],
-  [1, 2, 7, 10, 8, 3],
-  [0, 3, 8, 11, 0, 0],
-  [2, 4, 9, 12, 10, 5],
-  [3, 5, 10, 13, 11, 6],
-  [4, 0, 0, 14, 12, 7],
-  [5, 7, 12, 15, 13, 8],
-  [6, 8, 13, 16, 0, 0],
-  [7, 9, 14, 17, 15, 10],
-  [8, 10, 15, 18, 16, 11],
-  [9, 0, 0, 19, 17, 12],
-  [10, 12, 17, 20, 18, 13],
-  [11, 13, 18, 21, 0, 0],
-  [12, 14, 19, 22, 20, 15],
-  [13, 15, 20, 23, 21, 16],
-  [14, 0, 0, 0, 22, 17],
-  [15, 17, 22, 24, 23, 18],
-  [16, 18, 23, 0, 0, 0],
-  [17, 19, 0, 0, 24, 20],
-  [18, 20, 24, 0, 0, 21],
-  [20, 22, 0, 0, 0, 23],
+    [0, 0, 0, 0, 0, 0],
+    [3, 0, 0, 2, 5, 0], // 1
+    [5, 1, 0, 0, 8, 4], // 2
+    [6, 0, 1, 5, 9, 0], // 3
+    [8, 2, 0, 0, 11, 7], // 4
+    [9, 3, 2, 8, 12, 0], // 5
+    [10, 0, 3, 9, 13, 0], // 6
+    [11, 4, 0, 0, 14, 0], // 7
+    [12, 5, 4, 11, 15, 0], // 8
+    [13, 6, 5, 12, 16, 0], // 9
+    [17, 0, 6, 13, 0, 0], // 10
+    [15, 8, 7, 0, 18, 14], // 11
+    [16, 9, 8, 15, 19, 0], // 12
+    [17, 10, 9, 16, 20, 0], // 13
+    [18, 11, 0, 0, 21, 7], // 14
+    [19, 12, 11, 18, 22, 0], // 15
+    [20, 13, 12, 19, 23, 0], // 16
+    [24, 0, 13, 20, 0, 10], // 17
+    [22, 15, 14, 21, 25, 0], // 18
+    [23, 16, 15, 22, 26, 0], // 19
+    [27, 17, 16, 23, 24, 0], // 20
+    [25, 18, 0, 0, 28, 14], // 21
+    [26, 19, 18, 25, 29, 0], // 22
+    [27, 20, 19, 26, 30, 0], // 23
+    [31, 0, 20, 27, 0, 17], // 24
+    [29, 22, 21, 28, 32, 0], // 25
+    [30, 23, 22, 29, 33, 0], // 26
+    [34, 24, 23, 30, 31, 0], // 27
+    [32, 25, 0, 0, 35, 21], // 28
+    [33, 26, 25, 32, 36, 0], // 29
+    [34, 27, 26, 33, 37, 0], // 30
+    [38, 0, 27, 34, 0, 24], // 31
+    [36, 29, 28, 35, 39, 0], // 32
+    [37, 30, 29, 36, 40, 0], // 33
+    [41, 31, 30, 37, 38, 0], // 34
+    [39, 32, 0, 0, 0, 28], // 35
+    [40, 33, 32, 39, 42, 0], // 36
+    [41, 34, 33, 40, 43, 0], // 37
+    [0, 0, 34, 41, 0, 31], // 38
+    [42, 36, 35, 0, 0, 0], // 39
+    [43, 37, 36, 42, 44, 0], // 40
+    [0, 38, 37, 43, 0, 0], // 41
+    [44, 40, 39, 0, 0, 0], // 42
+    [0, 41, 40, 44, 0, 0], // 43
+    [0, 43, 42, 0, 0, 0], // 44
 ];
+
 interface Point {
   x: number;
   y: number;
@@ -744,112 +757,130 @@ export default function ShapeDoctor() {
     setSelectedTiles,
   ]); // Dependencies seem correct
 
-  const handleSolve = useCallback(() => {
-    if (potentials.length === 0) {
-      toast.error("Save or add at least one potential shape first.", {
-        duration: 3000,
-      });
-      return;
-    }
-    // Ensure all saved potentials are valid 4-tile shapes before solving
-    const invalidPotential = potentials.find(
-      (p) => Array.from(p).filter((c) => c === "1").length !== 4
-    );
-    if (invalidPotential) {
-      toast.error(
-        "Solver currently only works with 4-tile potential shapes. Please remove shapes that are not size 4.",
-        { duration: 6000 }
+  const handleSolve = useCallback(
+    (testPotentials?: string[]) => { // Allow optional test potentials
+      const potentialsToSolve = testPotentials || potentials; // Use test potentials if provided
+      if (potentialsToSolve.length === 0) {
+        toast.error("Save or add at least one potential shape first.", {
+          duration: 3000,
+        });
+        return;
+      }
+      // Ensure all saved potentials are valid 4-tile shapes before solving
+      const invalidPotential = potentialsToSolve.find(
+        (p) => Array.from(p).filter((c) => c === "1").length !== 4
       );
-      return;
-    }
-
-    solverWorkerRef.current?.terminate(); // Terminate previous worker if any
-    setIsSolving(true);
-    setBestSolutions([]);
-    setCurrentSolutionIndex(-1);
-    setSelectedTiles(new Set()); // Clear selection when solving starts
-    setGridState(Array(TOTAL_TILES + 1).fill(-1)); // Reset grid visually
-    setSolveProgress(0);
-    toast.info("Solving in background...", {
-      id: "solving-toast",
-      duration: 10000,
-    }); // Longer duration maybe
-
-    // Initialize worker
-    // Use new URL() syntax for proper module worker handling in Next.js/Webpack
-    solverWorkerRef.current = new Worker(
-      new URL("./solver.worker.ts", import.meta.url)
-    );
-
-    solverWorkerRef.current.onmessage = (event: MessageEvent) => {
-      const {
-        type,
-        bestSolutions: coloredBestSolutions,
-        message,
-        count,
-        searchedCount,
-      } = event.data;
-      if (type === "result") {
-        console.log(
-          `[Main] Worker finished. Searched: ${searchedCount}. Found ${
-            coloredBestSolutions?.length || 0
-          } best.`
+      if (invalidPotential) {
+        toast.error(
+          "Solver currently only works with 4-tile potential shapes. Please remove/replace shapes that are not size 4.",
+          { duration: 6000 }
         );
-        setBestSolutions(coloredBestSolutions || []);
-        setIsSolving(false);
-        setSolveProgress(0);
-        toast.dismiss("solving-toast");
-        if (coloredBestSolutions && coloredBestSolutions.length > 0) {
-          setCurrentSolutionIndex(0); // Show the first solution
-          toast.success(
-            `Found ${coloredBestSolutions.length} best solution(s).`,
+        return;
+      }
+
+      solverWorkerRef.current?.terminate(); // Terminate previous worker if any
+      setIsSolving(true);
+      setBestSolutions([]);
+      setCurrentSolutionIndex(-1);
+      setSelectedTiles(new Set()); // Clear selection when solving starts
+      setGridState(Array(TOTAL_TILES + 1).fill(-1)); // Reset grid visually
+      setSolveProgress(0);
+      const solveStartTime = performance.now(); // --- Record start time ---
+      const numPotentialsForRun = potentialsToSolve.length; // --- Store number of potentials ---
+
+      toast.info(`Solving with ${numPotentialsForRun} potentials...`, {
+        id: "solving-toast",
+        duration: 10000,
+      }); // Longer duration maybe
+
+      // Initialize worker
+      // Use new URL() syntax for proper module worker handling in Next.js/Webpack
+      solverWorkerRef.current = new Worker(
+        new URL("./solver.worker.ts", import.meta.url)
+      );
+
+      solverWorkerRef.current.onmessage = (event: MessageEvent) => {
+        const {
+          type,
+          bestSolutions: coloredBestSolutions,
+          message,
+          count,
+          searchedCount,
+        } = event.data;
+        if (type === "result") {
+          const solveEndTime = performance.now(); // --- Record end time ---
+          const duration = solveEndTime - solveStartTime; // --- Calculate duration ---
+          console.log(
+            `[Main] Worker finished. Potentials: ${numPotentialsForRun}. Duration: ${duration.toFixed(
+              2
+            )}ms. Searched: ${searchedCount}. Found ${
+              coloredBestSolutions?.length || 0
+            } best.`
+          );
+          // --- Log result ---
+          toast.info(
+            `Solved ${numPotentialsForRun} potentials in ${duration.toFixed(0)}ms`,
             { duration: 5000 }
           );
-        } else {
-          toast.warning(
-            "No valid placement found for the given potential(s).",
-            { duration: 5000 }
-          );
+
+          setBestSolutions(coloredBestSolutions || []);
+          setIsSolving(false);
+          setSolveProgress(0);
+          toast.dismiss("solving-toast");
+          if (coloredBestSolutions && coloredBestSolutions.length > 0) {
+            setCurrentSolutionIndex(0); // Show the first solution
+            toast.success(
+              `Found ${coloredBestSolutions.length} best solution(s).`,
+              { duration: 5000 }
+            );
+          } else {
+            toast.warning(
+              "No valid placement found for the given potential(s).",
+              { duration: 5000 }
+            );
+          }
+          solverWorkerRef.current?.terminate(); // Terminate after use
+          solverWorkerRef.current = null;
+        } else if (type === "error") {
+          console.error("[Main] Worker error:", message);
+          setIsSolving(false);
+          setSolveProgress(0);
+          toast.dismiss("solving-toast");
+          toast.error(`Solver error: ${message}`, { duration: 6000 });
+          solverWorkerRef.current?.terminate();
+          solverWorkerRef.current = null;
+        } else if (type === "progress") {
+          setSolveProgress(count); // Update progress
         }
-        solverWorkerRef.current?.terminate(); // Terminate after use
-        solverWorkerRef.current = null;
-      } else if (type === "error") {
-        console.error("[Main] Worker error:", message);
+      };
+      solverWorkerRef.current.onerror = (error) => {
+        console.error("[Main] Worker onerror:", error);
         setIsSolving(false);
         setSolveProgress(0);
         toast.dismiss("solving-toast");
-        toast.error(`Solver error: ${message}`, { duration: 6000 });
+        toast.error(`Worker error: ${error.message}`, { duration: 6000 });
         solverWorkerRef.current?.terminate();
         solverWorkerRef.current = null;
-      } else if (type === "progress") {
-        setSolveProgress(count); // Update progress
-      }
-    };
-    solverWorkerRef.current.onerror = (error) => {
-      console.error("[Main] Worker onerror:", error);
-      setIsSolving(false);
-      setSolveProgress(0);
-      toast.dismiss("solving-toast");
-      toast.error(`Worker error: ${error.message}`, { duration: 6000 });
-      solverWorkerRef.current?.terminate();
-      solverWorkerRef.current = null;
-    };
-    // Post message *after* setting up handlers
-    solverWorkerRef.current.postMessage({ potentials });
-  }, [
-    potentials,
-    setIsSolving,
-    setBestSolutions,
-    setCurrentSolutionIndex,
-    setSelectedTiles,
-    setGridState,
-    setSolveProgress,
-  ]); // Dependencies seem correct
+      };
+      // Post message *after* setting up handlers
+      solverWorkerRef.current.postMessage({ potentials: potentialsToSolve }); // Use potentialsToSolve
+    },
+    [
+      potentials, // Keep original potentials dependency
+      setIsSolving,
+      setBestSolutions,
+      setCurrentSolutionIndex,
+      setSelectedTiles,
+      setGridState,
+      setSolveProgress,
+    ]
+  ); // Dependencies seem correct
 
   useEffect(() => {
     // Effect to update grid when solution changes
     if (currentSolutionIndex !== -1 && bestSolutions[currentSolutionIndex]) {
-      setGridState(bestSolutions[currentSolutionIndex]);
+      const solutionToApply = bestSolutions[currentSolutionIndex];
+      setGridState(solutionToApply);
     } else {
       // Ensure grid resets if we go back to edit mode or have no solutions
       setGridState(Array(TOTAL_TILES + 1).fill(-1));
@@ -1013,7 +1044,7 @@ export default function ShapeDoctor() {
 
       const centerQ = (minQ + maxQ) / 2;
       const centerR = (minR + maxR) / 2;
-      const previewHexSize = 8;
+      const previewHexSize = 8; // Base size
       const previewLineWidth = 0.5;
 
       const previewDrawHexagon = (
@@ -1048,7 +1079,7 @@ export default function ShapeDoctor() {
           ctx.fillStyle = fillColor;
           ctx.fill();
           ctx.strokeStyle = strokeStyle;
-          ctx.lineWidth = previewLineWidth;
+          ctx.lineWidth = previewLineWidth; // Revert to fixed line width
           ctx.stroke();
         } catch (e) {
           console.error("Error drawing preview hex:", e);
@@ -1303,7 +1334,7 @@ export default function ShapeDoctor() {
                       variant="default"
                       size="sm"
                       className="bg-green-600 hover:bg-green-700 text-primary-foreground min-w-[90px] transition-colors cursor-pointer"
-                      onClick={handleSolve}
+                      onClick={() => handleSolve()}
                       disabled={isSolving || potentials.length === 0}
                     >
                       {isSolving ? (
@@ -1354,6 +1385,30 @@ export default function ShapeDoctor() {
                       )}
                   </div>
                   <div className="border-t border-border/50 pt-3">
+                      <h3 className="font-medium mb-2 text-card-foreground text-sm">Run Solver Profile</h3>
+                      <div className="flex flex-wrap gap-2">
+                          {[5, 10, 15, 25].map((num) => (
+                              <Button
+                                  key={`profile-${num}`}
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs"
+                                  onClick={() => {
+                                      const testSet = PREDEFINED_SHAPES.slice(0, num);
+                                      if (testSet.length < num) {
+                                          toast.error(`Not enough predefined shapes for ${num} test.`);
+                                      } else {
+                                          handleSolve(testSet); // Call handleSolve with the test set
+                                      }
+                                  }}
+                                  disabled={isSolving}
+                              >
+                                  Profile {num}
+                              </Button>
+                          ))}
+                      </div>
+                  </div>
+                  <div className="border-t border-border/50 pt-3">
                       <h3 className="font-medium mb-1 text-card-foreground text-sm">How to Use</h3>
                       <ol className="text-muted-foreground space-y-0.5 list-decimal pl-4 text-xs">
                           <li>Select up to 4 connected hexes OR browse "Predefined Shapes" tab.</li>
@@ -1380,27 +1435,27 @@ export default function ShapeDoctor() {
                  value="predefined"
                  className="flex-grow min-h-0 overflow-y-auto mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md p-3 bg-card border border-border scrollbar-thin scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent"
                >
-                  <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                  <div className="grid grid-cols-5 gap-2"> 
                      {isClient && PREDEFINED_SHAPES.map((shapeString, index) => (
                          <Button
                             key={`predefined-${index}`}
                             variant="outline"
                             size="icon"
-                            className="w-14 h-14 p-1 border-[hsl(var(--border)_/_0.5)] text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] focus-visible:ring-[hsl(var(--primary))] cursor-pointer"
+                            className="w-20 h-20 p-1 border-[hsl(var(--border)_/_0.5)] text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] focus-visible:ring-[hsl(var(--primary))] cursor-pointer"
                             onClick={() => handleAddPredefinedPotential(shapeString)}
                             disabled={isSolving}
                             aria-label={`Add predefined shape ${index + 1}`}
                         >
                             <canvas
                                 ref={(el) => setPredefinedCanvasRef(index, el)}
-                                width="48"
-                                height="48"
+                                width="72"
+                                height="72"
                                 className={`border-none rounded-sm ${PREVIEW_BG}`}
                             />
                         </Button>
                      ))}
                       {!isClient && Array.from({ length: 12 }).map((_, i) => (
-                         <div key={`skel-predefined-${i}`} className="w-14 h-14 bg-muted/50 rounded animate-pulse"></div>
+                         <div key={`skel-predefined-${i}`} className="w-20 h-20 bg-muted/50 rounded animate-pulse"></div>
                      ))}
                  </div>
                </TabsContent>
