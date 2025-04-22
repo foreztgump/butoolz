@@ -237,4 +237,12 @@ export const drawPreviewGrid = (
   });
 
   ctx.restore();
+};
+
+export const tileSetToShapeString = (tileSet: Set<number>): string => {
+  let shapeString = "";
+  for (let i = 1; i <= Config.TOTAL_TILES; i++) {
+    shapeString += tileSet.has(i) ? "1" : "0";
+  }
+  return shapeString;
 }; 

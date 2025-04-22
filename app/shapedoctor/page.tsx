@@ -23,7 +23,30 @@ import ControlPanel from "./components/ControlPanel";
 import StatusPanel from "./components/StatusPanel";
 import ResultsTabs from "./components/ResultsTabs";
 
+// Import workerpool
+import workerpool from 'workerpool';
+
+// Import QOper8 and define types
+// import { QOper8 } from 'qoper8-ww';
+// import { type SolverResultPayload } from './solver.worker';
+
+// Remove old QOper8 types
+/*
+type QOper8TaskMessage = {
+    type: string;
+    data: any;
+    id?: string | number;
+};
+type QOper8Response = {
+  finished: boolean;
+  results: any; 
+} | undefined;
+*/
+
 const isSafeNumber = HexUtils.isSafeNumber;
+
+// Remove Poolifier ref
+// const poolManagerRef = useRef<SolverPool | null>(null);
 
 export default function ShapeDoctor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -35,7 +58,8 @@ export default function ShapeDoctor() {
   const hoveredHexIdRef = useRef<number | null>(null);
   const currentOffsetRef = useRef<Point>({ x: 0, y: 0 });
   const animationFrameIdRef = useRef<number | null>(null);
-  const solverWorkerRef = useRef<Worker | null>(null);
+  // Ref for workerpool instance - Use any temporarily
+  const workerPoolRef = useRef<any | null>(null); // Changed type to any
 
   const [selectedTiles, setSelectedTiles] = useState<Set<number>>(new Set());
   const [potentials, setPotentials] = useState<string[]>([]);
@@ -50,6 +74,46 @@ export default function ShapeDoctor() {
   const [dragStart, setDragStart] = useState<Point>({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const [solveProgress, setSolveProgress] = useState<number>(0);
+
+  // Add formattedProgress derivation
+  const formattedProgress = `${Math.round(solveProgress)}%`;
+
+  // Initialize workerpool Pool
+  useEffect(() => {
+    console.log('Initializing workerpool...');
+    if (typeof window !== 'undefined') {
+      const workerPath = '/workers/solver.worker.js';
+      const poolSize = navigator.hardwareConcurrency || 4;
+
+      try {
+        const pool = workerpool.pool(workerPath, { 
+          maxWorkers: poolSize,
+          workerType: 'web' 
+        });
+        workerPoolRef.current = pool;
+        console.log('Workerpool initialized:', pool);
+
+        toast.success("Solver pool ready.");
+
+      } catch (error) {
+        console.error("Failed to initialize workerpool:", error);
+        toast.error("Failed to initialize solver pool.");
+      }
+
+      return () => {
+          // Original cleanup:
+          if (workerPoolRef.current) {
+            console.log('Terminating workerpool...');
+            workerPoolRef.current.terminate()
+              .then(() => console.log('Workerpool terminated successfully.'))
+              .catch((err: any) => console.error('Error terminating workerpool:', err))
+              .finally(() => {
+                workerPoolRef.current = null;
+              });
+          }
+      };
+    }
+  }, []);
 
   // --- Coordinate Conversion & Drawing ---
   const drawMainCanvas = useCallback(() => {
@@ -88,6 +152,7 @@ export default function ShapeDoctor() {
     animationFrameIdRef.current = requestAnimationFrame(drawMainCanvas);
   }, [zoom, gridState, selectedTiles]);
 
+  // Revert back to useCallback
   const drawPotentialShapes = useCallback(() => {
     potentials.forEach((shape, index) => {
       const canvas = potentialCanvasRefs.current.get(index);
@@ -284,7 +349,6 @@ export default function ShapeDoctor() {
   useEffect(() => {
     setIsClient(true);
     return () => {
-      solverWorkerRef.current?.terminate();
       if (animationFrameIdRef.current)
         cancelAnimationFrame(animationFrameIdRef.current);
     };
@@ -640,124 +704,106 @@ export default function ShapeDoctor() {
     setSelectedTiles,
   ]); // Dependencies seem correct
 
-  const handleSolve = useCallback(
-    (testPotentials?: string[]) => { // Allow optional test potentials
-      const potentialsToSolve = testPotentials || potentials; // Use test potentials if provided
-      if (potentialsToSolve.length === 0) {
-        toast.error("Save or add at least one potential shape first.", {
-          duration: 3000,
-        });
-        return;
-      }
-      // Ensure all saved potentials are valid 4-tile shapes before solving
-      const invalidPotential = potentialsToSolve.find(
-        (p) => Array.from(p).filter((c) => c === "1").length !== 4
-      );
-      if (invalidPotential) {
-        toast.error(
-          "Solver currently only works with 4-tile potential shapes. Please remove/replace shapes that are not size 4.",
-          { duration: 6000 }
-        );
-        return;
-      }
+  // REVISED handleSolveClick to process saved potentials
+  const handleSolveClick = async () => {
+    // Check potentials array instead of selectedTiles
+    if (potentials.length === 0) {
+      toast.error("Please save potential shapes first.");
+      return;
+    }
 
-      solverWorkerRef.current?.terminate(); // Terminate previous worker if any
-      setIsSolving(true);
-      setBestSolutions([]);
-      setCurrentSolutionIndex(-1);
-      setSelectedTiles(new Set()); // Clear selection when solving starts
-      setGridState(Array(Config.TOTAL_TILES + 1).fill(-1)); // Reset grid visually
-      setSolveProgress(0);
-      const solveStartTime = performance.now(); // --- Record start time ---
-      const numPotentialsForRun = potentialsToSolve.length; // --- Store number of potentials ---
+    setIsSolving(true);
+    setSolveProgress(0);
+    setBestSolutions([]); // Clear previous solutions
+    setCurrentSolutionIndex(-1);
+    toast.info(`Starting solver for ${potentials.length} potential shapes...`);
 
-      toast.info(`Solving with ${numPotentialsForRun} potentials...`, {
-        id: "solving-toast",
-        duration: 10000,
-      }); // Longer duration maybe
+    const pool = workerPoolRef.current;
+    if (!pool) {
+      console.error("Workerpool not initialized.");
+      toast.error("Solver pool not ready. Please refresh.");
+      setIsSolving(false);
+      return;
+    }
 
-      // Initialize worker
-      // Use new URL() syntax for proper module worker handling in Next.js/Webpack
-      solverWorkerRef.current = new Worker(
-        new URL("./solver.worker.ts", import.meta.url)
-      );
+    try {
+      const totalTasks = potentials.length;
+      let completedTasks = 0;
 
-      solverWorkerRef.current.onmessage = (event: MessageEvent) => {
-        const {
-          type,
-          bestSolutions: coloredBestSolutions,
-          message,
-          count,
-          searchedCount,
-        } = event.data;
-        if (type === "result") {
-          const solveEndTime = performance.now(); // --- Record end time ---
-          const duration = solveEndTime - solveStartTime; // --- Calculate duration ---
-          console.log(
-            `[Main] Worker finished. Potentials: ${numPotentialsForRun}. Duration: ${duration.toFixed(
-              2
-            )}ms. Searched: ${searchedCount}. Found ${
-              coloredBestSolutions?.length || 0
-            } best.`
-          );
-          // --- Log result ---
-          toast.info(
-            `Solved ${numPotentialsForRun} potentials in ${duration.toFixed(0)}ms`,
-            { duration: 5000 }
-          );
+      const taskPromises = potentials.map((potentialString, index) => {
+        const taskData = { potentialShapeString: potentialString };
+        console.log(`Submitting task ${index + 1}/${totalTasks} to workerpool:`, taskData);
+        // Call the registered 'findPlacements' function
+        return pool.exec('findPlacements', [taskData]) 
+          .then((result: any) => { // TODO: Replace 'any' with SolverResultPayload type
+            completedTasks++;
+            setSolveProgress(Math.round((completedTasks / totalTasks) * 100));
+            // Note: 'result' should now match SolverResultPayload { solutions: string[], error?: string }
+            console.log(`Task ${index + 1}/${totalTasks} completed. Result:`, result);
+            // TODO: Adjust logic below to handle the new result structure (result.solutions)
+            return result;
+          })
+          .catch((error: any) => {
+            completedTasks++;
+            setSolveProgress(Math.round((completedTasks / totalTasks) * 100));
+            console.error(`Error solving potential ${index}:`, error);
+            toast.error(`Error processing shape ${index + 1}.`);
+            // Return a consistent null/error structure if needed
+            return { solutions: [], error: error.message || 'Worker execution failed' }; 
+          });
+      });
 
-          setBestSolutions(coloredBestSolutions || []);
-          setIsSolving(false);
-          setSolveProgress(0);
-          toast.dismiss("solving-toast");
-          if (coloredBestSolutions && coloredBestSolutions.length > 0) {
-            setCurrentSolutionIndex(0); // Show the first solution
-            toast.success(
-              `Found ${coloredBestSolutions.length} best solution(s).`,
-              { duration: 5000 }
-            );
-          } else {
-            toast.warning(
-              "No valid placement found for the given potential(s).",
-              { duration: 5000 }
-            );
-          }
-          solverWorkerRef.current?.terminate(); // Terminate after use
-          solverWorkerRef.current = null;
-        } else if (type === "error") {
-          console.error("[Main] Worker error:", message);
-          setIsSolving(false);
-          setSolveProgress(0);
-          toast.dismiss("solving-toast");
-          toast.error(`Solver error: ${message}`, { duration: 6000 });
-          solverWorkerRef.current?.terminate();
-          solverWorkerRef.current = null;
-        } else if (type === "progress") {
-          setSolveProgress(count); // Update progress
+      const allResults = await Promise.all(taskPromises);
+      console.log("All worker tasks finished. Raw results:", allResults);
+
+      // TODO: MAJOR REFACTOR NEEDED HERE
+      // The worker now returns { solutions: string[] }. 
+      // The page currently expects { bestSolutions: number[][] } (based on old logic).
+      // We need to adapt this aggregation logic.
+
+      const aggregatedSolutions: string[] = []; // Store string keys for now
+      allResults.forEach((result: any, index: number) => {
+        // Check for the new 'solutions' property
+        if (result && result.solutions && Array.isArray(result.solutions)) { 
+            if (result.error) {
+                 console.warn(`Task ${index + 1} completed with error: ${result.error}`);
+                 // Optionally toast.warn or handle specific errors
+            } else {
+                console.log(`Aggregating ${result.solutions.length} solution keys from potential ${index}`);
+                aggregatedSolutions.push(...result.solutions);
+            }
+        } else if (result && result.error) {
+            // Handle cases where the entire task failed (caught in .catch block)
+            console.error(`Task ${index + 1} failed entirely: ${result.error}`);
+        } else {
+            console.warn(`Unexpected result structure from task ${index + 1}:`, result);
         }
-      };
-      solverWorkerRef.current.onerror = (error) => {
-        console.error("[Main] Worker onerror:", error);
-        setIsSolving(false);
-        setSolveProgress(0);
-        toast.dismiss("solving-toast");
-        toast.error(`Worker error: ${error.message}`, { duration: 6000 });
-        solverWorkerRef.current?.terminate();
-        solverWorkerRef.current = null;
-      };
-      // Post message *after* setting up handlers
-      solverWorkerRef.current.postMessage({ potentials: potentialsToSolve }); // Use potentialsToSolve
-    },
-    [
-      potentials, // Keep original potentials dependency
-      setIsSolving,
-      setBestSolutions,
-      setCurrentSolutionIndex,
-      setSelectedTiles,
-      setGridState,
-      setSolveProgress,
-    ]
-  ); // Dependencies seem correct
+      });
+
+      // Now, `aggregatedSolutions` is string[]. We need number[][] for setBestSolutions.
+      // Convert string keys ("1,5,12") back to number arrays ([1, 5, 12])
+      const solutionsAsNumbers: number[][] = aggregatedSolutions.map(key => 
+        key.split(',').map(Number)
+      );
+
+      setBestSolutions(solutionsAsNumbers);
+      setCurrentSolutionIndex(solutionsAsNumbers.length > 0 ? 0 : -1);
+      setSolveProgress(100); // Ensure progress hits 100%
+
+      if (solutionsAsNumbers.length === 0) {
+        toast.info("Solving complete. No valid placements found for the saved potentials.");
+      } else {
+        toast.success(`Solving complete! Found ${solutionsAsNumbers.length} total placements.`);
+      }
+
+    } catch (error) {
+      console.error("Error during batch solve execution:", error);
+      toast.error("An error occurred during the solving process.");
+      setSolveProgress(100); // Still mark as complete for UI consistency
+    } finally {
+      setIsSolving(false);
+    }
+  };
 
   useEffect(() => {
     // Effect to update grid when solution changes
@@ -790,74 +836,17 @@ export default function ShapeDoctor() {
       "Editing mode activated."
     ); /* scheduleDraw(); // scheduleDraw called by useEffect reacting to state changes */
   }, [setSelectedTiles, setGridState, setCurrentSolutionIndex]); // Removed scheduleDraw, it's handled by useEffect
-  const handleReset = useCallback(() => {
+  const handleResetSelection = useCallback(() => {
     setSelectedTiles(new Set());
     setPotentials([]);
     setBestSolutions([]);
     setCurrentSolutionIndex(-1);
     setGridState(Array(Config.TOTAL_TILES + 1).fill(-1));
-    setIsSolving(false);
-    solverWorkerRef.current?.terminate();
-    solverWorkerRef.current = null;
     setSolveProgress(0);
-    let newOffset = { x: 0, y: 0 };
-    let newZoom = 1;
-    const canvas = canvasRef.current;
-    // Recalculate initial offset
-    if (canvas && containerRef.current) {
-      // Check containerRef too
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity;
-      Config.HEX_GRID_COORDS.forEach((hex) => {
-        const p = HexUtils.axialToPixel(hex.q, hex.r);
-        if (p) {
-          minX = Math.min(minX, p.x - Config.HEX_WIDTH / 2);
-          maxX = Math.max(maxX, p.x + Config.HEX_WIDTH / 2);
-          minY = Math.min(minY, p.y - Config.HEX_HEIGHT / 2);
-          maxY = Math.max(maxY, p.y + Config.HEX_HEIGHT / 2);
-        }
-      });
-      if (
-        isSafeNumber(minX) &&
-        maxX > minX &&
-        isSafeNumber(minY) &&
-        maxY > minY
-      ) {
-        const cX = minX + (maxX - minX) / 2;
-        const cY = minY + (maxY - minY) / 2;
-        const calculatedOffset = { x: -cX, y: -cY };
-        if (
-          isSafeNumber(calculatedOffset.x) &&
-          isSafeNumber(calculatedOffset.y)
-        )
-          newOffset = calculatedOffset;
-      }
-    }
-    currentOffsetRef.current = newOffset;
-    setZoom(newZoom); // Trigger redraw via useEffect
-    toast.success("Reset complete.");
-    // Clear previews manually (although state changes should handle this)
-    potentialCanvasRefs.current.forEach((c) => {
-      const ctx = c.getContext("2d");
-      if (ctx) ctx.clearRect(0, 0, c.width, c.height);
-    });
-    predefinedCanvasRefs.current.forEach((c) => {
-      const ctx = c.getContext("2d");
-      if (ctx) ctx.clearRect(0, 0, c.width, c.height);
-    });
-    // scheduleDraw(); // Let useEffect handle redraw based on state changes (zoom, gridState etc)
-  }, [
-    setZoom,
-    setSelectedTiles,
-    setPotentials,
-    setBestSolutions,
-    setCurrentSolutionIndex,
-    setGridState,
-    setIsSolving,
-    setSolveProgress,
-  ]); // Added setZoom
+    currentOffsetRef.current = { x: 0, y: 0 }; // Reset pan
+    setZoom(1); // Reset zoom
+    toast.info("Selection and results cleared.");
+  }, []);
 
   const handleDeletePotential = useCallback(
     (indexToDelete: number) => {
@@ -1051,103 +1040,94 @@ export default function ShapeDoctor() {
     [isSolving, setPotentials]
   ); // Dependencies are correct
 
-  // Format progress count
-  const formattedProgress = isSolving ? solveProgress.toLocaleString() : "0";
-
-  // --- UI Rendering ---
+  // --- UI Rendering - RESTORED STRUCTURE ---
   return (
-    <>
-      <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col min-h-screen">
-        {/* Header */}
-        <div className="mb-6 flex-shrink-0">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            Shape Doctor
-          </h1>
-          <p className="text-muted-foreground">
-            "Ain't nobody got time for that!"
-          </p>
-        </div>
+    // Outer container from old layout
+    <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col min-h-screen bg-background text-foreground">
+      {/* Header (Optional - Re-add if needed) */}
+      {/* <div className="mb-6 flex-shrink-0"> ... </div> */}
 
-        {/* Main Layout */}
-        <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
-          {/* Left Column: Canvas and Controls */}
-          <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
-            <Card className="flex flex-col flex-grow bg-card">
-              <CardHeader className="pb-3 flex-shrink-0">
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-lg flex items-center gap-2 text-card-foreground">
-                    <Puzzle className="h-5 w-5 text-violet-400" /> Puzzle Grid
-                  </CardTitle>
-                  <Button variant="outline" size="sm" className="text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive-foreground))] cursor-pointer" onClick={handleReset} disabled={isSolving}>
-                     <RefreshCw className="h-4 w-4 mr-1" /> Reset All
-                   </Button>
-                </div>
-                <CardDescription className="pt-1">
-                  {currentSolutionIndex !== -1
-                    ? `Viewing solution ${currentSolutionIndex + 1} / ${bestSolutions.length}.`
-                    : "Click to select (max 4), Save, Solve. Wheel=Zoom, Drag=Pan."}
-                </CardDescription>
-              </CardHeader>
-
-              {/* === Use ShapeCanvas Component === */}
-              <ShapeCanvas
+      {/* Main Layout Grid (Restored) */}
+      <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
+        
+        {/* Left Column: Canvas and Controls (Restored Structure) */}
+        <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
+          <Card className="flex flex-col flex-grow bg-card">
+            <CardHeader className="pb-3 flex-shrink-0">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-lg flex items-center gap-2 text-card-foreground">
+                  <Puzzle className="h-5 w-5 text-violet-400" /> Puzzle Grid
+                </CardTitle>
+                {/* Reset button needs handleResetSelection */}
+                <Button variant="outline" size="sm" className="text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive-foreground))] cursor-pointer" onClick={handleResetSelection} disabled={isSolving}>
+                   <RefreshCw className="h-4 w-4 mr-1" /> Reset All
+                 </Button>
+              </div>
+              <CardDescription className="pt-1 text-xs text-muted-foreground">
+                {currentSolutionIndex !== -1
+                  ? `Viewing solution ${currentSolutionIndex + 1} / ${bestSolutions.length}.`
+                  : "Click tiles (max 4), Save, then Solve saved potentials. Wheel=Zoom, Drag=Pan."}
+              </CardDescription>
+            </CardHeader>
+            
+            {/* ShapeCanvas (Restored Placement) */}
+            <div ref={containerRef} className="flex-grow relative bg-muted/40 min-h-[300px]"> {/* Added min-h for visibility */}
+              <ShapeCanvas 
+                canvasRef={canvasRef} 
                 containerRef={containerRef}
-                canvasRef={canvasRef}
                 isClient={isClient}
                 isSolving={isSolving}
-                solveProgress={solveProgress}
-                formattedProgress={formattedProgress}
+                solveProgress={solveProgress} // Pass raw progress
+                formattedProgress={formattedProgress} // Pass formatted string
                 zoom={zoom}
                 setZoom={setZoom}
-                handleReset={handleReset} // Pass reset specifically for zoom/pan part
+                handleReset={handleResetSelection}
               />
+            </div>
 
-              {/* === Use ControlPanel Component === */}
-              <ControlPanel
-                currentSolutionIndex={currentSolutionIndex}
-                bestSolutions={bestSolutions}
-                isSolving={isSolving}
-                selectedTiles={selectedTiles}
-                potentials={potentials}
-                handleSavePotential={handleSavePotential}
-                handleClearSelection={handleClearSelection}
-                handleSolve={() => handleSolve()} // Ensure handleSolve is wrapped if it needs args later
-                handlePrevSolution={handlePrevSolution}
-                handleNextSolution={handleNextSolution}
-                handleBackToEdit={handleBackToEdit}
-              />
-            </Card>
-          </div>
-
-          {/* Right Column: Status and Tabs */}
-          <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
-            {/* === Use StatusPanel Component === */}
-            <StatusPanel
-              potentials={potentials}
-              bestSolutions={bestSolutions}
+            {/* ControlPanel (Restored Placement) */}
+            <ControlPanel
               currentSolutionIndex={currentSolutionIndex}
+              bestSolutions={bestSolutions}
               isSolving={isSolving}
-              handleSolve={handleSolve} // Pass handleSolve for profiling buttons
-            />
-
-            {/* === Use ResultsTabs Component === */}
-            <ResultsTabs
-              isClient={isClient}
+              selectedTiles={selectedTiles}
               potentials={potentials}
-              isSolving={isSolving}
-              setPredefinedCanvasRef={setPredefinedCanvasRef}
-              setPotentialCanvasRef={setPotentialCanvasRef}
-              handleAddPredefinedPotential={handleAddPredefinedPotential}
-              handleDeletePotential={handleDeletePotential}
+              handleSavePotential={handleSavePotential}
+              handleClearSelection={handleClearSelection}
+              handleSolve={handleSolveClick} // Use the revised handler
+              handlePrevSolution={handlePrevSolution}
+              handleNextSolution={handleNextSolution}
+              handleBackToEdit={handleBackToEdit}
             />
-          </div>
+          </Card>
         </div>
 
-        {/* Footer */}
-        <footer className="text-center text-xs text-muted-foreground mt-auto pt-8 flex-shrink-0">
-          Special Thanks to OGWaffle for the original concept and logic!
-        </footer>
+        {/* Right Column: Status and Tabs (Restored Structure) */}
+        <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
+          {/* StatusPanel (Restored Placement) */}
+          <StatusPanel
+            potentials={potentials}
+            bestSolutions={bestSolutions}
+            currentSolutionIndex={currentSolutionIndex}
+            isSolving={isSolving}
+            handleSolve={handleSolveClick} // Can still trigger solve from here if needed
+          />
+          {/* ResultsTabs (Restored Placement) */}
+          <ResultsTabs
+            isClient={isClient}
+            potentials={potentials}
+            isSolving={isSolving}
+            setPredefinedCanvasRef={setPredefinedCanvasRef}
+            setPotentialCanvasRef={setPotentialCanvasRef}
+            handleAddPredefinedPotential={handleAddPredefinedPotential}
+            handleDeletePotential={handleDeletePotential}
+          />
+        </div>
+
       </div>
-    </>
+
+      {/* Footer (Optional - Re-add if needed) */}
+      {/* <footer className="text-center text-xs text-muted-foreground mt-auto pt-8 flex-shrink-0"> ... </footer> */}
+    </div>
   );
 }

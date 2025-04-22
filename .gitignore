@@ -70,7 +70,8 @@ scripts/example_prd.txt
 scripts/extract-location-data.mjs
 scripts/extract-marker-data.mjs
 scripts/prd.txt
+scripts/prd.md
 scripts/README.md
 scripts/task-complexity-report.json
 
-
+goal
