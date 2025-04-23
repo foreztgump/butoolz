@@ -3552,18 +3552,19 @@ const runExactTilingFinder = async (taskData) => {
 // NEW function for Combinatorial Exact Tiling
 async function runCombinatorialExactTiling(taskData) {
     console.log('[Worker] Starting combinatorial exact tiling search...');
-    const { allPotentialShapeIds, fixedShapeBaseMasks, initialGridState: initialGridStateStr } = taskData;
+    const { allPotentialsData, initialGridState: initialGridStateStr } = taskData;
     try {
         const initialGridState = BigInt(initialGridStateStr);
-        const baseMasksMap = new Map(Object.entries(fixedShapeBaseMasks).map(([id, maskStr]) => [id, BigInt(maskStr)]));
-        if (allPotentialShapeIds.length < 11) {
+        // Validate input length
+        if (allPotentialsData.length < 11) {
             return { maxShapes: 0, solutions: [], error: "Received less than 11 potential shapes." };
         }
         const allFoundSolutions = [];
         let combinationCounter = 0;
-        console.log(`[Worker] Generating combinations of 11 from ${allPotentialShapeIds.length} shapes...`);
-        const combinationGenerator = combinations(allPotentialShapeIds, 11);
-        for (const currentCombinationIds of combinationGenerator) {
+        console.log(`[Worker] Generating combinations of 11 from ${allPotentialsData.length} shapes...`);
+        // Generate combinations based on the full list of potential data objects
+        const combinationGenerator = combinations(allPotentialsData, 11);
+        for (const currentCombination of combinationGenerator) {
             combinationCounter++;
             if (combinationCounter % 100 === 0) {
                 console.log(`[Worker] Testing combination ${combinationCounter}...`);
@@ -3571,54 +3572,51 @@ async function runCombinatorialExactTiling(taskData) {
             // 1. Prepare ShapeData for this specific combination
             const currentShapeDataMap = new Map();
             let canBuildCombination = true;
-            for (const shapeId of currentCombinationIds) {
-                const baseMask = baseMasksMap.get(shapeId);
-                if (!baseMask || baseMask === 0n) { // Also check if baseMask is valid
-                    console.error(`[Worker] CRITICAL: Base mask not found or invalid for shape ID ${shapeId} in combination ${combinationCounter}`);
+            // Use the uniqueId from the combination items
+            for (const potential of currentCombination) {
+                const { uniqueId, baseMaskString } = potential;
+                const baseMask = BigInt(baseMaskString);
+                if (!baseMask || baseMask === 0n) {
+                    console.error(`[Worker] CRITICAL: Invalid base mask found for potential unique ID ${uniqueId} in combination ${combinationCounter}`);
                     canBuildCombination = false;
                     break;
                 }
-                // --- Calculate valid placements for this fixed orientation --- START
+                // Calculate valid placements for this fixed orientation
                 const validPlacements = new Set();
                 const baseBitCount = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(baseMask);
-                if (baseBitCount === 0) { // Should be caught by baseMask check above, but safer
-                    console.warn(`[Worker] Shape ${shapeId} has base mask with zero bits.`);
-                    continue; // Skip shape if it's empty
+                if (baseBitCount === 0) {
+                    console.warn(`[Worker] Potential ${uniqueId} has base mask with zero bits.`);
+                    continue;
                 }
-                // Find anchor point (e.g., lowest set bit)
                 const anchorBitIndex = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.findLowestSetBitIndex)(baseMask);
-                if (anchorBitIndex === -1) { // Should not happen if baseBitCount > 0
-                    console.error(`[Worker] Could not find anchor bit for shape ${shapeId}`);
+                if (anchorBitIndex === -1) {
+                    console.error(`[Worker] Could not find anchor bit for potential ${uniqueId}`);
                     canBuildCombination = false;
                     break;
                 }
                 const anchorTileId = anchorBitIndex + 1;
                 const anchorCoord = _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.HEX_GRID_COORDS.find(c => c.id === anchorTileId);
                 if (!anchorCoord) {
-                    console.error(`[Worker] Could not find anchor coordinates for tile ID ${anchorTileId} (shape ${shapeId})`);
+                    console.error(`[Worker] Could not find anchor coordinates for tile ID ${anchorTileId} (potential ${uniqueId})`);
                     canBuildCombination = false;
                     break;
                 }
-                // Iterate through all possible target tiles on the grid for the anchor
                 for (const targetCoord of _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.HEX_GRID_COORDS) {
                     const deltaQ = targetCoord.q - anchorCoord.q;
                     const deltaR = targetCoord.r - anchorCoord.r;
                     const translatedMask = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.translateShapeBitmask)(baseMask, deltaQ, deltaR);
-                    // Validate the translation: check if all bits are still present
                     if (translatedMask !== 0n && (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(translatedMask) === baseBitCount) {
                         validPlacements.add(translatedMask);
                     }
                 }
-                // --- Calculate valid placements for this fixed orientation --- END
                 if (validPlacements.size === 0) {
-                    // If a shape in the combination has NO valid placements, this combination cannot tile.
-                    // console.log(`[Worker] Shape ${shapeId} has 0 valid placements. Pruning combination ${combinationCounter}.`);
                     canBuildCombination = false;
-                    break; // No need to process other shapes in this combo
+                    break;
                 }
-                currentShapeDataMap.set(shapeId, {
-                    id: shapeId,
-                    baseOrientationMask: baseMask, // Store base mask if needed later
+                // Use uniqueId as the key and the ID within ShapeData
+                currentShapeDataMap.set(uniqueId, {
+                    id: uniqueId,
+                    baseOrientationMask: baseMask,
                     validPlacements: validPlacements,
                 });
             }
@@ -3626,12 +3624,10 @@ async function runCombinatorialExactTiling(taskData) {
                 continue; // Skip to the next combination
             }
             // 2. Call the DLX solver for this combination
-            // Check if total constraints exceed a reasonable limit? DLX can be slow with huge matrices.
-            const constraintCount = Array.from(currentShapeDataMap.values()).reduce((sum, data) => sum + data.validPlacements.size, 0);
-            // console.log(`[Worker] Combination ${combinationCounter}: ${constraintCount} constraints.`);
-            // Add a threshold check if needed, e.g., if (constraintCount > 5000) { continue; }
-            const result = (0,_solver_dlx__WEBPACK_IMPORTED_MODULE_3__.findExact11TilingSolutions)(currentCombinationIds.map(id => ({ id })), currentShapeDataMap, initialGridState);
-            // 3. Aggregate results
+            const result = (0,_solver_dlx__WEBPACK_IMPORTED_MODULE_3__.findExact11TilingSolutions)(
+            // Pass the list of shapes with their unique IDs
+            currentCombination.map(p => ({ id: p.uniqueId })), currentShapeDataMap, initialGridState);
+            // 3. Aggregate results (PlacementRecord.shapeId will now be the uniqueId)
             if (result.solutions && result.solutions.length > 0) {
                 console.log(`[Worker] Found ${result.solutions.length} solution(s) for combination ${combinationCounter}`);
                 allFoundSolutions.push(...result.solutions);

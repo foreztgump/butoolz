@@ -1121,48 +1121,49 @@ export default function ShapeDoctor() {
     setBestSolutions([]); 
     setCurrentSolutionIndex(-1);
     setGridState(Array(Config.TOTAL_TILES + 1).fill(-1)); 
-    toast.info(`Searching combinations of 11 shapes from ${currentPotentials.length} potentials for exact tilings... This may take some time.`);
+    toast.info(`Searching combinations of 11 shapes from ${currentPotentials.length} potentials (duplicates allowed)...`);
 
     try {
-      // --- Prepare Base Masks for ALL potentials ---
-      // Worker will generate placements as needed
-      const fixedShapeBaseMasksMap = new Map<string, bigint>();
-      for (const shapeString of currentPotentials) {
+      // --- Prepare Data for ALL potentials, preserving duplicates --- 
+      const allPotentialsData: { uniqueId: string; baseMaskString: string }[] = [];
+      let validShapeCount = 0;
+      currentPotentials.forEach((shapeString, index) => {
           try {
               const baseMask = shapeStringToBitmask(shapeString);
               if (baseMask === 0n) {
-                  console.warn(`Skipping potential shape with empty mask: ${shapeString}`);
-                  continue;
+                  console.warn(`Skipping potential shape at index ${index} with empty mask: ${shapeString}`);
+                  return; // Skip this potential
               }
-              fixedShapeBaseMasksMap.set(shapeString, baseMask);
+              // Create a unique ID, e.g., by combining index and shape string (or just index)
+              const uniqueId = `${index}::${shapeString}`;
+              allPotentialsData.push({ 
+                  uniqueId: uniqueId, 
+                  baseMaskString: baseMask.toString() 
+              });
+              validShapeCount++;
           } catch (err) {
-              console.warn(`Skipping invalid potential shape string: ${shapeString}`, err);
-              // Optionally notify user about invalid shapes?
+              console.warn(`Skipping invalid potential shape string at index ${index}: ${shapeString}`, err);
           }
-      }
+      });
       
       // Ensure we still have at least 11 valid shapes after potential filtering
-       if (fixedShapeBaseMasksMap.size < 11) {
-           toast.error(`Only ${fixedShapeBaseMasksMap.size} valid potential shapes found. Need at least 11.`);
+       if (validShapeCount < 11) {
+           toast.error(`Only ${validShapeCount} valid potential shapes found. Need at least 11.`);
            setIsFindingExactTiling(false);
            return;
        }
 
-
       // --- Prepare Task Data ---
-      // Send only the list of shape IDs (strings) and their corresponding base masks (as strings)
+      // Send the full list of potentials with unique IDs and their base masks
       const taskData = {
-          allPotentialShapeIds: Array.from(fixedShapeBaseMasksMap.keys()), // Send IDs (strings)
-          fixedShapeBaseMasks: Object.fromEntries( // Send base masks keyed by ID, converted to strings
-              Array.from(fixedShapeBaseMasksMap.entries()).map(([id, mask]) => [id, mask.toString()])
-          ),
+          allPotentialsData: allPotentialsData, // Array of { uniqueId, baseMaskString }
           initialGridState: 0n.toString() // Send BigInt as string
       };
       
       // Execute the combinatorial exact tiling finder function on the worker
       const result: SolverResultPayloadBacktracking = await workerPoolRef.current.exec(
-          'runCombinatorialExactTiling', // <--- New worker function name
-          [taskData] // Pass the prepared data
+          'runCombinatorialExactTiling', 
+          [taskData] 
       );
 
       console.log("Combinatorial Exact Tiling task finished. Result:", result);
