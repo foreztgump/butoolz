@@ -33,4 +33,41 @@ export interface SolverExecData {
 export interface SolverResultPayload {
     solutions: string[];  // Array of solution keys (comma-separated tile IDs)
     error?: string;       // Optional error message if execution failed
+}
+
+// --- NEW TYPES FOR BACKTRACKING SOLVER ---
+
+// Represents precomputed data for a single shape type
+export interface ShapeData {
+  id: string;                   // Unique identifier for the shape (e.g., the canonical string)
+  baseOrientationMask?: bigint; // <--- Add this optional field
+  validPlacements: Set<bigint>; // Set of all valid placement bitmasks on the grid
+  // Add other precomputed data if needed (e.g., canonicalMask, orientations)
+}
+
+// Represents a single placed shape instance during backtracking
+export interface PlacementRecord {
+  shapeId: string;        // ID of the shape type placed
+  placementMask: bigint;  // The specific bitmask of this placement
+}
+
+// Represents a complete solution found by the solver
+export interface SolutionRecord {
+  gridState: bigint;          // The final combined bitmask of the grid
+  placements: PlacementRecord[]; // The list of shapes and their specific placements
+}
+
+// Data structure passed to the *new* backtracking worker function
+export interface SolverExecDataBacktracking {
+  shapesToPlace: { id: string }[]; // List of shapes to attempt placing (initially just need IDs)
+  // Make shapeDataMap optional, as precomputation now happens in worker
+  shapeDataMap?: Map<string, ShapeData>; 
+  initialGridState?: bigint;         // Optional initial grid state (defaults to 0n)
+}
+
+// Data structure returned by the *new* backtracking worker function
+export interface SolverResultPayloadBacktracking {
+  maxShapes: number;      // Maximum number of shapes placed in the best solutions
+  solutions: SolutionRecord[]; // Array of solution records (gridState + placements)
+  error?: string;         // Optional error message
 } 

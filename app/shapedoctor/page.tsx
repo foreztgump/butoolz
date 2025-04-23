@@ -26,6 +26,19 @@ import ResultsTabs from "./components/ResultsTabs";
 // Import workerpool
 import workerpool from 'workerpool';
 
+// Import specific types needed for the new solver
+import { 
+    type SolverExecDataBacktracking, 
+    type SolverResultPayloadBacktracking, 
+    type SolutionRecord,
+    type ShapeData
+} from './types';
+import { 
+    bitmaskToTileIds, 
+    shapeStringToBitmask,
+    translateShapeBitmask
+} from './bitmaskUtils';
+
 // Import QOper8 and define types
 // import { QOper8 } from 'qoper8-ww';
 // import { type SolverResultPayload } from './solver.worker';
@@ -74,6 +87,10 @@ export default function ShapeDoctor() {
   const [dragStart, setDragStart] = useState<Point>({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const [solveProgress, setSolveProgress] = useState<number>(0);
+  // State for exact tiling results
+  const [exactTilingSolutions, setExactTilingSolutions] = useState<SolutionRecord[]>([]);
+  const [isFindingExactTiling, setIsFindingExactTiling] = useState<boolean>(false);
+  const [currentExactTilingIndex, setCurrentExactTilingIndex] = useState<number>(-1);
 
   // Add formattedProgress derivation
   const formattedProgress = `${Math.round(solveProgress)}%`;
@@ -665,6 +682,21 @@ export default function ShapeDoctor() {
   const handleClearSelection = useCallback(() => {
     setSelectedTiles(new Set());
   }, [setSelectedTiles]);
+
+  const handleResetSelection = useCallback(() => {
+    setSelectedTiles(new Set());
+    setPotentials([]);
+    setBestSolutions([]);
+    setCurrentSolutionIndex(-1);
+    setExactTilingSolutions([]);
+    setCurrentExactTilingIndex(-1);
+    setGridState(Array(Config.TOTAL_TILES + 1).fill(-1));
+    setSolveProgress(0);
+    currentOffsetRef.current = { x: 0, y: 0 };
+    setZoom(1);
+    toast.info("Selection and results cleared.");
+  }, []);
+
   const handleSavePotential = useCallback(() => {
     if (selectedTiles.size === 0) {
       toast.error("Select tiles first.", { duration: 3000 });
@@ -713,9 +745,12 @@ export default function ShapeDoctor() {
     }
 
     setIsSolving(true);
-    setSolveProgress(0);
+    setSolveProgress(0); // Reset progress
     setBestSolutions([]); // Clear previous solutions
     setCurrentSolutionIndex(-1);
+    setExactTilingSolutions([]); 
+    setCurrentExactTilingIndex(-1);
+    setGridState(Array(Config.TOTAL_TILES + 1).fill(-1)); 
     toast.info(`Starting solver for ${potentials.length} potential shapes...`);
 
     const pool = workerPoolRef.current;
@@ -727,77 +762,70 @@ export default function ShapeDoctor() {
     }
 
     try {
-      const totalTasks = potentials.length;
-      let completedTasks = 0;
+      // --- REFACTORED PART ---
+      // 1. Prepare single task data payload for backtracking solver
+      const shapesToPlace = potentials.map(shapeStr => ({ id: shapeStr }));
+      const taskData: SolverExecDataBacktracking = { shapesToPlace }; // Interface imported from ./types
+      console.log(`Submitting single backtracking task to workerpool:`, taskData);
 
-      const taskPromises = potentials.map((potentialString, index) => {
-        const taskData = { potentialShapeString: potentialString };
-        console.log(`Submitting task ${index + 1}/${totalTasks} to workerpool:`, taskData);
-        // Call the registered 'findPlacements' function
-        return pool.exec('findPlacements', [taskData]) 
-          .then((result: any) => { // TODO: Replace 'any' with SolverResultPayload type
-            completedTasks++;
-            setSolveProgress(Math.round((completedTasks / totalTasks) * 100));
-            // Note: 'result' should now match SolverResultPayload { solutions: string[], error?: string }
-            console.log(`Task ${index + 1}/${totalTasks} completed. Result:`, result);
-            // TODO: Adjust logic below to handle the new result structure (result.solutions)
-            return result;
-          })
-          .catch((error: any) => {
-            completedTasks++;
-            setSolveProgress(Math.round((completedTasks / totalTasks) * 100));
-            console.error(`Error solving potential ${index}:`, error);
-            toast.error(`Error processing shape ${index + 1}.`);
-            // Return a consistent null/error structure if needed
-            return { solutions: [], error: error.message || 'Worker execution failed' }; 
-          });
-      });
+      // 2. Execute the single task
+      const result: SolverResultPayloadBacktracking = await pool.exec('runSolver', [taskData]);
+      console.log("Backtracking task finished. Result:", result);
+      setSolveProgress(100); // Set progress to 100 on completion
 
-      const allResults = await Promise.all(taskPromises);
-      console.log("All worker tasks finished. Raw results:", allResults);
+      // 3. Process the result
+      if (result && result.error) {
+          console.error("Solver worker returned an error:", result.error);
+          toast.error(`Solving failed: ${result.error}`);
+          setBestSolutions([]);
+          setCurrentSolutionIndex(-1);
+      } else if (result && result.solutions && typeof result.maxShapes === 'number') {
+          // Destructure maxShapes and the array of SolutionRecord objects
+          const { maxShapes, solutions: solutionRecords } = result;
 
-      // TODO: MAJOR REFACTOR NEEDED HERE
-      // The worker now returns { solutions: string[] }. 
-      // The page currently expects { bestSolutions: number[][] } (based on old logic).
-      // We need to adapt this aggregation logic.
+          if (solutionRecords.length === 0) {
+              toast.info(`Solving complete. No placements found for ${maxShapes} shapes.`);
+              setBestSolutions([]);
+              setCurrentSolutionIndex(-1);
+          } else {
+              // Convert SolutionRecord[] to number[][] for UI state
+              const solutionsForDisplay: number[][] = solutionRecords.map(record => {
+                  // Create an empty grid state for this solution
+                  const displayGridState = Array(Config.TOTAL_TILES + 1).fill(-1);
+                  // Iterate through the placements in this solution
+                  record.placements.forEach(placement => {
+                      const { shapeId, placementMask } = placement;
+                      // Find the original index of this shape in the potentials array
+                      const potentialIndex = potentials.findIndex(p => p === shapeId);
+                      if (potentialIndex !== -1) {
+                          // Get the tile IDs covered by this placement
+                          const tileIds = bitmaskToTileIds(placementMask);
+                          // Update the display grid state
+                          tileIds.forEach(tileId => {
+                              displayGridState[tileId] = potentialIndex; // Use 0-based index for color lookup
+                          });
+                      } else {
+                          console.warn(`Could not find original potential index for shapeId: ${shapeId}`);
+                      }
+                  });
+                  return displayGridState;
+              });
 
-      const aggregatedSolutions: string[] = []; // Store string keys for now
-      allResults.forEach((result: any, index: number) => {
-        // Check for the new 'solutions' property
-        if (result && result.solutions && Array.isArray(result.solutions)) { 
-            if (result.error) {
-                 console.warn(`Task ${index + 1} completed with error: ${result.error}`);
-                 // Optionally toast.warn or handle specific errors
-            } else {
-                console.log(`Aggregating ${result.solutions.length} solution keys from potential ${index}`);
-                aggregatedSolutions.push(...result.solutions);
-            }
-        } else if (result && result.error) {
-            // Handle cases where the entire task failed (caught in .catch block)
-            console.error(`Task ${index + 1} failed entirely: ${result.error}`);
-        } else {
-            console.warn(`Unexpected result structure from task ${index + 1}:`, result);
-        }
-      });
-
-      // Now, `aggregatedSolutions` is string[]. We need number[][] for setBestSolutions.
-      // Convert string keys ("1,5,12") back to number arrays ([1, 5, 12])
-      const solutionsAsNumbers: number[][] = aggregatedSolutions.map(key => 
-        key.split(',').map(Number)
-      );
-
-      setBestSolutions(solutionsAsNumbers);
-      setCurrentSolutionIndex(solutionsAsNumbers.length > 0 ? 0 : -1);
-      setSolveProgress(100); // Ensure progress hits 100%
-
-      if (solutionsAsNumbers.length === 0) {
-        toast.info("Solving complete. No valid placements found for the saved potentials.");
+              setBestSolutions(solutionsForDisplay);
+              setCurrentSolutionIndex(0); // Start at the first solution
+              setCurrentExactTilingIndex(-1);
+              toast.success(`Solving complete! Found ${solutionsForDisplay.length} solution(s) placing ${maxShapes} shapes.`);
+          }
       } else {
-        toast.success(`Solving complete! Found ${solutionsAsNumbers.length} total placements.`);
+          console.error("Received unexpected result structure from solver worker:", result);
+          toast.error("Received an unexpected result from the solver.");
+          setBestSolutions([]);
+          setCurrentSolutionIndex(-1);
       }
+      // --- END REFACTORED PART ---
 
     } catch (error) {
-      console.error("Error during batch solve execution:", error);
+      console.error("Error during backtracking solve execution:", error); // Updated error context
       toast.error("An error occurred during the solving process.");
       setSolveProgress(100); // Still mark as complete for UI consistency
     } finally {
@@ -805,17 +833,41 @@ export default function ShapeDoctor() {
     }
   };
 
+  // Effect to update grid when solution changes
   useEffect(() => {
-    // Effect to update grid when solution changes
+    let solutionToApply: number[] | null = null;
+    // Check backtracking solutions first
     if (currentSolutionIndex !== -1 && bestSolutions[currentSolutionIndex]) {
-      const solutionToApply = bestSolutions[currentSolutionIndex];
-      setGridState(solutionToApply);
-    } else {
-      // Ensure grid resets if we go back to edit mode or have no solutions
-      setGridState(Array(Config.TOTAL_TILES + 1).fill(-1));
+      solutionToApply = bestSolutions[currentSolutionIndex];
     }
-  }, [currentSolutionIndex, bestSolutions, setGridState]); // Dependencies seem correct
+    // Check exact tiling solutions if backtracking isn't active 
+    else if (currentExactTilingIndex !== -1 && exactTilingSolutions[currentExactTilingIndex]) {
+        // Convert SolutionRecord to the number[] format expected by setGridState
+        const exactSolutionRecord = exactTilingSolutions[currentExactTilingIndex];
+        const displayGridState = Array(Config.TOTAL_TILES + 1).fill(-1);
+        // Use a consistent way to color tiles, maybe based on original potential index?
+        // For now, use placement index like before.
+        exactSolutionRecord.placements.forEach((placement, index) => {
+            const tileIds = bitmaskToTileIds(placement.placementMask);
+            tileIds.forEach(tileId => {
+                if (tileId > 0 && tileId <= Config.TOTAL_TILES) {
+                    displayGridState[tileId] = index; 
+                }
+            });
+        });
+        solutionToApply = displayGridState;
+    }
+    
+    // Apply the determined solution or reset the grid
+    if (solutionToApply) {
+        setGridState(solutionToApply);
+    } else {
+        setGridState(Array(Config.TOTAL_TILES + 1).fill(-1));
+    }
+    // Update dependencies to include exact tiling state
+  }, [currentSolutionIndex, bestSolutions, currentExactTilingIndex, exactTilingSolutions, setGridState]);
 
+  // Backtracking navigation handlers (keep existing)
   const handleNextSolution = useCallback(() => {
     if (bestSolutions.length === 0) return;
     setCurrentSolutionIndex((prev) => (prev + 1) % bestSolutions.length);
@@ -828,26 +880,31 @@ export default function ShapeDoctor() {
     );
     setSelectedTiles(new Set());
   }, [bestSolutions.length, setCurrentSolutionIndex, setSelectedTiles]);
+
+  // --- NEW Exact Tiling Navigation Handlers ---
+  const handleNextExactTilingSolution = useCallback(() => {
+    if (exactTilingSolutions.length === 0) return;
+    setCurrentExactTilingIndex((prev) => (prev + 1) % exactTilingSolutions.length);
+    setSelectedTiles(new Set());
+  }, [exactTilingSolutions.length, setCurrentExactTilingIndex, setSelectedTiles]);
+
+  const handlePrevExactTilingSolution = useCallback(() => {
+    if (exactTilingSolutions.length === 0) return;
+    setCurrentExactTilingIndex(
+      (prev) => (prev - 1 + exactTilingSolutions.length) % exactTilingSolutions.length
+    );
+    setSelectedTiles(new Set());
+  }, [exactTilingSolutions.length, setCurrentExactTilingIndex, setSelectedTiles]);
+  // --- END NEW Handlers ---
+
   const handleBackToEdit = useCallback(() => {
     setSelectedTiles(new Set());
     setGridState(Array(Config.TOTAL_TILES + 1).fill(-1));
-    setCurrentSolutionIndex(-1);
-    toast.info(
-      "Editing mode activated."
-    ); /* scheduleDraw(); // scheduleDraw called by useEffect reacting to state changes */
-  }, [setSelectedTiles, setGridState, setCurrentSolutionIndex]); // Removed scheduleDraw, it's handled by useEffect
-  const handleResetSelection = useCallback(() => {
-    setSelectedTiles(new Set());
-    setPotentials([]);
-    setBestSolutions([]);
-    setCurrentSolutionIndex(-1);
-    setGridState(Array(Config.TOTAL_TILES + 1).fill(-1));
-    setSolveProgress(0);
-    currentOffsetRef.current = { x: 0, y: 0 }; // Reset pan
-    setZoom(1); // Reset zoom
-    toast.info("Selection and results cleared.");
-  }, []);
-
+    setCurrentSolutionIndex(-1); // Reset backtracking index
+    setCurrentExactTilingIndex(-1); // Reset exact tiling index
+    toast.info("Editing mode activated."); 
+  }, [setSelectedTiles, setGridState, setCurrentSolutionIndex, setCurrentExactTilingIndex]);
+  
   const handleDeletePotential = useCallback(
     (indexToDelete: number) => {
       setPotentials((prevPotentials) => {
@@ -1040,7 +1097,112 @@ export default function ShapeDoctor() {
     [isSolving, setPotentials]
   ); // Dependencies are correct
 
-  // --- UI Rendering - RESTORED STRUCTURE ---
+  // --- Solver Logic ---
+  // Existing handler for backtracking solver (Max Placement)
+  const handleSolveBacktracking = async () => {
+    // ... (existing implementation)
+  };
+
+  // NEW Handler for DLX Exact Tiling Solver
+  const handleFindExactTiling = async () => {
+    if (!workerPoolRef.current) {
+      toast.error("Worker pool not initialized.");
+      return;
+    }
+    const currentPotentials = potentials; // Capture current state
+    if (currentPotentials.length < 11) {
+        toast.info("Select at least 11 potential shapes to search for an exact tiling.");
+        return;
+    }
+
+    setIsFindingExactTiling(true);
+    setExactTilingSolutions([]); 
+    setCurrentExactTilingIndex(-1);
+    setBestSolutions([]); 
+    setCurrentSolutionIndex(-1);
+    setGridState(Array(Config.TOTAL_TILES + 1).fill(-1)); 
+    toast.info(`Searching combinations of 11 shapes from ${currentPotentials.length} potentials for exact tilings... This may take some time.`);
+
+    try {
+      // --- Prepare Base Masks for ALL potentials ---
+      // Worker will generate placements as needed
+      const fixedShapeBaseMasksMap = new Map<string, bigint>();
+      for (const shapeString of currentPotentials) {
+          try {
+              const baseMask = shapeStringToBitmask(shapeString);
+              if (baseMask === 0n) {
+                  console.warn(`Skipping potential shape with empty mask: ${shapeString}`);
+                  continue;
+              }
+              fixedShapeBaseMasksMap.set(shapeString, baseMask);
+          } catch (err) {
+              console.warn(`Skipping invalid potential shape string: ${shapeString}`, err);
+              // Optionally notify user about invalid shapes?
+          }
+      }
+      
+      // Ensure we still have at least 11 valid shapes after potential filtering
+       if (fixedShapeBaseMasksMap.size < 11) {
+           toast.error(`Only ${fixedShapeBaseMasksMap.size} valid potential shapes found. Need at least 11.`);
+           setIsFindingExactTiling(false);
+           return;
+       }
+
+
+      // --- Prepare Task Data ---
+      // Send only the list of shape IDs (strings) and their corresponding base masks (as strings)
+      const taskData = {
+          allPotentialShapeIds: Array.from(fixedShapeBaseMasksMap.keys()), // Send IDs (strings)
+          fixedShapeBaseMasks: Object.fromEntries( // Send base masks keyed by ID, converted to strings
+              Array.from(fixedShapeBaseMasksMap.entries()).map(([id, mask]) => [id, mask.toString()])
+          ),
+          initialGridState: 0n.toString() // Send BigInt as string
+      };
+      
+      // Execute the combinatorial exact tiling finder function on the worker
+      const result: SolverResultPayloadBacktracking = await workerPoolRef.current.exec(
+          'runCombinatorialExactTiling', // <--- New worker function name
+          [taskData] // Pass the prepared data
+      );
+
+      console.log("Combinatorial Exact Tiling task finished. Result:", result);
+
+      if (result.error) {
+        toast.error(`Combinatorial Solver Error: ${result.error}`);
+        setExactTilingSolutions([]);
+      } else if (result.solutions && result.solutions.length > 0) {
+        toast.success(
+          `Found ${result.solutions.length} exact 11-shape tiling solution(s) from combinations!`
+        );
+        setExactTilingSolutions(result.solutions);
+        setCurrentExactTilingIndex(0); 
+         // Update grid state to show the first found exact solution
+        const firstSolution = result.solutions[0];
+        const newGridState = Array(Config.TOTAL_TILES + 1).fill(-1);
+        firstSolution.placements.forEach((placement, index) => {
+            const tileIds = bitmaskToTileIds(placement.placementMask);
+            tileIds.forEach(tileId => {
+                if (tileId > 0 && tileId <= Config.TOTAL_TILES) {
+                    newGridState[tileId] = index; 
+                }
+            });
+        });
+        setGridState(newGridState);
+
+      } else {
+        toast.info("No exact 11-shape tiling solutions found from any combination.");
+        setExactTilingSolutions([]);
+      }
+    } catch (err) {
+      console.error("Error executing combinatorial exact tiling solver task:", err);
+      toast.error(`Error executing task: ${err instanceof Error ? err.message : String(err)}`);
+      setExactTilingSolutions([]);
+    } finally {
+      setIsFindingExactTiling(false);
+    }
+  };
+
+  // --- Rendering Logic ---
   return (
     // Outer container from old layout
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col min-h-screen bg-background text-foreground">
@@ -1059,7 +1221,7 @@ export default function ShapeDoctor() {
                   <Puzzle className="h-5 w-5 text-violet-400" /> Puzzle Grid
                 </CardTitle>
                 {/* Reset button needs handleResetSelection */}
-                <Button variant="outline" size="sm" className="text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive-foreground))] cursor-pointer" onClick={handleResetSelection} disabled={isSolving}>
+                <Button variant="outline" size="sm" className="text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive-foreground))] cursor-pointer" onClick={handleResetSelection} disabled={isSolving || isFindingExactTiling}>
                    <RefreshCw className="h-4 w-4 mr-1" /> Reset All
                  </Button>
               </div>
@@ -1076,12 +1238,12 @@ export default function ShapeDoctor() {
                 canvasRef={canvasRef} 
                 containerRef={containerRef}
                 isClient={isClient}
-                isSolving={isSolving}
-                solveProgress={solveProgress} // Pass raw progress
-                formattedProgress={formattedProgress} // Pass formatted string
+                isSolving={isSolving || isFindingExactTiling} // Combined solving state
+                solveProgress={solveProgress} 
+                formattedProgress={formattedProgress} 
                 zoom={zoom}
                 setZoom={setZoom}
-                handleReset={handleResetSelection}
+                handleReset={handleResetSelection} 
               />
             </div>
 
@@ -1089,15 +1251,24 @@ export default function ShapeDoctor() {
             <ControlPanel
               currentSolutionIndex={currentSolutionIndex}
               bestSolutions={bestSolutions}
-              isSolving={isSolving}
-              selectedTiles={selectedTiles}
-              potentials={potentials}
-              handleSavePotential={handleSavePotential}
-              handleClearSelection={handleClearSelection}
-              handleSolve={handleSolveClick} // Use the revised handler
+              exactTilingSolutions={exactTilingSolutions}
+              currentExactTilingIndex={currentExactTilingIndex}
               handlePrevSolution={handlePrevSolution}
               handleNextSolution={handleNextSolution}
               handleBackToEdit={handleBackToEdit}
+              handleSolve={handleSolveClick}
+              handleSavePotential={handleSavePotential}
+              handleClearSelection={handleClearSelection}
+              onSolveBacktracking={handleSolveBacktracking}
+              onFindExactTiling={handleFindExactTiling}
+              isFindingExactTiling={isFindingExactTiling}
+              potentialsCount={potentials.length}
+              isSolving={isSolving}
+              selectedTiles={selectedTiles}
+              selectedTilesCount={selectedTiles.size}
+              potentials={potentials}
+              handlePrevExactTilingSolution={handlePrevExactTilingSolution}
+              handleNextExactTilingSolution={handleNextExactTilingSolution}
             />
           </Card>
         </div>

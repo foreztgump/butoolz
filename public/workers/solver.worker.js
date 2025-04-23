@@ -484,6 +484,532 @@ const ADJACENT_LIST = [
 
 /***/ }),
 
+/***/ "./app/shapedoctor/solver.dlx.ts":
+/*!***************************************!*\
+  !*** ./app/shapedoctor/solver.dlx.ts ***!
+  \***************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   findExact11TilingSolutions: () => (/* binding */ findExact11TilingSolutions)
+/* harmony export */ });
+/* harmony import */ var dancing_links__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! dancing-links */ "./node_modules/dancing-links/built/lib/index.js");
+/* harmony import */ var _bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./bitmaskUtils */ "./app/shapedoctor/bitmaskUtils.ts");
+/* harmony import */ var _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./shapedoctor.config */ "./app/shapedoctor/shapedoctor.config.ts");
+// app/shapedoctor/solver.dlx.ts
+// Dedicated solver for finding EXACT 11-shape tilings using dancing-links.
+// import * as dlxlib from 'dlxlib'; // Old library
+// import * as dlx from 'dlx'; // Previous library
+ // Use the new library
+
+
+// --- Matrix Generation for dancing-links ---
+// Modify the build function to return the new format
+const buildDancingLinksConstraints = (allShapeData, shapesToTileWith, // Exactly 11 shapes
+initialGridState // Should typically be 0n for full grid tiling
+) => {
+    if (shapesToTileWith.length !== 11) {
+        throw new Error(`buildDancingLinksConstraints requires exactly 11 shapes, got ${shapesToTileWith.length}`);
+    }
+    const constraints = [];
+    const columnIndexMap = new Map();
+    let currentColumnIndex = 0;
+    // --- Define Column Indices --- 
+    // (We don't need explicit column names for dancing-links, just the indices)
+    // 1. The 11 Shapes (Primary Items)
+    for (const shape of shapesToTileWith) {
+        const colName = `shape_${shape.id}`; // Use prefix to avoid collision
+        columnIndexMap.set(colName, currentColumnIndex++);
+    }
+    // 2. The 44 Tiles (Primary Items)
+    for (let i = 1; i <= _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.TOTAL_TILES; i++) {
+        const colName = `tile_${i}`;
+        if (!((initialGridState >> BigInt(i - 1)) & 1n)) {
+            columnIndexMap.set(colName, currentColumnIndex++);
+        }
+        else {
+            throw new Error(`Cannot find exact tiling: Tile ${i} is initially occupied.`);
+        }
+    }
+    const numColumns = currentColumnIndex; // Total number of primary items
+    // --- Define Rows (Constraints) --- 
+    for (const shape of shapesToTileWith) {
+        const shapeData = allShapeData.get(shape.id);
+        if (!shapeData || !shapeData.validPlacements)
+            continue;
+        const shapeColName = `shape_${shape.id}`;
+        const shapeColIndex = columnIndexMap.get(shapeColName);
+        for (const placementMask of shapeData.validPlacements) {
+            if ((initialGridState & placementMask) === 0n) {
+                const coveredTileIds = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.bitmaskToTileIds)(placementMask);
+                const row = new Array(numColumns).fill(0);
+                // 1. Set the shape column
+                row[shapeColIndex] = 1;
+                // 2. Set the covered tile columns
+                let placementIsValid = true;
+                for (const tileId of coveredTileIds) {
+                    const tileColName = `tile_${tileId}`;
+                    if (columnIndexMap.has(tileColName)) {
+                        const tileColIndex = columnIndexMap.get(tileColName);
+                        row[tileColIndex] = 1;
+                    }
+                    else {
+                        placementIsValid = false;
+                        break;
+                    }
+                }
+                if (placementIsValid) {
+                    // Add the constraint object to the list
+                    constraints.push({
+                        data: { shapeId: shape.id, placementMask }, // Store original data
+                        row: row // Assign the correctly typed row
+                    });
+                }
+            }
+        }
+    }
+    console.log(`[Dancing Links] Built ${constraints.length} constraints for ${numColumns} items.`);
+    return { constraints, columnCount: numColumns };
+};
+// --- Exact Tiling Solver Function using dancing-links ---
+const findExact11TilingSolutions = (shapesToTileWith, // Exactly 11 shapes
+allShapeData, // Full precomputed data (with orientations)
+initialGridState = 0n // Default to empty grid for tiling
+) => {
+    console.log('[Dancing Links Solver] Starting exact 11-tiling search...');
+    if (shapesToTileWith.length !== 11) {
+        console.error('[Dancing Links Solver] Must provide exactly 11 shapes.');
+        return { maxShapes: 0, solutions: [], error: "Exact tiling requires 11 shapes." };
+    }
+    if (initialGridState !== 0n) {
+        console.warn('[Dancing Links Solver] Finding exact tiling on a non-empty grid is unusual.');
+    }
+    let constraintResult;
+    try {
+        constraintResult = buildDancingLinksConstraints(allShapeData, shapesToTileWith, initialGridState);
+    }
+    catch (error) {
+        console.error('[Dancing Links Solver] Error building constraints:', error);
+        return { maxShapes: 0, solutions: [], error: `Error building constraints: ${error.message}` };
+    }
+    const { constraints } = constraintResult;
+    if (constraints.length === 0) {
+        console.log('[Dancing Links Solver] No valid placements (constraints) found for the given 11 shapes.');
+        return { maxShapes: 0, solutions: [] };
+    }
+    try {
+        console.log(`[Dancing Links Solver] Calling dlx.findAll with ${constraints.length} constraints...`);
+        // Change from findOne to findAll
+        const solutions = dancing_links__WEBPACK_IMPORTED_MODULE_0__.findAll(constraints); // Returns array of solutions
+        const finalSolutions = []; // Initialize empty results
+        if (solutions && solutions.length > 0) {
+            console.log(`[Dancing Links Solver] dlx.findAll returned ${solutions.length} solution(s).`);
+            // Process each solution found by findAll
+            for (const solution of solutions) {
+                const currentPlacements = [];
+                let currentGridState = initialGridState;
+                let isValidSolution = true;
+                if (solution.length !== 11) {
+                    console.warn(`[Dancing Links Solver] Found solution with ${solution.length} items, expected 11. Discarding.`);
+                    isValidSolution = false; // Mark as invalid if length is wrong
+                }
+                else {
+                    // Loop through the items in this specific solution
+                    for (const item of solution) {
+                        // item should conform to DlxSolutionItem type
+                        const placement = item.data;
+                        if (placement && placement.shapeId !== undefined && placement.placementMask !== undefined) {
+                            currentPlacements.push(placement);
+                            currentGridState |= placement.placementMask;
+                        }
+                        else {
+                            // Use item.index for better error reporting
+                            console.error(`[Dancing Links Solver] CRITICAL: Found solution item with missing/invalid placement data! Original Constraint Index: ${item.index}`);
+                            isValidSolution = false;
+                            break;
+                        }
+                    }
+                }
+                // Only add if the solution was deemed valid (correct length, no missing data)
+                if (isValidSolution) {
+                    const finalTileCount = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(currentGridState);
+                    if (finalTileCount !== _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.TOTAL_TILES) {
+                        // This should ideally not happen if constraints/DLX work correctly for exact cover
+                        console.warn(`[Dancing Links Solver] Solution found but only covers ${finalTileCount}/${_shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.TOTAL_TILES} tiles. GridState: ${currentGridState}. Discarding.`);
+                    }
+                    else {
+                        // Add the valid, fully covering solution
+                        finalSolutions.push({ gridState: currentGridState, placements: currentPlacements });
+                    }
+                }
+            } // End loop processing solutions from findAll
+        }
+        else {
+            console.log(`[Dancing Links Solver] dlx.findAll returned no solution.`);
+        }
+        console.log(`[Dancing Links Solver] Returning ${finalSolutions.length} valid exact tiling solution(s).`);
+        return {
+            maxShapes: finalSolutions.length > 0 ? 11 : 0, // Max shapes is always 11 if a solution exists
+            solutions: finalSolutions,
+        };
+    }
+    catch (error) {
+        console.error('[Dancing Links Solver] Error during DLX execution:', error);
+        return { maxShapes: 0, solutions: [], error: `DLX execution error: ${error.message}` };
+    }
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/dancing-links/built/lib/index.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/dancing-links/built/lib/index.js ***!
+  \*******************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const index_1 = __webpack_require__(/*! ./lib/index */ "./node_modules/dancing-links/built/lib/lib/index.js");
+const utils_1 = __webpack_require__(/*! ./lib/utils */ "./node_modules/dancing-links/built/lib/lib/utils.js");
+function findAll(constraints) {
+    return index_1.search(utils_1.getSearchConfig(Infinity, constraints));
+}
+exports.findAll = findAll;
+function findOne(constraints) {
+    return index_1.search(utils_1.getSearchConfig(1, constraints));
+}
+exports.findOne = findOne;
+function find(constraints, numSolutions) {
+    return index_1.search(utils_1.getSearchConfig(numSolutions, constraints));
+}
+exports.find = find;
+function findRaw(config) {
+    return index_1.search(config);
+}
+exports.findRaw = findRaw;
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ "./node_modules/dancing-links/built/lib/lib/index.js":
+/*!***********************************************************!*\
+  !*** ./node_modules/dancing-links/built/lib/lib/index.js ***!
+  \***********************************************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+/**
+ * Knuth's Dancing Links
+ * Original paper: https://arxiv.org/pdf/cs/0011047.pdf
+ * Implementation ported from: https://github.com/shreevatsa/knuth-literate-programs/blob/master/programs/dance.pdf
+ *
+ * Code runs in a state machine in order to avoid recursion
+ * and in order to work around the lack of `goto` in JS
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+var SearchState;
+(function (SearchState) {
+    SearchState[SearchState["FORWARD"] = 0] = "FORWARD";
+    SearchState[SearchState["ADVANCE"] = 1] = "ADVANCE";
+    SearchState[SearchState["BACKUP"] = 2] = "BACKUP";
+    SearchState[SearchState["RECOVER"] = 3] = "RECOVER";
+    SearchState[SearchState["DONE"] = 4] = "DONE";
+})(SearchState || (SearchState = {}));
+function search(config) {
+    const { numSolutions, numPrimary, numSecondary, rows } = config;
+    const root = {};
+    const colArray = [root];
+    const nodeArray = [];
+    const solutions = [];
+    let currentSearchState = SearchState.FORWARD;
+    let running = true;
+    let level = 0;
+    let choice = [];
+    let bestCol;
+    let currentNode;
+    function readColumnNames() {
+        // Skip root node
+        let curColIndex = 1;
+        for (let i = 0; i < numPrimary; i++) {
+            const head = {};
+            head.up = head;
+            head.down = head;
+            const column = {
+                len: 0,
+                head
+            };
+            column.prev = colArray[curColIndex - 1];
+            colArray[curColIndex - 1].next = column;
+            colArray[curColIndex] = column;
+            curColIndex = curColIndex + 1;
+        }
+        const lastCol = colArray[curColIndex - 1];
+        // Link the last primary constraint to wrap back into the root
+        lastCol.next = root;
+        root.prev = lastCol;
+        for (let i = 0; i < numSecondary; i++) {
+            const head = {};
+            head.up = head;
+            head.down = head;
+            const column = {
+                head,
+                len: 0
+            };
+            column.prev = column;
+            column.next = column;
+            colArray[curColIndex] = column;
+            curColIndex = curColIndex + 1;
+        }
+    }
+    function readRows() {
+        let curNodeIndex = 0;
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            let rowStart = undefined;
+            for (const columnIndex of row.coveredColumns) {
+                let node = {};
+                node.left = node;
+                node.right = node;
+                node.down = node;
+                node.up = node;
+                node.index = i;
+                node.data = row.data;
+                nodeArray[curNodeIndex] = node;
+                if (!rowStart) {
+                    rowStart = node;
+                }
+                else {
+                    node.left = nodeArray[curNodeIndex - 1];
+                    nodeArray[curNodeIndex - 1].right = node;
+                }
+                const col = colArray[columnIndex + 1];
+                node.col = col;
+                node.up = col.head.up;
+                col.head.up.down = node;
+                col.head.up = node;
+                node.down = col.head;
+                col.len = col.len + 1;
+                curNodeIndex = curNodeIndex + 1;
+            }
+            rowStart.left = nodeArray[curNodeIndex - 1];
+            nodeArray[curNodeIndex - 1].right = rowStart;
+        }
+    }
+    function cover(c) {
+        const l = c.prev;
+        const r = c.next;
+        // Unlink column
+        l.next = r;
+        r.prev = l;
+        // From to to bottom, left to right unlink every row node from its column
+        for (let rr = c.head.down; rr !== c.head; rr = rr.down) {
+            for (let nn = rr.right; nn !== rr; nn = nn.right) {
+                let uu = nn.up;
+                let dd = nn.down;
+                uu.down = dd;
+                dd.up = uu;
+                nn.col.len -= 1;
+            }
+        }
+    }
+    function uncover(c) {
+        // From bottom to top, right to left relink every row node to its column
+        for (let rr = c.head.up; rr !== c.head; rr = rr.up) {
+            for (let nn = rr.left; nn !== rr; nn = nn.left) {
+                let uu = nn.up;
+                let dd = nn.down;
+                uu.down = nn;
+                dd.up = nn;
+                nn.col.len += 1;
+            }
+        }
+        const l = c.prev;
+        const r = c.next;
+        // Unlink column
+        l.next = c;
+        r.prev = c;
+    }
+    function pickBestColum() {
+        let lowestLen = root.next.len;
+        let lowest = root.next;
+        for (let curCol = root.next; curCol !== root; curCol = curCol.next) {
+            let length = curCol.len;
+            if (length < lowestLen) {
+                lowestLen = length;
+                lowest = curCol;
+            }
+        }
+        bestCol = lowest;
+    }
+    function forward() {
+        pickBestColum();
+        cover(bestCol);
+        currentNode = bestCol.head.down;
+        choice[level] = currentNode;
+        currentSearchState = SearchState.ADVANCE;
+    }
+    function recordSolution() {
+        let results = [];
+        for (let l = 0; l <= level; l++) {
+            const node = choice[l];
+            results.push({
+                index: node.index,
+                data: node.data
+            });
+        }
+        solutions.push(results);
+    }
+    function advance() {
+        if (currentNode === bestCol.head) {
+            currentSearchState = SearchState.BACKUP;
+            return;
+        }
+        for (let pp = currentNode.right; pp !== currentNode; pp = pp.right) {
+            cover(pp.col);
+        }
+        if (root.next === root) {
+            recordSolution();
+            if (solutions.length === numSolutions) {
+                currentSearchState = SearchState.DONE;
+            }
+            else {
+                currentSearchState = SearchState.RECOVER;
+            }
+            return;
+        }
+        level = level + 1;
+        currentSearchState = SearchState.FORWARD;
+    }
+    function backup() {
+        uncover(bestCol);
+        if (level === 0) {
+            currentSearchState = SearchState.DONE;
+            return;
+        }
+        level = level - 1;
+        currentNode = choice[level];
+        bestCol = currentNode.col;
+        currentSearchState = SearchState.RECOVER;
+    }
+    function recover() {
+        for (let pp = currentNode.left; pp !== currentNode; pp = pp.left) {
+            uncover(pp.col);
+        }
+        currentNode = currentNode.down;
+        choice[level] = currentNode;
+        currentSearchState = SearchState.ADVANCE;
+    }
+    function done() {
+        running = false;
+    }
+    const stateMethods = {
+        [SearchState.FORWARD]: forward,
+        [SearchState.ADVANCE]: advance,
+        [SearchState.BACKUP]: backup,
+        [SearchState.RECOVER]: recover,
+        [SearchState.DONE]: done
+    };
+    readColumnNames();
+    readRows();
+    while (running) {
+        const currentStateMethod = stateMethods[currentSearchState];
+        currentStateMethod();
+    }
+    return solutions;
+}
+exports.search = search;
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ "./node_modules/dancing-links/built/lib/lib/interfaces.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/dancing-links/built/lib/lib/interfaces.js ***!
+  \****************************************************************/
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+function isSimpleConstraint(arg) {
+    return arg.row !== undefined;
+}
+exports.isSimpleConstraint = isSimpleConstraint;
+function isComplexConstraint(arg) {
+    return arg.primaryRow !== undefined && arg.secondaryRow !== undefined;
+}
+exports.isComplexConstraint = isComplexConstraint;
+//# sourceMappingURL=interfaces.js.map
+
+/***/ }),
+
+/***/ "./node_modules/dancing-links/built/lib/lib/utils.js":
+/*!***********************************************************!*\
+  !*** ./node_modules/dancing-links/built/lib/lib/utils.js ***!
+  \***********************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const interfaces_1 = __webpack_require__(/*! ./interfaces */ "./node_modules/dancing-links/built/lib/lib/interfaces.js");
+function binaryToSparseRow(binaryRow, offset = 0) {
+    const sparseRow = [];
+    for (let i = 0; i < binaryRow.length; i++) {
+        if (binaryRow[i] === 1) {
+            sparseRow.push(i + offset);
+        }
+    }
+    return sparseRow;
+}
+function getParams(constraint) {
+    let numPrimary = 0;
+    let numSecondary = 0;
+    if (interfaces_1.isSimpleConstraint(constraint)) {
+        numPrimary = constraint.row.length;
+    }
+    else if (interfaces_1.isComplexConstraint(constraint)) {
+        numPrimary = constraint.primaryRow.length;
+        numSecondary = constraint.secondaryRow.length;
+    }
+    return {
+        numPrimary,
+        numSecondary
+    };
+}
+function getSearchConfig(numSolutions, constraints) {
+    const { numPrimary, numSecondary } = getParams(constraints[0]);
+    const sparseConstraints = constraints.map((c) => {
+        const data = c.data;
+        let coveredColumns;
+        if (interfaces_1.isSimpleConstraint(c)) {
+            coveredColumns = binaryToSparseRow(c.row);
+        }
+        else if (interfaces_1.isComplexConstraint(c)) {
+            coveredColumns = binaryToSparseRow(c.primaryRow).concat(binaryToSparseRow(c.secondaryRow, numPrimary));
+        }
+        return {
+            data,
+            coveredColumns
+        };
+    });
+    return {
+        numPrimary,
+        numSecondary,
+        numSolutions,
+        rows: sparseConstraints
+    };
+}
+exports.getSearchConfig = getSearchConfig;
+//# sourceMappingURL=utils.js.map
+
+/***/ }),
+
 /***/ "./node_modules/workerpool/dist/workerpool.js":
 /*!****************************************************!*\
   !*** ./node_modules/workerpool/dist/workerpool.js ***!
@@ -2647,84 +3173,491 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var workerpool__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(workerpool__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony import */ var _bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./bitmaskUtils */ "./app/shapedoctor/bitmaskUtils.ts");
 /* harmony import */ var _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./shapedoctor.config */ "./app/shapedoctor/shapedoctor.config.ts");
-// app/shapedoctor/solver.worker.ts - TEMPORARY SIMPLIFIED VERSION FOR DEBUGGING
-// REMOVE Old QOper8 debug logs and initialization
-/*
-console.log("[Worker DEBUG] Simple worker script loaded.");
-const simpleTestHandler = (...) => { ... };
-const worker = new QOper8Worker();
-worker.on('message', simpleTestHandler);
-console.log(`[Worker DEBUG ${self.name}] QOper8 worker initialized and SIMPLE handler registered.`);
-*/
-// RESTORE Imports needed for solver logic
+/* harmony import */ var _solver_dlx__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./solver.dlx */ "./app/shapedoctor/solver.dlx.ts");
+// app/shapedoctor/solver.worker.ts - Optimized Backtracking Version
 
 
 
-const TOTAL_TILES = 44;
-// Define solverHandler with RESTORED logic
-const findPlacements = async (taskData) => {
-    console.log('[Worker Pool] Received data:', taskData);
-    const { potentialShapeString } = taskData;
-    try {
-        console.log(`[Worker Pool] Processing shape: ${potentialShapeString}`);
-        const solutions = new Set();
-        if (!potentialShapeString) {
-            throw new Error('No potential shape string provided.');
+
+// --- Utility Function: Generate Combinations ---
+function* combinations(arr, k) {
+    if (k < 0 || k > arr.length) {
+        return;
+    }
+    if (k === 0) {
+        yield [];
+        return;
+    }
+    if (k === arr.length) {
+        yield arr;
+        return;
+    }
+    const first = arr[0];
+    const rest = arr.slice(1);
+    // Combinations including the first element
+    for (const combo of combinations(rest, k - 1)) {
+        yield [first, ...combo];
+    }
+    // Combinations excluding the first element
+    for (const combo of combinations(rest, k)) {
+        yield combo;
+    }
+}
+const FULL_GRID_MASK = (1n << BigInt(_shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.TOTAL_TILES)) - 1n; // Mask for a full grid
+// --- State Variables for Backtracking ---
+let maxShapesPlacedSoFar = 0;
+// Use a Map for efficient uniqueness check based on gridState
+let bestSolutionsFound = new Map();
+let allShapeData = new Map(); // To store precomputed data for each shape
+// Transposition Table stores max ADDITIONAL shapes found from a state
+let transpositionTable = new Map();
+// --- Core Backtracking Function ---
+const solveBacktracking = (currentGridState, availableShapeIds, currentPlacement) => {
+    // --- State Key for Memoization ---
+    const stateKey = `${currentGridState}:${availableShapeIds.sort().join(',')}`;
+    // --- Transposition Table Lookup ---
+    const cachedResult = transpositionTable.get(stateKey);
+    if (cachedResult === 'in_progress') {
+        return 0; // Cycle detected or already being processed
+    }
+    if (typeof cachedResult === 'number') {
+        // Update global best if this cached path is better than current global best
+        const potentialGlobalMax = currentPlacement.length + cachedResult;
+        if (potentialGlobalMax > maxShapesPlacedSoFar) {
+            // We have a depth, but not the specific placement that achieved it.
+            // This simple caching only prunes based on depth, doesn't store the solution path.
+            // To store the solution path, the cache value would need to be more complex.
+            // For now, just return the cached depth to prune branches.
+            // Global best update will happen when leaves are reached directly.
         }
-        const baseShapeMask = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.shapeStringToBitmask)(potentialShapeString);
-        const uniqueOrientations = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.generateUniqueOrientations)(baseShapeMask);
-        const tileCount = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(baseShapeMask);
-        // Find the reference point (lowest ID tile) for the base shape
-        const baseShapeTileIds = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.bitmaskToTileIds)(baseShapeMask);
-        if (baseShapeTileIds.length === 0) {
-            throw new Error('Base shape mask resulted in zero tile IDs.');
+        // Log cache hit
+        // if (transpositionTable.size % 10000 === 0) { // Less frequent logging maybe
+        //   console.debug(`[Worker BT Cache Hit] State: ${stateKey.substring(0,20)}..., Result: ${cachedResult}`);
+        // }
+        return cachedResult; // Return cached max additional shapes
+    }
+    // Mark state as in progress
+    transpositionTable.set(stateKey, 'in_progress');
+    // --- End Lookup ---
+    let maxAdditionalShapesFound = 0;
+    // --- Pruning Check (Connected Components) ---
+    if (!isRemainingSpaceViable(currentGridState)) {
+        transpositionTable.set(stateKey, 0); // Store 0 additional shapes for pruned state
+        return 0;
+    }
+    // --- End Pruning Check ---
+    // --- Goal Check (Updates GLOBAL best) ---
+    // This still updates the global best when a valid placement is found
+    if (currentPlacement.length > maxShapesPlacedSoFar) {
+        maxShapesPlacedSoFar = currentPlacement.length;
+        bestSolutionsFound.clear();
+        bestSolutionsFound.set(currentGridState, [...currentPlacement]);
+        // console.log(`[Worker BT] New best found: ${maxShapesPlacedSoFar} shapes`);
+    }
+    else if (currentPlacement.length === maxShapesPlacedSoFar && maxShapesPlacedSoFar > 0) {
+        if (!bestSolutionsFound.has(currentGridState)) {
+            bestSolutionsFound.set(currentGridState, [...currentPlacement]);
         }
-        const baseReferenceTileId = Math.min(...baseShapeTileIds);
-        const baseReferenceCoord = _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.HEX_GRID_COORDS.find(c => c.id === baseReferenceTileId);
-        if (!baseReferenceCoord) {
-            throw new Error(`Could not find coordinates for base reference tile ID: ${baseReferenceTileId}`);
+    }
+    // --- End Goal Check ---
+    // --- Base Case ---
+    if (availableShapeIds.length === 0) {
+        transpositionTable.set(stateKey, 0); // Store 0 additional shapes for leaf state
+        return 0; // No more shapes can be added
+    }
+    // --- End Base Case ---
+    // --- MRV Heuristic (Select Most Constrained Shape) ---
+    let minCount = Infinity;
+    let shapeIdToTry = null;
+    for (const currentShapeId of availableShapeIds) {
+        const count = countValidPlacements(currentShapeId, currentGridState);
+        if (count < minCount) {
+            minCount = count;
+            shapeIdToTry = currentShapeId;
         }
-        uniqueOrientations.forEach(orientationMask => {
-            const orientationTileIds = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.bitmaskToTileIds)(orientationMask);
-            if (orientationTileIds.length === 0) {
-                console.warn('[Worker Pool] Orientation resulted in zero tile IDs, skipping.');
-                return;
+    }
+    if (shapeIdToTry === null && availableShapeIds.length > 0) {
+        // This should not happen if precomputation worked and shapes are valid
+        console.error("[Worker BT ERROR] MRV failed to select a shape!");
+        transpositionTable.set(stateKey, 0); // Store 0 as result for this error state
+        return 0;
+    }
+    // --- End MRV Heuristic ---
+    // --- Prepare for Recursion --- 
+    // This check is likely redundant due to the MRV error check above, but safe
+    if (shapeIdToTry === null) {
+        transpositionTable.set(stateKey, 0);
+        return 0;
+    }
+    const remainingShapeIds = availableShapeIds.filter(id => id !== shapeIdToTry);
+    const shapeData = allShapeData.get(shapeIdToTry); // Should exist due to MRV logic
+    if (!shapeData) {
+        // This would indicate a logic error
+        console.error(`[Worker BT] Shape data missing AFTER MRV: ${shapeIdToTry}`);
+        transpositionTable.set(stateKey, 0);
+        return 0;
+    }
+    // --- End Prepare for Recursion ---
+    // --- Recursive Step --- 
+    // 1. Try Placing the Selected Shape
+    if (shapeData.validPlacements) {
+        for (const placementMask of shapeData.validPlacements) {
+            if ((currentGridState & placementMask) === 0n) { // Check for overlap
+                const newGridState = currentGridState | placementMask;
+                const newPlacement = [
+                    ...currentPlacement,
+                    { shapeId: shapeIdToTry, placementMask },
+                ];
+                // Result is the additional shapes placed from the NEW state
+                const additionalShapesAfterPlace = solveBacktracking(newGridState, remainingShapeIds, newPlacement);
+                // Our result for *this* branch is 1 (for the shape we placed) + recursive result
+                maxAdditionalShapesFound = Math.max(maxAdditionalShapesFound, 1 + additionalShapesAfterPlace);
             }
-            const orientationReferenceTileId = Math.min(...orientationTileIds);
-            const orientationReferenceCoord = _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.HEX_GRID_COORDS.find(c => c.id === orientationReferenceTileId);
-            if (!orientationReferenceCoord) {
-                console.error(`[Worker Pool] Could not find coordinates for orientation reference tile ID: ${orientationReferenceTileId}`);
-                return;
-            }
-            _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.HEX_GRID_COORDS.forEach(targetCoord => {
-                const deltaQ = targetCoord.q - orientationReferenceCoord.q;
-                const deltaR = targetCoord.r - orientationReferenceCoord.r;
-                const translatedMask = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.translateShapeBitmask)(orientationMask, deltaQ, deltaR);
-                if ((0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(translatedMask) === tileCount) {
-                    const solutionTileIds = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.bitmaskToTileIds)(translatedMask);
-                    const solutionKey = solutionTileIds.sort((a, b) => a - b).join(',');
-                    solutions.add(solutionKey);
+        }
+    }
+    // 2. Try Skipping the Selected Shape
+    const additionalShapesAfterSkip = solveBacktracking(currentGridState, remainingShapeIds, currentPlacement);
+    maxAdditionalShapesFound = Math.max(maxAdditionalShapesFound, additionalShapesAfterSkip);
+    // --- End Recursive Step ---
+    // --- Store Result & Return ---
+    transpositionTable.set(stateKey, maxAdditionalShapesFound);
+    // Add periodic logging for table size if needed for debugging memory
+    // if (transpositionTable.size % 50000 === 0) { 
+    //     console.log(`[Worker BT] Transposition Table Size: ${transpositionTable.size}`);
+    // }
+    return maxAdditionalShapesFound;
+};
+// --- Helper Function for MRV: Count Valid Placements ---
+const countValidPlacements = (shapeId, currentGridState) => {
+    const shapeData = allShapeData.get(shapeId);
+    // If shape data or placements are missing, return a high value
+    if (!shapeData?.validPlacements) {
+        return Infinity; // Treat missing data as unconstrained (shouldn't happen ideally)
+    }
+    let count = 0;
+    for (const placementMask of shapeData.validPlacements) {
+        if ((currentGridState & placementMask) === 0n) {
+            count++;
+        }
+    }
+    return count;
+};
+// --- Pruning Helper Function (Connected Components Check) ---
+const isRemainingSpaceViable = (gridState) => {
+    const emptyTilesMask = FULL_GRID_MASK ^ gridState;
+    let visitedMask = 0n;
+    // Optimization: If no empty tiles, it's viable (or full)
+    if (emptyTilesMask === 0n) {
+        return true;
+    }
+    for (let i = 1; i <= _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.TOTAL_TILES; i++) {
+        const tileMask = 1n << BigInt(i - 1);
+        // Check if this tile is empty and not yet visited
+        if ((emptyTilesMask & tileMask) !== 0n && (visitedMask & tileMask) === 0n) {
+            let currentRegionSize = 0;
+            const queue = [tileMask]; // Use bigint masks in queue
+            visitedMask |= tileMask; // Mark starting tile as visited
+            // Start Flood Fill (BFS)
+            while (queue.length > 0) {
+                const currentTileMask = queue.shift();
+                currentRegionSize++;
+                // Find tile ID from mask efficiently
+                const currentTileId = BigInt.asUintN(64, currentTileMask).toString(2).length;
+                const neighbors = _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.ADJACENT_LIST[currentTileId] || [];
+                for (const neighborId of neighbors) {
+                    if (neighborId === 0)
+                        continue; // Skip invalid neighbors
+                    const neighborMask = 1n << BigInt(neighborId - 1);
+                    // Check if neighbor is empty and not visited
+                    if ((emptyTilesMask & neighborMask) !== 0n && (visitedMask & neighborMask) === 0n) {
+                        visitedMask |= neighborMask;
+                        queue.push(neighborMask);
+                    }
                 }
+            }
+            // --- End Flood Fill ---
+            // Divisibility Check for the completed region
+            if (currentRegionSize % 4 !== 0) {
+                return false; // Prune: region size not divisible by shape size (4)
+            }
+        }
+    }
+    // If all regions passed the divisibility check
+    return true;
+};
+// --- Precomputation Function (Using orientations) ---
+// Use the version that generates orientations for the backtracking solver
+const precomputeAllShapeData = (shapesToPlace) => {
+    console.log("[Worker] Starting precomputation (with orientations)...");
+    const computedData = new Map();
+    for (const shape of shapesToPlace) {
+        const shapeId = shape.id;
+        console.log(`[Worker] Precomputing for shape: ${shapeId}`);
+        try {
+            const solutions = new Set();
+            const baseShapeMask = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.shapeStringToBitmask)(shapeId);
+            // Generate orientations for backtracking
+            const uniqueOrientations = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.generateUniqueOrientations)(baseShapeMask);
+            const tileCount = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(baseShapeMask);
+            const baseShapeTileIds = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.bitmaskToTileIds)(baseShapeMask);
+            if (baseShapeTileIds.length === 0)
+                throw new Error('Base shape has no tiles.');
+            const baseReferenceTileId = Math.min(...baseShapeTileIds);
+            const baseReferenceCoord = _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.HEX_GRID_COORDS.find(c => c.id === baseReferenceTileId);
+            if (!baseReferenceCoord)
+                throw new Error(`Base ref coord not found for ${baseReferenceTileId}`);
+            uniqueOrientations.forEach(orientationMask => {
+                const orientationTileIds = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.bitmaskToTileIds)(orientationMask);
+                if (orientationTileIds.length === 0)
+                    return; // Should not happen for valid shapes
+                const orientationReferenceTileId = Math.min(...orientationTileIds);
+                const orientationReferenceCoord = _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.HEX_GRID_COORDS.find(c => c.id === orientationReferenceTileId);
+                if (!orientationReferenceCoord)
+                    return; // Should find coord
+                _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.HEX_GRID_COORDS.forEach(targetCoord => {
+                    const deltaQ = targetCoord.q - orientationReferenceCoord.q;
+                    const deltaR = targetCoord.r - orientationReferenceCoord.r;
+                    const translatedMask = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.translateShapeBitmask)(orientationMask, deltaQ, deltaR);
+                    if ((0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(translatedMask) === tileCount) {
+                        solutions.add(translatedMask);
+                    }
+                });
             });
-        });
-        const resultPayload = {
-            solutions: Array.from(solutions),
-        };
-        console.log(`[Worker Pool] Processing complete for shape. Found ${resultPayload.solutions.length} unique placements.`);
-        return resultPayload; // Return result via promise
+            computedData.set(shapeId, {
+                id: shapeId,
+                validPlacements: solutions,
+            });
+            console.log(`[Worker] Precomputed ${solutions.size} placements (including orientations) for ${shapeId}`);
+        }
+        catch (error) {
+            console.error(`[Worker] Error precomputing shape ${shapeId}:`, error);
+            computedData.set(shapeId, {
+                id: shapeId,
+                validPlacements: new Set(),
+            });
+        }
+    }
+    console.log("[Worker] Precomputation finished.");
+    return computedData;
+};
+// --- Worker Entry Point (Backtracking) --- 
+const runSolver = async (taskData) => {
+    console.log('[Worker Pool] Received task (Backtracking Solver): ', taskData);
+    const { shapesToPlace, initialGridState = 0n } = taskData;
+    // Reset state for this run
+    maxShapesPlacedSoFar = 0;
+    bestSolutionsFound.clear();
+    allShapeData.clear();
+    transpositionTable.clear();
+    // --- Call Precomputation ---
+    try {
+        // Use the precomputation that generates orientations
+        allShapeData = precomputeAllShapeData(shapesToPlace);
     }
     catch (error) {
-        console.error(`[Worker Pool] Error processing shape ${potentialShapeString}:`, error);
-        // Return error structure via promise rejection (workerpool handles this)
-        // Alternatively, return an error payload:
-        return { solutions: [], error: `Error processing shape: ${error.message}` };
+        console.error("[Worker Pool] Error during precomputation phase:", error);
+        return {
+            maxShapes: 0,
+            solutions: [],
+            error: `Error during precomputation: ${error.message}`
+        };
+    }
+    // --- Start Backtracking ---
+    const availableShapeIds = shapesToPlace.map((shape) => shape.id);
+    console.log(`[Worker Pool] Starting backtracking for ${availableShapeIds.length} shapes.`);
+    try {
+        // Start the recursion 
+        solveBacktracking(initialGridState, availableShapeIds, []);
+        // Global state (bestSolutionsFound, maxShapesPlacedSoFar) has been updated
+        const finalSolutions = Array.from(bestSolutionsFound.entries()).map(([gridState, placements]) => ({ gridState, placements }));
+        console.log(`[Worker Pool] Backtracking complete. Found ${finalSolutions.length} unique solutions placing ${maxShapesPlacedSoFar} shapes.`);
+        return {
+            maxShapes: maxShapesPlacedSoFar,
+            solutions: finalSolutions,
+        };
+    }
+    catch (error) {
+        // Check for specific errors like stack overflow or memory issues if needed
+        console.error('[Worker Pool] Error during backtracking execution:', error);
+        // Try to return partial results if available?
+        const partialSolutions = Array.from(bestSolutionsFound.entries()).map(([gridState, placements]) => ({ gridState, placements }));
+        return {
+            maxShapes: maxShapesPlacedSoFar, // Return best found so far
+            solutions: partialSolutions,
+            error: `Error during solver execution: ${error.message}`
+        };
     }
 };
-// --- Register Worker Function ---
+// --- NEW: Worker Entry Point for Exact Tiling (DLX) ---
+const runExactTilingFinder = async (taskData) => {
+    console.log('[Worker Pool] Received task (Exact 11-Tiling Finder): ', taskData);
+    const { shapesToPlace: originalShapesToPlace, initialGridState = 0n } = taskData;
+    if (originalShapesToPlace.length < 11) {
+        return { maxShapes: 0, solutions: [], error: "Need at least 11 shapes selected to find an exact tiling." };
+    }
+    if (initialGridState !== 0n) {
+        console.warn('[Worker Pool - Exact Tiling] Finding exact tiling on a non-empty grid is not supported by this mode.');
+        return { maxShapes: 0, solutions: [], error: "Exact tiling requires an empty grid (initialGridState must be 0)." };
+    }
+    // Precomputation might have already run if the main solver was called first,
+    // but run it again here to ensure `allShapeData` is populated correctly
+    // using the version WITH orientations needed for tiling.
+    // Note: `allShapeData` is a global within the worker scope.
+    try {
+        console.log("[Worker Pool - Exact Tiling] Running precomputation with orientations...");
+        allShapeData = precomputeAllShapeData(originalShapesToPlace);
+    }
+    catch (error) {
+        console.error("[Worker Pool - Exact Tiling] Error during precomputation phase:", error);
+        return {
+            maxShapes: 0,
+            solutions: [],
+            error: `Error during precomputation: ${error.message}`
+        };
+    }
+    // Iterate through combinations of EXACTLY 11 shapes
+    console.log(`[Worker Pool - Exact Tiling] Searching ${originalShapesToPlace.length} choose 11 combinations...`);
+    const k = 11;
+    const allFoundTilings = [];
+    let combinationCount = 0;
+    for (const currentShapeCombination of combinations(originalShapesToPlace, k)) {
+        combinationCount++;
+        // Optional: Log progress intermittently
+        // if (combinationCount % 100 === 0) {
+        //    console.log(`[Worker Pool - Exact Tiling] Tested ${combinationCount} combinations...`);
+        // }
+        try {
+            // Call the dedicated DLX exact tiling solver 
+            // It requires the full allShapeData for lookups
+            const result = (0,_solver_dlx__WEBPACK_IMPORTED_MODULE_3__.findExact11TilingSolutions)(currentShapeCombination, allShapeData, initialGridState);
+            if (result.solutions && result.solutions.length > 0) {
+                console.log(`[Worker Pool - Exact Tiling] Found ${result.solutions.length} tiling(s) for combination ${combinationCount}.`);
+                allFoundTilings.push(...result.solutions);
+                // Optional: Stop after finding the first combination that yields tilings?
+                // Or find all possible tilings from all combinations?
+                // Let's find all for now.
+            }
+        }
+        catch (error) {
+            console.error(`[Worker Pool - Exact Tiling] Error during DLX execution for combination ${combinationCount}:`, error);
+            // Continue checking other combinations
+        }
+    }
+    console.log(`[Worker Pool - Exact Tiling] Search complete. Tested ${combinationCount} combinations. Found ${allFoundTilings.length} total exact tiling solutions.`);
+    return {
+        maxShapes: allFoundTilings.length > 0 ? 11 : 0,
+        solutions: allFoundTilings, // Return all found tilings
+    };
+};
+// NEW function for Combinatorial Exact Tiling
+async function runCombinatorialExactTiling(taskData) {
+    console.log('[Worker] Starting combinatorial exact tiling search...');
+    const { allPotentialShapeIds, fixedShapeBaseMasks, initialGridState: initialGridStateStr } = taskData;
+    try {
+        const initialGridState = BigInt(initialGridStateStr);
+        const baseMasksMap = new Map(Object.entries(fixedShapeBaseMasks).map(([id, maskStr]) => [id, BigInt(maskStr)]));
+        if (allPotentialShapeIds.length < 11) {
+            return { maxShapes: 0, solutions: [], error: "Received less than 11 potential shapes." };
+        }
+        const allFoundSolutions = [];
+        let combinationCounter = 0;
+        console.log(`[Worker] Generating combinations of 11 from ${allPotentialShapeIds.length} shapes...`);
+        const combinationGenerator = combinations(allPotentialShapeIds, 11);
+        for (const currentCombinationIds of combinationGenerator) {
+            combinationCounter++;
+            if (combinationCounter % 100 === 0) {
+                console.log(`[Worker] Testing combination ${combinationCounter}...`);
+            }
+            // 1. Prepare ShapeData for this specific combination
+            const currentShapeDataMap = new Map();
+            let canBuildCombination = true;
+            for (const shapeId of currentCombinationIds) {
+                const baseMask = baseMasksMap.get(shapeId);
+                if (!baseMask || baseMask === 0n) { // Also check if baseMask is valid
+                    console.error(`[Worker] CRITICAL: Base mask not found or invalid for shape ID ${shapeId} in combination ${combinationCounter}`);
+                    canBuildCombination = false;
+                    break;
+                }
+                // --- Calculate valid placements for this fixed orientation --- START
+                const validPlacements = new Set();
+                const baseBitCount = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(baseMask);
+                if (baseBitCount === 0) { // Should be caught by baseMask check above, but safer
+                    console.warn(`[Worker] Shape ${shapeId} has base mask with zero bits.`);
+                    continue; // Skip shape if it's empty
+                }
+                // Find anchor point (e.g., lowest set bit)
+                const anchorBitIndex = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.findLowestSetBitIndex)(baseMask);
+                if (anchorBitIndex === -1) { // Should not happen if baseBitCount > 0
+                    console.error(`[Worker] Could not find anchor bit for shape ${shapeId}`);
+                    canBuildCombination = false;
+                    break;
+                }
+                const anchorTileId = anchorBitIndex + 1;
+                const anchorCoord = _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.HEX_GRID_COORDS.find(c => c.id === anchorTileId);
+                if (!anchorCoord) {
+                    console.error(`[Worker] Could not find anchor coordinates for tile ID ${anchorTileId} (shape ${shapeId})`);
+                    canBuildCombination = false;
+                    break;
+                }
+                // Iterate through all possible target tiles on the grid for the anchor
+                for (const targetCoord of _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.HEX_GRID_COORDS) {
+                    const deltaQ = targetCoord.q - anchorCoord.q;
+                    const deltaR = targetCoord.r - anchorCoord.r;
+                    const translatedMask = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.translateShapeBitmask)(baseMask, deltaQ, deltaR);
+                    // Validate the translation: check if all bits are still present
+                    if (translatedMask !== 0n && (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(translatedMask) === baseBitCount) {
+                        validPlacements.add(translatedMask);
+                    }
+                }
+                // --- Calculate valid placements for this fixed orientation --- END
+                if (validPlacements.size === 0) {
+                    // If a shape in the combination has NO valid placements, this combination cannot tile.
+                    // console.log(`[Worker] Shape ${shapeId} has 0 valid placements. Pruning combination ${combinationCounter}.`);
+                    canBuildCombination = false;
+                    break; // No need to process other shapes in this combo
+                }
+                currentShapeDataMap.set(shapeId, {
+                    id: shapeId,
+                    baseOrientationMask: baseMask, // Store base mask if needed later
+                    validPlacements: validPlacements,
+                });
+            }
+            if (!canBuildCombination) {
+                continue; // Skip to the next combination
+            }
+            // 2. Call the DLX solver for this combination
+            // Check if total constraints exceed a reasonable limit? DLX can be slow with huge matrices.
+            const constraintCount = Array.from(currentShapeDataMap.values()).reduce((sum, data) => sum + data.validPlacements.size, 0);
+            // console.log(`[Worker] Combination ${combinationCounter}: ${constraintCount} constraints.`);
+            // Add a threshold check if needed, e.g., if (constraintCount > 5000) { continue; }
+            const result = (0,_solver_dlx__WEBPACK_IMPORTED_MODULE_3__.findExact11TilingSolutions)(currentCombinationIds.map(id => ({ id })), currentShapeDataMap, initialGridState);
+            // 3. Aggregate results
+            if (result.solutions && result.solutions.length > 0) {
+                console.log(`[Worker] Found ${result.solutions.length} solution(s) for combination ${combinationCounter}`);
+                allFoundSolutions.push(...result.solutions);
+            }
+            if (result.error) {
+                console.warn(`[Worker] DLX solver error for combination ${combinationCounter}: ${result.error}`);
+            }
+        } // End loop through combinations
+        console.log(`[Worker] Finished checking ${combinationCounter} combinations. Found ${allFoundSolutions.length} total solutions.`);
+        return {
+            maxShapes: allFoundSolutions.length > 0 ? 11 : 0,
+            solutions: allFoundSolutions,
+        };
+    }
+    catch (error) {
+        console.error('[Worker] Error during combinatorial exact tiling:', error);
+        return { maxShapes: 0, solutions: [], error: `Worker error: ${error.message}` };
+    }
+}
+// --- Register Worker Functions --- 
 workerpool__WEBPACK_IMPORTED_MODULE_0__.worker({
-    findPlacements: findPlacements
+    runSolver: runSolver, // Register the backtracking solver as the default
+    runExactTilingFinder: runExactTilingFinder, // Register the new DLX exact tiling finder
+    runCombinatorialExactTiling: runCombinatorialExactTiling
 });
-console.log('[Worker Pool] Worker registered functions.');
+console.log('[Worker Pool] Worker registered: runSolver (Backtracking), runExactTilingFinder (DLX 11-Tiling), runCombinatorialExactTiling (Combinatorial Exact Tiling).');
 
 })();
 
