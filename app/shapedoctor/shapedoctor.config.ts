@@ -17,14 +17,19 @@ export const HEX_COLORS = [
 export const DEFAULT_COLOR = "#374151"; // gray-700
 export const SELECTED_COLOR = "#A78BFA"; // violet-400
 export const HOVER_COLOR = "#4B5563"; // gray-600
-export const STROKE_COLOR_DEFAULT = "#6B7280"; // gray-500
-export const STROKE_COLOR_ACTIVE = "#D1D5DB"; // gray-300
+export const STROKE_COLOR_DEFAULT = "hsl(210 40% 96.1% / 0.4)";
+export const STROKE_COLOR_ACTIVE = "hsl(210 40% 96.1% / 0.9)";
 export const CANVAS_BG_DARK = "dark:bg-gray-900";
 export const PREVIEW_BG = "bg-background";
 
 export const HEX_SIZE = 30;
 export const HEX_HEIGHT = Math.sqrt(3) * HEX_SIZE;
 export const HEX_WIDTH = 2 * HEX_SIZE;
+
+// Add new colors for locked/lockable states
+export const LOCKED_COLOR = "hsl(210 10% 30% / 0.6)"; // Semi-transparent dark gray
+export const LOCKABLE_BORDER_COLOR = "hsl(200 90% 60% / 0.8)"; // Distinct blue (No longer used in drawHexGrid)
+export const LOCKED_ICON_COLOR = "hsl(210 40% 96.1% / 0.8)"; // Light gray/white for icon on dark hex
 
 // Updated with 69 unique shapes generated for the 44-tile grid
 export const PREDEFINED_SHAPES = [

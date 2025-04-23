@@ -36,7 +36,12 @@ import {
 import { 
     bitmaskToTileIds, 
     shapeStringToBitmask,
-    translateShapeBitmask
+    translateShapeBitmask,
+    countSetBits,
+    setTileLock,
+    clearTileLock,
+    toggleTileLock,
+    isTileLocked
 } from './bitmaskUtils';
 
 // Import QOper8 and define types
@@ -55,6 +60,11 @@ type QOper8Response = {
   results: any; 
 } | undefined;
 */
+
+// Define lockable tile IDs
+const LOCKABLE_TILE_IDS: ReadonlySet<number> = new Set([
+  1, 3, 6, 10, 13, 17, 20, 24, 27, 31, 34, 35, 38, 37, 39, 40, 41, 42, 43, 44
+]);
 
 const isSafeNumber = HexUtils.isSafeNumber;
 
@@ -87,6 +97,8 @@ export default function ShapeDoctor() {
   const [dragStart, setDragStart] = useState<Point>({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const [solveProgress, setSolveProgress] = useState<number>(0);
+  // State for locked tiles bitmask
+  const [lockedTilesMask, setLockedTilesMask] = useState<bigint>(0n);
   // State for exact tiling results
   const [exactTilingSolutions, setExactTilingSolutions] = useState<SolutionRecord[]>([]);
   const [isFindingExactTiling, setIsFindingExactTiling] = useState<boolean>(false);
@@ -162,12 +174,14 @@ export default function ShapeDoctor() {
       currentOffset.y,
       currentHoverId,
       currentGridState,
-      selectedTiles // Pass selectedTiles here
+      selectedTiles,
+      lockedTilesMask,
+      LOCKABLE_TILE_IDS
     );
 
     // Continue the animation loop
     animationFrameIdRef.current = requestAnimationFrame(drawMainCanvas);
-  }, [zoom, gridState, selectedTiles]);
+  }, [zoom, gridState, selectedTiles, lockedTilesMask, LOCKABLE_TILE_IDS]);
 
   // Revert back to useCallback
   const drawPotentialShapes = useCallback(() => {
@@ -302,42 +316,72 @@ export default function ShapeDoctor() {
   };
 
   const handleClick = (e: MouseEvent) => {
-    if (isDragging) return; // Don't process click if it was end of drag
+    // Check if dragging occurred between mousedown and mouseup
+    const movedSignificantly =
+      Math.abs(e.clientX - (dragStart.x + currentOffsetRef.current.x)) > 5 ||
+      Math.abs(e.clientY - (dragStart.y + currentOffsetRef.current.y)) > 5;
 
+    if (isDragging && movedSignificantly) return; // Ignore click if it was likely a drag
+
+    // --- Get Clicked Hex --- 
     const clickedHex = getHexUnderCursor(e);
+    if (!clickedHex) return; // Exit if click is outside any hex
+    const clickedTileId = clickedHex.id;
 
-    if (clickedHex && !isSolving) {
-      const clickedId = clickedHex.id;
-      setSelectedTiles((prev) => {
-        const newSelection = new Set(prev);
-        let isAdding = false;
-        if (newSelection.has(clickedId)) {
-          newSelection.delete(clickedId);
-        } else {
-          newSelection.add(clickedId);
-          isAdding = true;
+    // --- Check for solving/viewing results first (applies to both actions) ---
+    if (isSolving || isFindingExactTiling) {
+        toast.warning("Cannot interact while solving.", { duration: 3000 });
+        return;
+    }
+    if (currentSolutionIndex !== -1 || currentExactTilingIndex !== -1) {
+        toast.warning("Click 'Back to Edit' first to interact.", { duration: 3000 });
+        return;
+    }
+
+    // --- Decide Action: Lock Toggle or Shape Selection --- 
+    if (LOCKABLE_TILE_IDS.has(clickedTileId)) {
+        // Action: Toggle Lock State for Lockable Tiles
+        // handleToggleTileLock already checks internally if it's actually lockable, 
+        // but this outer check ensures we only call it for potentially lockable ones.
+        handleToggleTileLock(clickedTileId); 
+    } else {
+        // Action: Toggle Shape Selection for Non-Lockable Tiles
+        
+        // First, ensure the non-lockable tile isn't somehow locked
+        if (isTileLocked(lockedTilesMask, clickedTileId)) {
+            toast.warning("Cannot select a locked tile.", { duration: 2000 });
+            return; // Stop if the non-lockable tile is locked
         }
 
-        // Check connectivity only if adding a tile to an existing selection
-        if (isAdding && newSelection.size > 1) {
-          const neighbors = Config.ADJACENT_LIST[clickedId] || [];
-          const isAdjacent = neighbors.some((neighborId: number) =>
-            prev.has(neighborId)
-          );
-          if (!isAdjacent) {
-            toast.warning("Selected tiles must be connected.");
-            newSelection.delete(clickedId); // Revert the addition
-            return prev; // Return original set
-          }
-        }
-
-        // Clear solutions when selection changes
-        setPotentials([]);
-        setBestSolutions([]);
-        setCurrentSolutionIndex(-1);
-        setGridState(Array(Config.TOTAL_TILES + 1).fill(-1));
-        return newSelection;
-      });
+        // Proceed with toggling selection
+        setSelectedTiles(prevSelected => {
+            const newSelection = new Set(prevSelected);
+            if (newSelection.has(clickedTileId)) {
+                // Always allow removing a tile
+                newSelection.delete(clickedTileId);
+            } else {
+                // Logic for adding a tile
+                if (newSelection.size < 4) {
+                    // Check adjacency only if it's not the first tile
+                    if (newSelection.size > 0) {
+                        const neighborsOfClick = Config.ADJACENT_LIST[clickedTileId] || [];
+                        const isAdjacentToSelection = Array.from(newSelection).some(selectedId => 
+                            neighborsOfClick.includes(selectedId)
+                        );
+                        
+                        if (!isAdjacentToSelection) {
+                            toast.error("New tiles must be adjacent to the current selection.");
+                            return prevSelected; // Return the original set unchanged
+                        }
+                    }
+                    // If first tile OR adjacent, add it
+                    newSelection.add(clickedTileId);
+                } else {
+                    toast.error("Maximum 4 tiles selected.");
+                }
+            }
+            return newSelection;
+        });
     }
   };
 
@@ -542,65 +586,71 @@ export default function ShapeDoctor() {
 
     const handleClick = (e: MouseEvent) => {
       // Check if dragging occurred between mousedown and mouseup
-      // Simple check: if mouse moved significantly, consider it a drag
       const movedSignificantly =
         Math.abs(e.clientX - (dragStart.x + currentOffsetRef.current.x)) > 5 ||
         Math.abs(e.clientY - (dragStart.y + currentOffsetRef.current.y)) > 5;
 
       if (isDragging && movedSignificantly) return; // Ignore click if it was likely a drag
 
-      if (currentSolutionIndex !== -1) {
-        toast.warning("Click 'Back to Edit' first.", { duration: 3000 });
-        return;
-      }
-      const currentCanvas = canvasRef.current;
-      if (
-        !currentCanvas ||
-        currentCanvas.width === 0 ||
-        currentCanvas.height === 0
-      )
-        return;
-      const rect = currentCanvas.getBoundingClientRect();
-      if (!rect) return;
-      const screenX = e.clientX - rect.left;
-      const screenY = e.clientY - rect.top;
-      const world = HexUtils.screenToWorld(
-        screenX,
-        screenY,
-        currentCanvas.width,
-        currentCanvas.height,
-        currentOffsetRef.current,
-        zoom
-      );
-      if (!world) return;
+      // --- Get Clicked Hex --- 
       const clickedHex = getHexUnderCursor(e);
-      if (clickedHex) {
-        const clickedId = clickedHex.id;
-        setSelectedTiles((prev) => {
-          const newSelection = new Set(prev);
-          if (newSelection.has(clickedId)) {
-            newSelection.delete(clickedId);
-          } else {
-            if (newSelection.size >= 4) {
-              toast.warning("Max 4 tiles.", { duration: 3000 });
-              return prev; // Return previous state if max reached
-            }
-            // Check connectivity only if adding a tile to an existing selection
-            if (newSelection.size > 0) {
-              const neighbors = Config.ADJACENT_LIST[clickedId] || [];
-              const isAdjacent = neighbors.some(
-                (neighborId: number) =>
-                  neighborId !== 0 && newSelection.has(neighborId)
-              );
-              if (!isAdjacent) {
-                toast.warning("Tiles must be connected.", { duration: 3000 });
-                return prev; // Return previous state if not adjacent
-              }
-            }
-            newSelection.add(clickedId);
+      if (!clickedHex) return; // Exit if click is outside any hex
+      const clickedTileId = clickedHex.id;
+
+      // --- Check for solving/viewing results first (applies to both actions) ---
+      if (isSolving || isFindingExactTiling) {
+          toast.warning("Cannot interact while solving.", { duration: 3000 });
+          return;
+      }
+      if (currentSolutionIndex !== -1 || currentExactTilingIndex !== -1) {
+          toast.warning("Click 'Back to Edit' first to interact.", { duration: 3000 });
+          return;
+      }
+
+      // --- Decide Action: Lock Toggle or Shape Selection --- 
+      if (LOCKABLE_TILE_IDS.has(clickedTileId)) {
+          // Action: Toggle Lock State for Lockable Tiles
+          // handleToggleTileLock already checks internally if it's actually lockable, 
+          // but this outer check ensures we only call it for potentially lockable ones.
+          handleToggleTileLock(clickedTileId); 
+      } else {
+          // Action: Toggle Shape Selection for Non-Lockable Tiles
+          
+          // First, ensure the non-lockable tile isn't somehow locked
+          if (isTileLocked(lockedTilesMask, clickedTileId)) {
+              toast.warning("Cannot select a locked tile.", { duration: 2000 });
+              return; // Stop if the non-lockable tile is locked
           }
-          return newSelection; // Return the modified set
-        });
+
+          // Proceed with toggling selection
+          setSelectedTiles(prevSelected => {
+              const newSelection = new Set(prevSelected);
+              if (newSelection.has(clickedTileId)) {
+                  // Always allow removing a tile
+                  newSelection.delete(clickedTileId);
+              } else {
+                  // Logic for adding a tile
+                  if (newSelection.size < 4) {
+                      // Check adjacency only if it's not the first tile
+                      if (newSelection.size > 0) {
+                          const neighborsOfClick = Config.ADJACENT_LIST[clickedTileId] || [];
+                          const isAdjacentToSelection = Array.from(newSelection).some(selectedId => 
+                              neighborsOfClick.includes(selectedId)
+                          );
+                          
+                          if (!isAdjacentToSelection) {
+                              toast.error("New tiles must be adjacent to the current selection.");
+                              return prevSelected; // Return the original set unchanged
+                          }
+                      }
+                      // If first tile OR adjacent, add it
+                      newSelection.add(clickedTileId);
+                  } else {
+                      toast.error("Maximum 4 tiles selected.");
+                  }
+              }
+              return newSelection;
+          });
       }
     };
 
@@ -682,6 +732,17 @@ export default function ShapeDoctor() {
   const handleClearSelection = useCallback(() => {
     setSelectedTiles(new Set());
   }, [setSelectedTiles]);
+
+  // --- NEW: Tile Locking Handlers ---
+  const handleToggleTileLock = useCallback((tileId: number) => {
+    // Only allow toggling for designated lockable tiles
+    if (!LOCKABLE_TILE_IDS.has(tileId)) {
+      toast.warning(`Tile ${tileId} is not lockable.`);
+      return;
+    }
+    setLockedTilesMask(prevMask => toggleTileLock(prevMask, tileId));
+  }, [setLockedTilesMask]); // LOCKABLE_TILE_IDS is constant
+  // --- END NEW ---
 
   const handleResetSelection = useCallback(() => {
     setSelectedTiles(new Set());
@@ -765,7 +826,10 @@ export default function ShapeDoctor() {
       // --- REFACTORED PART ---
       // 1. Prepare single task data payload for backtracking solver
       const shapesToPlace = potentials.map(shapeStr => ({ id: shapeStr }));
-      const taskData: SolverExecDataBacktracking = { shapesToPlace }; // Interface imported from ./types
+      const taskData: SolverExecDataBacktracking = {
+        shapesToPlace,
+        lockedTilesMask,
+      };
       console.log(`Submitting single backtracking task to workerpool:`, taskData);
 
       // 2. Execute the single task
@@ -1157,7 +1221,8 @@ export default function ShapeDoctor() {
       // Send the full list of potentials with unique IDs and their base masks
       const taskData = {
           allPotentialsData: allPotentialsData, // Array of { uniqueId, baseMaskString }
-          initialGridState: 0n.toString() // Send BigInt as string
+          initialGridState: 0n.toString(), // Send BigInt as string
+          lockedTilesMask: lockedTilesMask, // Add this line
       };
       
       // Execute the combinatorial exact tiling finder function on the worker
@@ -1244,7 +1309,10 @@ export default function ShapeDoctor() {
                 formattedProgress={formattedProgress} 
                 zoom={zoom}
                 setZoom={setZoom}
-                handleReset={handleResetSelection} 
+                handleReset={handleResetSelection}
+                lockedTilesMask={lockedTilesMask}        // Pass lock state
+                lockableTiles={LOCKABLE_TILE_IDS} // ADD THIS LINE
+                onTileClick={handleToggleTileLock}     // Pass lock toggle handler
               />
             </div>
 

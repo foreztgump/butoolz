@@ -1,5 +1,6 @@
 import type { Point, HexCoord } from './types';
 import * as Config from './shapedoctor.config';
+import { isTileLocked } from './bitmaskUtils';
 
 export const isSafeNumber = (num: unknown): num is number =>
   typeof num === "number" && Number.isFinite(num);
@@ -129,7 +130,9 @@ export const drawHexGrid = (
   offsetY: number,
   currentHoverId: number | null,
   currentGridState: number[],
-  selectedTiles: Set<number> // Pass selectedTiles as an argument
+  selectedTiles: Set<number>,
+  lockedTilesMask: bigint,
+  lockableTiles: ReadonlySet<number>
 ) => {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.save();
@@ -145,10 +148,29 @@ export const drawHexGrid = (
     const solutionPieceIndex = currentGridState[hex.id];
     const isPartOfSolution = solutionPieceIndex !== -1;
 
+    // Add lock state checks
+    const isLocked = isTileLocked(lockedTilesMask, hex.id);
+    const isLockable = lockableTiles.has(hex.id);
+
     let fillColor = Config.DEFAULT_COLOR;
     let strokeColor = Config.STROKE_COLOR_DEFAULT;
     let lineWidth = 1;
 
+    // Apply base styles based on lock state first
+    let shouldDrawLockIcon = false; // Flag to draw icon after hex
+    if (isLocked) {
+      // Keep default fill/stroke, but flag to draw icon
+      shouldDrawLockIcon = true;
+      fillColor = Config.DEFAULT_COLOR; // Ensure default fill
+      strokeColor = Config.STROKE_COLOR_DEFAULT; // Ensure default stroke
+      lineWidth = 1;
+    } else if (isLockable) {
+      // Lockable but not locked: Keep default fill, indicate with border
+      strokeColor = Config.LOCKABLE_BORDER_COLOR; // Use the defined lockable border color
+      lineWidth = 1.5; // Slightly thicker border
+    }
+
+    // Override with solution/selection/hover styles
     if (isPartOfSolution) {
       fillColor = Config.HEX_COLORS[solutionPieceIndex % Config.HEX_COLORS.length];
       strokeColor = Config.STROKE_COLOR_ACTIVE;
@@ -172,7 +194,43 @@ export const drawHexGrid = (
       lineWidth,
       strokeColor
     );
+
+    // Draw lock icon on top if needed
+    if (shouldDrawLockIcon) {
+      drawLockIcon(ctx, pixel.x, pixel.y, Config.HEX_SIZE * 0.4); // Draw icon at 40% of hex size
+    }
   });
+
+  ctx.restore();
+};
+
+export const drawLockIcon = (
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number // Overall size of the icon
+) => {
+  const bodyHeight = size * 0.6;
+  const bodyWidth = size * 0.7;
+  const handleRadius = size * 0.3;
+  const handleThickness = size * 0.12;
+  const handleTop = cy - size * 0.5;
+  const bodyTop = cy - size * 0.1;
+
+  ctx.save();
+  ctx.fillStyle = Config.LOCKED_ICON_COLOR; // Use a defined color
+  ctx.strokeStyle = Config.STROKE_COLOR_ACTIVE; // Use active stroke for visibility
+  ctx.lineWidth = size * 0.08; // Relative line width
+
+  // Draw Body (rectangle)
+  ctx.fillRect(cx - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
+  ctx.strokeRect(cx - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
+
+  // Draw Handle (arc)
+  ctx.beginPath();
+  ctx.arc(cx, handleTop + handleRadius, handleRadius, Math.PI, 0); // Outer arc
+  ctx.stroke();
+  // Optionally add inner arc for thickness, but might be too small
 
   ctx.restore();
 };

@@ -258,80 +258,106 @@ const isRemainingSpaceViable = (gridState: bigint): boolean => {
     return true;
 };
 
-// --- Precomputation Function (Using orientations) ---
-// Use the version that generates orientations for the backtracking solver
-const precomputeAllShapeData = (shapesToPlace: { id: string }[]): Map<string, ShapeData> => {
-    console.log("[Worker] Starting precomputation (with orientations)...");
-    const computedData = new Map<string, ShapeData>();
+// --- Precomputation Function ---
+const precomputeAllShapeData = (
+  shapesToPlace: { id: string }[],
+  lockedTilesMask: bigint // Add lockedTilesMask parameter
+): Map<string, ShapeData> => {
+  console.log("[Worker Precompute] Starting precomputation (using deltaQ/R)...");
+  const computationStartTime = Date.now();
+  const computedData = new Map<string, ShapeData>();
 
-    for (const shape of shapesToPlace) {
-        const shapeId = shape.id; 
-        console.log(`[Worker] Precomputing for shape: ${shapeId}`);
-        try {
-            const solutions = new Set<bigint>(); 
-            const baseShapeMask = shapeStringToBitmask(shapeId);
-            // Generate orientations for backtracking
-            const uniqueOrientations = generateUniqueOrientations(baseShapeMask); 
-            const tileCount = countSetBits(baseShapeMask);
-
-            const baseShapeTileIds = bitmaskToTileIds(baseShapeMask);
-            if (baseShapeTileIds.length === 0) throw new Error('Base shape has no tiles.');
-            const baseReferenceTileId = Math.min(...baseShapeTileIds);
-            const baseReferenceCoord = HEX_GRID_COORDS.find(c => c.id === baseReferenceTileId);
-            if (!baseReferenceCoord) throw new Error(`Base ref coord not found for ${baseReferenceTileId}`);
-
-            uniqueOrientations.forEach(orientationMask => {
-                const orientationTileIds = bitmaskToTileIds(orientationMask);
-                if (orientationTileIds.length === 0) return; // Should not happen for valid shapes
-                const orientationReferenceTileId = Math.min(...orientationTileIds);
-                const orientationReferenceCoord = HEX_GRID_COORDS.find(c => c.id === orientationReferenceTileId);
-                if (!orientationReferenceCoord) return; // Should find coord
-
-                HEX_GRID_COORDS.forEach(targetCoord => {
-                    const deltaQ = targetCoord.q - orientationReferenceCoord.q;
-                    const deltaR = targetCoord.r - orientationReferenceCoord.r;
-                    const translatedMask = translateShapeBitmask(orientationMask, deltaQ, deltaR);
-
-                    if (countSetBits(translatedMask) === tileCount) {
-                        solutions.add(translatedMask);
-                    }
-                });
-            });
-
-            computedData.set(shapeId, {
-                id: shapeId,
-                validPlacements: solutions, 
-            });
-            console.log(`[Worker] Precomputed ${solutions.size} placements (including orientations) for ${shapeId}`);
-
-        } catch(error) {
-            console.error(`[Worker] Error precomputing shape ${shapeId}:`, error);
-            computedData.set(shapeId, {
-                id: shapeId,
-                validPlacements: new Set(), 
-            });
+  // Use original IDs directly for the map initially, handle canonical later if needed by solver
+  shapesToPlace.forEach(shapeInput => {
+    const shapeId = shapeInput.id;
+    const shapeStartTime = Date.now();
+    try {
+        const baseShapeMask = shapeStringToBitmask(shapeId);
+        if (baseShapeMask === 0n) {
+             console.warn(`[Worker Precompute] Skipping shape with empty mask: ${shapeId}`);
+             return; // Skip this shape
         }
-    }
-    console.log("[Worker] Precomputation finished.");
-    return computedData;
-};
+        const uniqueOrientations = generateUniqueOrientations(baseShapeMask);
+        const validPlacements = new Set<bigint>();
+        const tileCount = countSetBits(baseShapeMask); // Expected number of tiles
 
+        // Find reference point for the base shape (needed for delta calculation)
+        const baseShapeTileIds = bitmaskToTileIds(baseShapeMask);
+        if (baseShapeTileIds.length === 0) throw new Error('Base shape has no tiles.');
+        const baseReferenceTileId = Math.min(...baseShapeTileIds);
+        const baseReferenceCoord = HEX_GRID_COORDS.find(c => c.id === baseReferenceTileId);
+        if (!baseReferenceCoord) throw new Error(`Base ref coord not found for ${baseReferenceTileId}`);
+
+        uniqueOrientations.forEach(orientationMask => {
+            const orientationTileIds = bitmaskToTileIds(orientationMask);
+            if (orientationTileIds.length === 0) return; // Should not happen
+            // Use the same reference point finding logic for consistency
+            const orientationReferenceTileId = Math.min(...orientationTileIds);
+            const orientationReferenceCoord = HEX_GRID_COORDS.find(c => c.id === orientationReferenceTileId);
+            if (!orientationReferenceCoord) return;
+
+            // Iterate through all possible target positions on the grid
+            HEX_GRID_COORDS.forEach(targetCoord => {
+                const deltaQ = targetCoord.q - orientationReferenceCoord.q;
+                const deltaR = targetCoord.r - orientationReferenceCoord.r;
+
+                // Translate the shape
+                const translatedMask = translateShapeBitmask(orientationMask, deltaQ, deltaR);
+
+                // Validate the translated mask
+                if (countSetBits(translatedMask) === tileCount) { 
+                    // *** Check against locked tiles ***
+                    if ((translatedMask & lockedTilesMask) === 0n) {
+                        validPlacements.add(translatedMask);
+                    }
+                    // *** End check ***
+                }
+            });
+        });
+
+        if (validPlacements.size > 0) {
+            // Use the original shapeId as the key for simplicity here
+            // Canonical form handling can be done within the solver if needed
+            computedData.set(shapeId, { id: shapeId, validPlacements });
+        } else {
+            console.warn(`[Worker Precompute] No valid (unlocked) placements found for shape: ${shapeId}`);
+        }
+        // Optional timing log
+        // const shapeEndTime = Date.now();
+        // console.log(`[Worker Precompute] Shape ${shapeId} took ${shapeEndTime - shapeStartTime}ms, ${validPlacements.size} placements.`);
+
+    } catch (e) {
+      console.error(`[Worker Precompute] Error precomputing shape ${shapeId}:`, e);
+      // Store empty set on error to avoid issues later?
+       computedData.set(shapeId, { id: shapeId, validPlacements: new Set() });
+    }
+  });
+
+  const computationEndTime = Date.now();
+  console.log(`[Worker Precompute] Precomputation finished in ${computationEndTime - computationStartTime}ms. Computed data for ${computedData.size} shapes.`);
+  return computedData;
+};
 
 // --- Worker Entry Point (Backtracking) --- 
 const runSolver = async (taskData: SolverExecDataBacktracking): Promise<SolverResultPayloadBacktracking> => {
-  console.log('[Worker Pool] Received task (Backtracking Solver): ', taskData);
-  const { shapesToPlace, initialGridState = 0n } = taskData;
-
-  // Reset state for this run
+  console.log("[Worker runSolver] Received task:", taskData);
+  // Reset global state for this run
   maxShapesPlacedSoFar = 0;
-  bestSolutionsFound.clear(); 
-  allShapeData.clear();
-  transpositionTable.clear(); 
+  bestSolutionsFound = new Map();
+  transpositionTable = new Map(); // Clear transposition table for each run
+  allShapeData = new Map(); // Clear precomputed data
 
-  // --- Call Precomputation ---
+  // Destructure necessary data from taskData
+  const { shapesToPlace, initialGridState = 0n, lockedTilesMask } = taskData;
+  // Note: shapeDataMap is no longer expected from the main thread
+
+  console.log(`[Worker Pool] Starting backtracking solve for ${shapesToPlace.length} shapes...`);
+  const startTime = Date.now();
+
   try {
-      // Use the precomputation that generates orientations
-      allShapeData = precomputeAllShapeData(shapesToPlace); 
+      // Precomputation happens first, now using lockedTilesMask
+      console.log("[Worker Pool] Running precomputation...");
+      allShapeData = precomputeAllShapeData(shapesToPlace, lockedTilesMask);
   } catch (error) {
       console.error("[Worker Pool] Error during precomputation phase:", error);
       return {
@@ -393,7 +419,7 @@ const runExactTilingFinder = async (taskData: SolverExecDataBacktracking): Promi
     // Note: `allShapeData` is a global within the worker scope.
      try {
         console.log("[Worker Pool - Exact Tiling] Running precomputation with orientations...");
-        allShapeData = precomputeAllShapeData(originalShapesToPlace);
+        allShapeData = precomputeAllShapeData(originalShapesToPlace, 0n);
     } catch (error) {
         console.error("[Worker Pool - Exact Tiling] Error during precomputation phase:", error);
         return {
@@ -441,121 +467,58 @@ const runExactTilingFinder = async (taskData: SolverExecDataBacktracking): Promi
     };
 };
 
-// NEW function for Combinatorial Exact Tiling
+// Worker function for the combinatorial exact tiling search
 async function runCombinatorialExactTiling(taskData: {
     allPotentialsData: { uniqueId: string; baseMaskString: string }[]; 
     initialGridState: string;
+    lockedTilesMask: string; // Add lockedTilesMask (passed as string)
 }): Promise<SolverResultPayloadBacktracking> {
-    console.log('[Worker] Starting combinatorial exact tiling search...');
-    const { allPotentialsData, initialGridState: initialGridStateStr } = taskData;
-    
+    console.log("[Worker runCombinatorialExactTiling] Received task with", taskData.allPotentialsData.length, "potentials.");
+    const { allPotentialsData, initialGridState: initialGridStateString, lockedTilesMask: lockedTilesMaskString } = taskData;
+
+    // Convert string masks back to bigint
+    const initialGridState = BigInt(initialGridStateString);
+    const lockedTilesMask = BigInt(lockedTilesMaskString);
+
+    // Reset global state (optional, DLX state should be self-contained)
+    maxShapesPlacedSoFar = 0;
+    bestSolutionsFound = new Map();
+
+    // Declare shapeDataMap here to be accessible in both try blocks
+    let shapeDataMap: Map<string, ShapeData>;
+
+    // --- Precompute shape data respecting locked tiles --- 
     try {
-        const initialGridState = BigInt(initialGridStateStr);
-        
-        // Validate input length
-        if (allPotentialsData.length < 11) {
-             return { maxShapes: 0, solutions: [], error: "Received less than 11 potential shapes." };
-        }
-
-        const allFoundSolutions: SolutionRecord[] = [];
-        let combinationCounter = 0;
-
-        console.log(`[Worker] Generating combinations of 11 from ${allPotentialsData.length} shapes...`);
-        // Generate combinations based on the full list of potential data objects
-        const combinationGenerator = combinations(allPotentialsData, 11);
-
-        for (const currentCombination of combinationGenerator) {
-            combinationCounter++;
-            if (combinationCounter % 100 === 0) { 
-                 console.log(`[Worker] Testing combination ${combinationCounter}...`);
-            }
-
-            // 1. Prepare ShapeData for this specific combination
-            const currentShapeDataMap = new Map<string, ShapeData>();
-            let canBuildCombination = true;
-            // Use the uniqueId from the combination items
-            for (const potential of currentCombination) {
-                const { uniqueId, baseMaskString } = potential;
-                const baseMask = BigInt(baseMaskString);
-                
-                if (!baseMask || baseMask === 0n) { 
-                    console.error(`[Worker] CRITICAL: Invalid base mask found for potential unique ID ${uniqueId} in combination ${combinationCounter}`);
-                    canBuildCombination = false;
-                    break; 
-                }
-
-                // Calculate valid placements for this fixed orientation
-                const validPlacements = new Set<bigint>();
-                const baseBitCount = countSetBits(baseMask);
-                if (baseBitCount === 0) {
-                     console.warn(`[Worker] Potential ${uniqueId} has base mask with zero bits.`);
-                     continue; 
-                }
-                const anchorBitIndex = findLowestSetBitIndex(baseMask);
-                if (anchorBitIndex === -1) {
-                    console.error(`[Worker] Could not find anchor bit for potential ${uniqueId}`);
-                    canBuildCombination = false;
-                    break;
-                }
-                const anchorTileId = anchorBitIndex + 1;
-                const anchorCoord = HEX_GRID_COORDS.find(c => c.id === anchorTileId);
-                if (!anchorCoord) {
-                     console.error(`[Worker] Could not find anchor coordinates for tile ID ${anchorTileId} (potential ${uniqueId})`);
-                     canBuildCombination = false;
-                     break;
-                }
-                for (const targetCoord of HEX_GRID_COORDS) {
-                    const deltaQ = targetCoord.q - anchorCoord.q;
-                    const deltaR = targetCoord.r - anchorCoord.r;
-                    const translatedMask = translateShapeBitmask(baseMask, deltaQ, deltaR);
-                    if (translatedMask !== 0n && countSetBits(translatedMask) === baseBitCount) {
-                        validPlacements.add(translatedMask);
-                    }
-                }
-
-                if (validPlacements.size === 0) {
-                    canBuildCombination = false; 
-                    break; 
-                }
-
-                // Use uniqueId as the key and the ID within ShapeData
-                currentShapeDataMap.set(uniqueId, {
-                    id: uniqueId, 
-                    baseOrientationMask: baseMask, 
-                    validPlacements: validPlacements, 
-                });
-            }
-
-            if (!canBuildCombination) {
-                continue; // Skip to the next combination
-            }
-
-            // 2. Call the DLX solver for this combination
-            const result = findExact11TilingSolutions(
-                // Pass the list of shapes with their unique IDs
-                currentCombination.map(p => ({ id: p.uniqueId })), 
-                currentShapeDataMap,
-                initialGridState
-            );
-
-            // 3. Aggregate results (PlacementRecord.shapeId will now be the uniqueId)
-            if (result.solutions && result.solutions.length > 0) {
-                console.log(`[Worker] Found ${result.solutions.length} solution(s) for combination ${combinationCounter}`);
-                allFoundSolutions.push(...result.solutions);
-            }
-            if (result.error) {
-                 console.warn(`[Worker] DLX solver error for combination ${combinationCounter}: ${result.error}`);
-            }
-        } // End loop through combinations
-
-        console.log(`[Worker] Finished checking ${combinationCounter} combinations. Found ${allFoundSolutions.length} total solutions.`);
-        return {
-            maxShapes: allFoundSolutions.length > 0 ? 11 : 0,
-            solutions: allFoundSolutions,
-        };
-
+        console.log("[Worker Pool - Comb Exact Tiling] Running precomputation...");
+        // Map potentials to the format needed by precomputeAllShapeData
+        const shapesToPrecompute = allPotentialsData.map(p => ({ id: p.uniqueId })); 
+        // Assign to the outer scoped variable
+        shapeDataMap = precomputeAllShapeData(shapesToPrecompute, lockedTilesMask);
     } catch (error) {
-        console.error('[Worker] Error during combinatorial exact tiling:', error);
+        console.error("[Worker Pool - Comb Exact Tiling] Error during precomputation phase:", error);
+        return { maxShapes: 0, solutions: [], error: `Precomputation error: ${(error as Error).message}` };
+    }
+
+    // --- Call the DLX-based Exact Tiling Solver --- 
+    try {
+        console.log("[Worker Pool - Comb Exact Tiling] Calling findExact11TilingSolutions...");
+        // Pass the PRECOMPUTED map as the second argument
+        const resultPayload = await findExact11TilingSolutions(
+            allPotentialsData.map(p => ({ id: p.uniqueId })), // Map to expected { id: string }[]
+            shapeDataMap,       // Pass the precomputed map (now accessible)
+            initialGridState   // Pass initial grid state
+            // lockedTilesMask will be added in Task 8 when the DLX function is updated
+        );
+        console.log(`[Worker Pool - Comb Exact Tiling] DLX solver returned ${resultPayload.solutions.length} solutions.`);
+
+        // Format result according to SolverResultPayloadBacktracking
+        // maxShapes will be 11 if solutions are found, 0 otherwise
+        return {
+            maxShapes: resultPayload.solutions.length > 0 ? 11 : 0,
+            solutions: resultPayload.solutions,
+        };
+    } catch (error) {
+        console.error("[Worker Pool - Comb Exact Tiling] Error during DLX execution:", error);
         return { maxShapes: 0, solutions: [], error: `Worker error: ${(error as Error).message}` };
     }
 }

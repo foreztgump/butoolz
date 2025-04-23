@@ -63,6 +63,7 @@ export interface SolverExecDataBacktracking {
   // Make shapeDataMap optional, as precomputation now happens in worker
   shapeDataMap?: Map<string, ShapeData>; 
   initialGridState?: bigint;         // Optional initial grid state (defaults to 0n)
+  lockedTilesMask: bigint;          // Add locked tiles mask (non-optional for DLX)
 }
 
 // Data structure returned by the *new* backtracking worker function
