@@ -235,66 +235,123 @@ export const drawLockIcon = (
   ctx.restore();
 };
 
+// Define preview grid colors locally if not in config
+const PREVIEW_GRID_BG_COLOR = 'rgba(100, 116, 139, 0.1)'; // Faint slate-ish background
+const PREVIEW_GRID_STROKE_COLOR = 'rgba(100, 116, 139, 0.2)'; // Slightly darker stroke
+
 export const drawPreviewGrid = (
   canvas: HTMLCanvasElement,
   shape: string,
   colorIndex: number,
-  sizeRatio: number = 0.7
+  sizeRatio: number = 0.7,
+  fillColorOverride?: string, // Optional: Override fill color
+  hideGrid?: boolean         // Optional: Hide background grid
 ) => {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  const previewSize = Config.HEX_SIZE * sizeRatio;
+  // Get tile coordinates and IDs
   const tiles = shape.split("").map(Number);
-  let minQ = Infinity,
-    maxQ = -Infinity,
-    minR = Infinity,
-    maxR = -Infinity;
-
-  const shapeCoords: HexCoord[] = [];
-  Config.HEX_GRID_COORDS.forEach((coord, index) => {
-    if (tiles[index] === 1) {
-      shapeCoords.push(coord);
-      minQ = Math.min(minQ, coord.q);
-      maxQ = Math.max(maxQ, coord.q);
-      minR = Math.min(minR, coord.r);
-      maxR = Math.max(maxR, coord.r);
+  const shapeCoords: { q: number; r: number }[] = [];
+  const tileIds: number[] = []; // Store the Tile IDs
+  for (let i = 0; i < tiles.length; i++) {
+    if (tiles[i] === 1) {
+      const hex = Config.HEX_GRID_COORDS[i];
+      if (hex) {
+        shapeCoords.push({ q: hex.q, r: hex.r });
+        tileIds.push(hex.id); // Add the ID
+      }
     }
-  });
+  }
 
-  if (shapeCoords.length === 0) return; // No tiles in shape
+  // --- LOGGING --- 
+  console.log(`[drawPreviewGrid] Index: ${colorIndex}, Shape: ${shape}, Tiles: [${tileIds.sort((a, b) => a - b).join(',')}]`);
+  // --------------- 
 
-  const centerQ = (minQ + maxQ) / 2;
-  const centerR = (minR + maxR) / 2;
-  const centerPixel = axialToPixel(centerQ, centerR);
-  if (!centerPixel) return;
+  if (shapeCoords.length === 0) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
 
-  const offsetX = canvas.width / 2 - centerPixel.x * sizeRatio;
-  const offsetY = canvas.height / 2 - centerPixel.y * sizeRatio;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.save();
-  ctx.translate(offsetX, offsetY);
-  ctx.scale(sizeRatio, sizeRatio);
-
-  const fillColor = Config.HEX_COLORS[colorIndex % Config.HEX_COLORS.length];
-
+  // --- Calculate Pixel Bounding Box & Optimal Scale ---
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  const shapePixels: Point[] = [];
   shapeCoords.forEach((coord) => {
     const pixel = axialToPixel(coord.q, coord.r);
     if (pixel) {
-      drawHexagon(
-        ctx,
-        pixel.x,
-        pixel.y,
-        Config.HEX_SIZE,
-        fillColor,
-        1,
-        Config.STROKE_COLOR_ACTIVE
-      );
+      shapePixels.push(pixel);
+      // Consider the hexagon's extent
+      minX = Math.min(minX, pixel.x - Config.HEX_SIZE);
+      maxX = Math.max(maxX, pixel.x + Config.HEX_SIZE);
+      minY = Math.min(minY, pixel.y - Config.HEX_HEIGHT / 2);
+      maxY = Math.max(maxY, pixel.y + Config.HEX_HEIGHT / 2);
     }
   });
 
-  ctx.restore();
+  if (shapePixels.length === 0) return;
+
+  const shapePixelWidth = maxX - minX;
+  const shapePixelHeight = maxY - minY;
+
+  const margin = 0.9; // Use 90% of canvas space
+  let calculatedSizeRatio = 1.0;
+  if (shapePixelWidth > 0 && shapePixelHeight > 0) { // Avoid division by zero
+      const ratioX = (canvas.width * margin) / shapePixelWidth;
+      const ratioY = (canvas.height * margin) / shapePixelHeight;
+      calculatedSizeRatio = Math.min(ratioX, ratioY, 1.0); // Don't scale up beyond 1.0
+  }
+  
+  const scaledHexSize = Config.HEX_SIZE * calculatedSizeRatio;
+
+  // Calculate the *original* center of the shape's bounding box
+  const originalCenterX = minX + shapePixelWidth / 2;
+  const originalCenterY = minY + shapePixelHeight / 2;
+
+  // Calculate the target center of the canvas
+  const targetCenterX = canvas.width / 2;
+  const targetCenterY = canvas.height / 2;
+  // --- End Bounding Box Calculation ---
+
+  // --- Clear Canvas --- 
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // --- No context scaling or translation needed now --- 
+
+  // --- Background Grid (Optional) --- 
+  // NOTE: Drawing background grid is complex without context scaling.
+  // Consider omitting it or calculating each background hex position similarly.
+  // For now, skipping background grid if hideGrid=false in this mode.
+  if (!hideGrid) {
+      // TODO: Implement background grid drawing without context scaling if needed.
+      // console.warn("Background grid drawing not implemented for this preview mode.");
+  }
+  // ----------------------------------
+
+  // --- Draw Shape Tiles --- 
+  const fillColor = fillColorOverride ?? Config.HEX_COLORS[colorIndex % Config.HEX_COLORS.length];
+
+  shapePixels.forEach((originalPixel) => {
+    // Calculate position relative to original bounding box center
+    const relativeX = originalPixel.x - originalCenterX;
+    const relativeY = originalPixel.y - originalCenterY;
+
+    // Calculate final draw position: scale relative pos and add target center
+    const drawX = targetCenterX + relativeX * calculatedSizeRatio;
+    const drawY = targetCenterY + relativeY * calculatedSizeRatio;
+
+    // Draw the hexagon at the calculated scaled position and size
+    drawHexagon(
+      ctx,
+      drawX, 
+      drawY, 
+      scaledHexSize, // Use calculated scaled size
+      fillColor,
+      1, // Standard line width
+      Config.STROKE_COLOR_ACTIVE // Force more opaque stroke for previews
+    );
+  });
+  // -----------------------
+
+  // No ctx.restore() needed as we didn't save/transform
 };
 
 export const tileSetToShapeString = (tileSet: Set<number>): string => {

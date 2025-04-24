@@ -1,27 +1,25 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "./public/workers",
-    "module": "ESNext",
     "target": "ES2020",
-    "lib": ["ES2020", "WebWorker"],
+    "lib": ["esnext", "WebWorker"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
     "noEmit": false,
-    "isolatedModules": false,
-    "sourceMap": false,
-    "declaration": false
+    "outDir": "./temp_worker_compile",
+    "sourceMap": true
   },
   "include": [
     "app/shapedoctor/solver.worker.ts",
-    "types/**/*.d.ts"
+    "app/shapedoctor/bitmaskUtils.ts",
+    "app/shapedoctor/shapedoctor.config.ts",
+    "app/shapedoctor/solver.dlx.ts",
+    "app/shapedoctor/types.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "**/*.spec.ts",
-    ".next",
-    "public",
-    "app/[!shapedoctor]/**/*",
-    "components/**/*",
-    "lib/**/*",
-    "scripts/**/*"
-  ]
+  "exclude": ["node_modules"]
 } 

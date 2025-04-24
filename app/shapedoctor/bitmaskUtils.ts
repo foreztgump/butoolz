@@ -8,14 +8,15 @@
  * - This mapping utilizes bits 0 through 43 (inclusive) for the 44 grid tiles.
  */
 
+// Ensure import is extensionless for bundler resolution
 import { TOTAL_TILES as CONFIG_TOTAL_TILES, HEX_GRID_COORDS } from './shapedoctor.config';
 
 // Export TOTAL_TILES for use in tests
 export const TOTAL_TILES = CONFIG_TOTAL_TILES;
 
 // Helper map for quick lookup of tile ID by axial coordinates
-const coordToIdMap = new Map<string, number>();
-HEX_GRID_COORDS.forEach(coord => {
+const coordToIdMap: Map<string, number> = new Map();
+HEX_GRID_COORDS.forEach((coord: { q: number; r: number; id: number }) => {
   coordToIdMap.set(`${coord.q},${coord.r}`, coord.id);
 });
 

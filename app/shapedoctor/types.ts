@@ -57,16 +57,25 @@ export interface SolutionRecord {
   placements: PlacementRecord[]; // The list of shapes and their specific placements
 }
 
-// Data structure passed to the *new* backtracking worker function
-export interface SolverExecDataBacktracking {
+// Standard solver input type (base interface)
+export interface SolverBaseInput {
+  initialGridState?: bigint | string; // Initial grid state as bigint or string
+  lockedTilesMask: bigint | string;   // Locked tiles mask as bigint or string
+}
+
+// Data structure passed to the backtracking solver
+export interface SolverExecDataBacktracking extends SolverBaseInput {
   shapesToPlace: { id: string }[]; // List of shapes to attempt placing (initially just need IDs)
   // Make shapeDataMap optional, as precomputation now happens in worker
   shapeDataMap?: Map<string, ShapeData>; 
-  initialGridState?: bigint;         // Optional initial grid state (defaults to 0n)
-  lockedTilesMask: bigint;          // Add locked tiles mask (non-optional for DLX)
 }
 
-// Data structure returned by the *new* backtracking worker function
+// Data structure passed to the exact tiling solver
+export interface SolverExecDataExactTiling extends SolverBaseInput {
+  allPotentialsData: { uniqueId: string; baseMaskString: string }[]; // All potential shapes with unique IDs
+}
+
+// Data structure returned by both solver functions
 export interface SolverResultPayloadBacktracking {
   maxShapes: number;      // Maximum number of shapes placed in the best solutions
   solutions: SolutionRecord[]; // Array of solution records (gridState + placements)

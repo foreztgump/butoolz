@@ -12,13 +12,18 @@ import {
 import { HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import * as Config from '../shapedoctor.config'; // Adjust import path
+import { SolutionRecord } from '../types';
 
 interface StatusPanelProps {
   potentials: string[];
-  bestSolutions: number[][];
+  bestSolutions: SolutionRecord[];
   currentSolutionIndex: number;
   isSolving: boolean;
   handleSolve: (testPotentials?: string[]) => void; // Accepts optional test set
+  lockedTilesCount: number;
+  availableTiles: number;
+  currentSolver: 'exact' | 'maximal' | null;
+  solverError: string | null;
 }
 
 const StatusPanel: React.FC<StatusPanelProps> = ({
@@ -27,6 +32,10 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
   currentSolutionIndex,
   isSolving,
   handleSolve,
+  lockedTilesCount,
+  availableTiles,
+  currentSolver,
+  solverError,
 }) => {
   return (
     <Card className="flex-shrink-0 bg-card">
@@ -46,6 +55,26 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
             <span className="font-semibold">{potentials.length}</span>
           </div>
           <div className="flex justify-between">
+            <span>Available Tiles:</span>
+            <span className="font-semibold">{availableTiles}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Locked Tiles:</span>
+            <span className="font-semibold">{lockedTilesCount}</span>
+          </div>
+          {isSolving && (
+            <div className="flex justify-between text-sm text-blue-500">
+              <span>Solving Status:</span>
+              <span className="font-semibold">{currentSolver ? `Running ${currentSolver} solver...` : 'Initiating...'}</span>
+            </div>
+          )}
+          {solverError && (
+             <div className="flex justify-between text-sm text-red-500">
+              <span>Solver Error:</span>
+              <span className="font-semibold truncate" title={solverError}>{solverError}</span>
+            </div>
+          )}
+          <div className="flex justify-between">
             <span>Best Solutions:</span>
             <span className="font-semibold">{bestSolutions.length}</span>
           </div>
@@ -58,14 +87,16 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>Empty Tiles:</span>
+                <span>Placed Shapes:</span>
                 <span className="font-semibold">
-                  {/* Ensure gridState has correct structure (array starting at index 1?) */}
-                  {/* Assuming bestSolutions[idx] is the grid state array */}
-                  {bestSolutions[currentSolutionIndex]
-                    ?.slice(1) // Assuming index 0 is unused or metadata
-                    .filter((t) => t === -1).length ?? 0}
+                    {bestSolutions[currentSolutionIndex].placements.length}
                 </span>
+              </div>
+              <div className="flex justify-between">
+                  <span>Empty Tiles:</span>
+                  <span className="font-semibold">
+                      {availableTiles - (bestSolutions[currentSolutionIndex].placements.length * 4)}
+                  </span>
               </div>
             </>
           )}

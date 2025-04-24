@@ -33,13 +33,12 @@ interface ControlPanelProps {
   handleBackToEdit: () => void;
   selectedTilesCount: number;
   potentialsCount: number;
-  onSolveBacktracking: () => void;
-  onFindExactTiling: () => void;
   isFindingExactTiling: boolean;
   exactTilingSolutions: SolutionRecord[];
   currentExactTilingIndex: number;
   handlePrevExactTilingSolution: () => void;
   handleNextExactTilingSolution: () => void;
+  lockedTilesMask: bigint;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -56,13 +55,12 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   handleBackToEdit,
   selectedTilesCount,
   potentialsCount,
-  onSolveBacktracking,
-  onFindExactTiling,
   isFindingExactTiling,
   exactTilingSolutions,
   currentExactTilingIndex,
   handlePrevExactTilingSolution,
   handleNextExactTilingSolution,
+  lockedTilesMask,
 }) => {
   const isViewingBacktrackingSolution = currentSolutionIndex !== -1;
   const isViewingExactTilingSolution = currentExactTilingIndex !== -1;
@@ -135,40 +133,20 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           <Button
             variant="default"
             size="sm"
-            className="bg-blue-600 hover:bg-blue-700 text-primary-foreground min-w-[90px] transition-colors cursor-pointer"
-            onClick={onSolveBacktracking}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-primary-foreground min-w-[90px] transition-colors cursor-pointer shadow-md"
+            onClick={handleSolve}
             disabled={isSolving || isFindingExactTiling || potentialsCount === 0}
           >
-            {isSolving ? (
+            {isSolving || isFindingExactTiling ? (
               <>
-                <Snowflake className="h-4 w-4 mr-1 animate-spin" /> Solving...
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Solving...
               </>
             ) : (
               <>
-                <Sparkles className="h-4 w-4 mr-1" /> Solve (Max Placement)
+                <Play className="h-4 w-4 mr-1" /> Solve
               </>
             )}
           </Button>
-          {potentialsCount >= 11 && (
-            <Button
-              onClick={onFindExactTiling}
-              disabled={isSolving || isFindingExactTiling || potentialsCount < 11}
-              size="sm"
-              className="bg-purple-600 hover:bg-purple-700 text-white col-span-1"
-              title="Find perfect tilings using exactly 11 shapes"
-              aria-label="Find exact 11-shape tilings"
-            >
-              {isFindingExactTiling ? (
-                <>
-                  <SearchCode className="h-4 w-4 mr-1 animate-pulse" /> Searching...
-                </>
-              ) : (
-                <>
-                  <Puzzle className="h-4 w-4 mr-1" /> Find Exact 11-Tilings
-                </>
-              )}
-            </Button>
-          )}
         </>
       )}
     </CardFooter>

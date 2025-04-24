@@ -29,6 +29,7 @@ import workerpool from 'workerpool';
 // Import specific types needed for the new solver
 import { 
     type SolverExecDataBacktracking, 
+    type SolverExecDataExactTiling,
     type SolverResultPayloadBacktracking, 
     type SolutionRecord,
     type ShapeData
@@ -71,6 +72,17 @@ const isSafeNumber = HexUtils.isSafeNumber;
 // Remove Poolifier ref
 // const poolManagerRef = useRef<SolverPool | null>(null);
 
+// Add this helper function somewhere within the ShapeDoctor component or outside it
+const countSetBitsFromString = (shapeString: string): number => {
+    let count = 0;
+    for (let i = 0; i < shapeString.length; i++) {
+        if (shapeString[i] === '1') {
+            count++;
+        }
+    }
+    return count;
+};
+
 export default function ShapeDoctor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -86,7 +98,7 @@ export default function ShapeDoctor() {
 
   const [selectedTiles, setSelectedTiles] = useState<Set<number>>(new Set());
   const [potentials, setPotentials] = useState<string[]>([]);
-  const [bestSolutions, setBestSolutions] = useState<number[][]>([]);
+  const [bestSolutions, setBestSolutions] = useState<SolutionRecord[]>([]);
   const [currentSolutionIndex, setCurrentSolutionIndex] = useState<number>(-1);
   const [gridState, setGridState] = useState<number[]>(() =>
     Array(Config.TOTAL_TILES + 1).fill(-1)
@@ -97,21 +109,20 @@ export default function ShapeDoctor() {
   const [dragStart, setDragStart] = useState<Point>({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const [solveProgress, setSolveProgress] = useState<number>(0);
-  // State for locked tiles bitmask
   const [lockedTilesMask, setLockedTilesMask] = useState<bigint>(0n);
-  // State for exact tiling results
   const [exactTilingSolutions, setExactTilingSolutions] = useState<SolutionRecord[]>([]);
   const [isFindingExactTiling, setIsFindingExactTiling] = useState<boolean>(false);
   const [currentExactTilingIndex, setCurrentExactTilingIndex] = useState<number>(-1);
+  const [currentSolver, setCurrentSolver] = useState<'exact' | 'maximal' | null>(null);
+  const [solverError, setSolverError] = useState<string | null>(null);
 
-  // Add formattedProgress derivation
   const formattedProgress = `${Math.round(solveProgress)}%`;
 
   // Initialize workerpool Pool
   useEffect(() => {
     console.log('Initializing workerpool...');
     if (typeof window !== 'undefined') {
-      const workerPath = '/workers/solver.worker.js';
+      const workerPath = `/workers/solver.worker.js?v=${Date.now()}`;
       const poolSize = navigator.hardwareConcurrency || 4;
 
       try {
@@ -143,6 +154,69 @@ export default function ShapeDoctor() {
       };
     }
   }, []);
+
+  // --- Tile Locking Handler (Define before handleClick) ---
+  const handleToggleTileLock = useCallback((tileId: number) => {
+    // Only allow toggling for designated lockable tiles
+    if (!LOCKABLE_TILE_IDS.has(tileId)) {
+      toast.warning(`Tile ${tileId} is not lockable.`);
+      return;
+    }
+    setLockedTilesMask(prevMask => toggleTileLock(prevMask, tileId));
+  }, [setLockedTilesMask]); // LOCKABLE_TILE_IDS is constant
+
+  // --- Helper Functions ---
+  const updateGridStateFromSolution = useCallback((solution: SolutionRecord) => {
+    console.log("[updateGridStateFromSolution] Updating grid for solution:", solution);
+    const newGrid = Array(Config.TOTAL_TILES + 1).fill(-1);
+    const numColors = Config.HEX_COLORS.length;
+
+    if (solution.placements) {
+      solution.placements.forEach((placement, shapeIndex) => {
+        const mask = placement.placementMask;
+        const currentShapeTiles = typeof mask === 'bigint' ? bitmaskToTileIds(mask) : [];
+
+        if (currentShapeTiles.length === 0) return; // Skip empty shapes
+
+        // Log details for EACH placement mask
+        console.log(`  Processing Placement ${shapeIndex}: ShapeId=${placement.shapeId}, Mask=${mask?.toString()}, Tiles=[${currentShapeTiles.join(',')}] (Count: ${currentShapeTiles.length})`);
+        if (currentShapeTiles.length !== 4 && currentShapeTiles.length > 0) {
+          console.error(`    ERROR: Placement mask resulted in ${currentShapeTiles.length} tiles!`);
+        }
+
+        const forbiddenColors = new Set<number>();
+        // Find colors used by adjacent, already placed shapes
+        currentShapeTiles.forEach(tileId => {
+          const neighbors = Config.ADJACENT_LIST[tileId] || [];
+          neighbors.forEach(neighborId => {
+            if (neighborId !== 0 && newGrid[neighborId] !== -1) {
+              // Check if the neighbor belongs to a DIFFERENT shape that's already colored
+              // This check might be redundant if we process shapes sequentially and only look at `newGrid`
+              // which only contains colors from previously processed shapes.
+              forbiddenColors.add(newGrid[neighborId]);
+            }
+          });
+        });
+
+        // Find the first available color index
+        let chosenColorIndex = 0;
+        while (forbiddenColors.has(chosenColorIndex % numColors)) {
+          chosenColorIndex++;
+        }
+        chosenColorIndex %= numColors;
+
+        // Assign the chosen color to all tiles of the current shape
+        currentShapeTiles.forEach(tileId => {
+          if (tileId > 0 && tileId <= Config.TOTAL_TILES) {
+            newGrid[tileId] = chosenColorIndex;
+          }
+        });
+      });
+    } else {
+      console.warn("[updateGridStateFromSolution] Solution object missing placements array.");
+    }
+    setGridState(newGrid);
+  }, [setGridState]);
 
   // --- Coordinate Conversion & Drawing ---
   const drawMainCanvas = useCallback(() => {
@@ -188,511 +262,34 @@ export default function ShapeDoctor() {
     potentials.forEach((shape, index) => {
       const canvas = potentialCanvasRefs.current.get(index);
       if (canvas) {
-        HexUtils.drawPreviewGrid(canvas, shape, index);
+        // Pass fillColorOverride and hideGrid for consistent styling
+        HexUtils.drawPreviewGrid(
+          canvas,
+          shape,
+          index,
+          0.7, // Use default size ratio like predefined
+          '#a78bfa', // Override with violet color
+          true      // Hide background grid
+        );
       }
     });
-  }, [potentials]); // Dependency on drawPreviewGrid (now HexUtils.drawPreviewGrid) is implicit
+  }, [potentials]); // Dependency on potentials array
 
   const drawPredefinedShapes = useCallback(() => {
     Config.PREDEFINED_SHAPES.forEach((shape, index) => {
       const canvas = predefinedCanvasRefs.current.get(index);
       if (canvas) {
-        HexUtils.drawPreviewGrid(canvas, shape, index);
+        HexUtils.drawPreviewGrid(
+          canvas,
+          Config.PREDEFINED_SHAPES[index],
+          index,
+          0.5, // Default sizeRatio - Explicitly set smaller value
+          '#a78bfa', // Tailwind violet-400 equivalent for the single color
+          true      // Hide the background grid
+        );
       }
     });
   }, []); // Dependency on drawPreviewGrid (now HexUtils.drawPreviewGrid) is implicit
-
-  // --- Event Handlers ---
-  const handleWheel = (e: WheelEvent) => {
-    e.preventDefault();
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect || canvasRef.current?.width === 0 || canvasRef.current?.height === 0) return;
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const delta = e.deltaY * Config.ZOOM_SENSITIVITY;
-    if (!isSafeNumber(delta)) return;
-    const currentZoom = zoom;
-    const currentOffset = currentOffsetRef.current;
-    const worldXBefore =
-      (mouseX - rect.width / 2 - currentOffset.x) / currentZoom;
-    const worldYBefore =
-      (mouseY - rect.height / 2 - currentOffset.y) / currentZoom;
-    if (!isSafeNumber(worldXBefore) || !isSafeNumber(worldYBefore)) return;
-    let potentialNewZoom = currentZoom * (1 - delta);
-    if (!isSafeNumber(potentialNewZoom) || potentialNewZoom <= 0) return;
-    const newZoom = Math.max(Config.MIN_ZOOM, Math.min(Config.MAX_ZOOM, potentialNewZoom));
-    if (newZoom === currentZoom) return;
-    const worldXAfterZoom = worldXBefore * newZoom;
-    const worldYAfterZoom = worldYBefore * newZoom;
-    const newOffsetX = mouseX - rect.width / 2 - worldXAfterZoom;
-    const newOffsetY = mouseY - rect.height / 2 - worldYAfterZoom;
-    if (!isSafeNumber(newOffsetX) || !isSafeNumber(newOffsetY)) return;
-    setZoom(newZoom);
-    currentOffsetRef.current = { x: newOffsetX, y: newOffsetY };
-  };
-
-  const handleMouseDown = (e: MouseEvent) => {
-    if (e.button !== 0) return; // Only left click
-    const canvas = canvasRef.current; // Get canvas ref
-    if (!canvas) return; // Check canvas ref
-
-    setIsDragging(true);
-    setDragStart({
-      x: e.clientX - currentOffsetRef.current.x,
-      y: e.clientY - currentOffsetRef.current.y,
-    });
-    canvas.style.cursor = "grabbing"; // Assign directly after checking ref
-  };
-
-  const getHexUnderCursor = useCallback(
-    (e: MouseEvent): HexCoord | null => {
-      const canvas = canvasRef.current;
-      if (!canvas) return null;
-      const rect = canvas.getBoundingClientRect();
-      const screenX = e.clientX - rect.left;
-      const screenY = e.clientY - rect.top;
-
-      const worldPos = HexUtils.screenToWorld(
-        screenX,
-        screenY,
-        canvas.width,
-        canvas.height,
-        currentOffsetRef.current,
-        zoom
-      );
-      if (!worldPos) return null;
-
-      const axial = HexUtils.pixelToAxial(worldPos.x, worldPos.y);
-      if (!axial) return null;
-
-      const rounded = HexUtils.hexRound(axial.q, axial.r);
-      if (!rounded) return null;
-
-      return HexUtils.findHexByCoords(rounded.q, rounded.r) || null;
-    },
-    [zoom] // Dependencies updated
-  );
-
-  const handleMouseMove = (e: MouseEvent) => {
-    // Handle dragging (updates ref directly, needs explicit redraw)
-    if (isDragging) {
-      const nX = (e.clientX - dragStart.x) * Config.PAN_SENSITIVITY;
-      const nY = (e.clientY - dragStart.y) * Config.PAN_SENSITIVITY;
-      if (isSafeNumber(nX) && isSafeNumber(nY)) {
-        if (
-          currentOffsetRef.current.x !== nX ||
-          currentOffsetRef.current.y !== nY
-        ) {
-          currentOffsetRef.current = { x: nX, y: nY };
-          // No state update here, draw loop handles redraw
-        }
-      }
-    } else {
-      // Update hover state (updates ref directly, needs explicit redraw)
-      const hex = getHexUnderCursor(e);
-      if (hoveredHexIdRef.current !== (hex ? hex.id : null)) {
-        hoveredHexIdRef.current = hex ? hex.id : null;
-        // No state update here, draw loop handles redraw
-      }
-    }
-  };
-
-  const handleMouseUp = () => {
-    if (isDragging) {
-      setIsDragging(false);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    // Clear hover state when mouse leaves canvas
-    if (hoveredHexIdRef.current !== null) {
-      hoveredHexIdRef.current = null;
-      // No state update, draw loop handles redraw
-    }
-    // Stop dragging if mouse leaves while dragging
-    if (isDragging) {
-      setIsDragging(false);
-    }
-  };
-
-  const handleClick = (e: MouseEvent) => {
-    // Check if dragging occurred between mousedown and mouseup
-    const movedSignificantly =
-      Math.abs(e.clientX - (dragStart.x + currentOffsetRef.current.x)) > 5 ||
-      Math.abs(e.clientY - (dragStart.y + currentOffsetRef.current.y)) > 5;
-
-    if (isDragging && movedSignificantly) return; // Ignore click if it was likely a drag
-
-    // --- Get Clicked Hex --- 
-    const clickedHex = getHexUnderCursor(e);
-    if (!clickedHex) return; // Exit if click is outside any hex
-    const clickedTileId = clickedHex.id;
-
-    // --- Check for solving/viewing results first (applies to both actions) ---
-    if (isSolving || isFindingExactTiling) {
-        toast.warning("Cannot interact while solving.", { duration: 3000 });
-        return;
-    }
-    if (currentSolutionIndex !== -1 || currentExactTilingIndex !== -1) {
-        toast.warning("Click 'Back to Edit' first to interact.", { duration: 3000 });
-        return;
-    }
-
-    // --- Decide Action: Lock Toggle or Shape Selection --- 
-    if (LOCKABLE_TILE_IDS.has(clickedTileId)) {
-        // Action: Toggle Lock State for Lockable Tiles
-        // handleToggleTileLock already checks internally if it's actually lockable, 
-        // but this outer check ensures we only call it for potentially lockable ones.
-        handleToggleTileLock(clickedTileId); 
-    } else {
-        // Action: Toggle Shape Selection for Non-Lockable Tiles
-        
-        // First, ensure the non-lockable tile isn't somehow locked
-        if (isTileLocked(lockedTilesMask, clickedTileId)) {
-            toast.warning("Cannot select a locked tile.", { duration: 2000 });
-            return; // Stop if the non-lockable tile is locked
-        }
-
-        // Proceed with toggling selection
-        setSelectedTiles(prevSelected => {
-            const newSelection = new Set(prevSelected);
-            if (newSelection.has(clickedTileId)) {
-                // Always allow removing a tile
-                newSelection.delete(clickedTileId);
-            } else {
-                // Logic for adding a tile
-                if (newSelection.size < 4) {
-                    // Check adjacency only if it's not the first tile
-                    if (newSelection.size > 0) {
-                        const neighborsOfClick = Config.ADJACENT_LIST[clickedTileId] || [];
-                        const isAdjacentToSelection = Array.from(newSelection).some(selectedId => 
-                            neighborsOfClick.includes(selectedId)
-                        );
-                        
-                        if (!isAdjacentToSelection) {
-                            toast.error("New tiles must be adjacent to the current selection.");
-                            return prevSelected; // Return the original set unchanged
-                        }
-                    }
-                    // If first tile OR adjacent, add it
-                    newSelection.add(clickedTileId);
-                } else {
-                    toast.error("Maximum 4 tiles selected.");
-                }
-            }
-            return newSelection;
-        });
-    }
-  };
-
-  // Add event listeners
-  const handleResize = () => {
-    const container = containerRef.current;
-    const canvas = canvasRef.current; // Get canvas ref
-    if (!container || !canvas) return; // Check both refs
-
-    const { width, height } = container.getBoundingClientRect();
-    if (width > 0 && height > 0) {
-      // Check canvas ref before assigning
-      canvas.width = width;
-      canvas.height = height;
-    }
-  };
-
-  const handleWindowResize = () => {
-    handleResize();
-    drawMainCanvas();
-    drawPotentialShapes();
-    drawPredefinedShapes();
-  };
-
-  // --- Effects ---
-  useEffect(() => {
-    setIsClient(true);
-    return () => {
-      if (animationFrameIdRef.current)
-        cancelAnimationFrame(animationFrameIdRef.current);
-    };
-  }, []); // Runs once
-  useEffect(() => {
-    if (!isClient || !containerRef.current) return;
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
-    let initialOffsetSet = false;
-    const handleResize = () => {
-      const { width, height } = container.getBoundingClientRect();
-      if (width > 0 && height > 0) {
-        canvas.width = width;
-        canvas.height = height;
-      } else {
-        return;
-      }
-      if (!initialOffsetSet) {
-        let minX = Infinity,
-          minY = Infinity,
-          maxX = -Infinity,
-          maxY = -Infinity;
-        Config.HEX_GRID_COORDS.forEach((hex) => {
-          const p = HexUtils.axialToPixel(hex.q, hex.r);
-          if (p) {
-            minX = Math.min(minX, p.x - Config.HEX_WIDTH / 2);
-            maxX = Math.max(maxX, p.x + Config.HEX_WIDTH / 2);
-            minY = Math.min(minY, p.y - Config.HEX_HEIGHT / 2);
-            maxY = Math.max(maxY, p.y + Config.HEX_HEIGHT / 2);
-          }
-        });
-        if (
-          isSafeNumber(minX) &&
-          maxX > minX &&
-          isSafeNumber(minY) &&
-          maxY > minY
-        ) {
-          const cX = minX + (maxX - minX) / 2;
-          const cY = minY + (maxY - minY) / 2;
-          const iOffset = { x: -cX, y: -cY };
-          if (isSafeNumber(iOffset.x) && isSafeNumber(iOffset.y)) {
-            currentOffsetRef.current = iOffset;
-            initialOffsetSet = true;
-            drawMainCanvas();
-            return;
-          }
-        }
-      }
-      drawMainCanvas();
-    };
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(container);
-    handleResize();
-    return () => resizeObserver.disconnect();
-  }, [isClient, drawMainCanvas]); // Dependencies seem correct
-  useEffect(() => {
-    if (isClient) {
-      drawMainCanvas();
-    }
-  }, [
-    isClient,
-    zoom,
-    selectedTiles,
-    gridState,
-    currentSolutionIndex,
-    drawMainCanvas,
-  ]); // Redraw on these changes
-  useEffect(() => {
-    // Interaction listeners effect
-    if (!isClient) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      if (!rect || canvas.width === 0 || canvas.height === 0) return;
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      const delta = e.deltaY * Config.ZOOM_SENSITIVITY;
-      if (!isSafeNumber(delta)) return;
-      const currentZoom = zoom;
-      const currentOffset = currentOffsetRef.current;
-      const worldXBefore =
-        (mouseX - canvas.width / 2 - currentOffset.x) / currentZoom;
-      const worldYBefore =
-        (mouseY - canvas.height / 2 - currentOffset.y) / currentZoom;
-      if (!isSafeNumber(worldXBefore) || !isSafeNumber(worldYBefore)) return;
-      let potentialNewZoom = currentZoom * (1 - delta);
-      if (!isSafeNumber(potentialNewZoom) || potentialNewZoom <= 0) return;
-      const newZoom = Math.max(Config.MIN_ZOOM, Math.min(Config.MAX_ZOOM, potentialNewZoom));
-      if (newZoom === currentZoom) return;
-      const worldXAfterZoom = worldXBefore * newZoom;
-      const worldYAfterZoom = worldYBefore * newZoom;
-      const newOffsetX = mouseX - canvas.width / 2 - worldXAfterZoom;
-      const newOffsetY = mouseY - canvas.height / 2 - worldYAfterZoom;
-      if (!isSafeNumber(newOffsetX) || !isSafeNumber(newOffsetY)) return;
-      setZoom(newZoom);
-      currentOffsetRef.current = { x: newOffsetX, y: newOffsetY };
-    };
-
-    const handleMouseDown = (e: MouseEvent) => {
-      if (e.button !== 0) return;
-      setIsDragging(true);
-      setDragStart({
-        x: e.clientX - currentOffsetRef.current.x,
-        y: e.clientY - currentOffsetRef.current.y,
-      });
-      canvas.style.cursor = "grabbing";
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      if (!rect || canvas.width === 0 || canvas.height === 0) return;
-      const mX = e.clientX - rect.left;
-      const mY = e.clientY - rect.top;
-      if (!isSafeNumber(mX) || !isSafeNumber(mY)) return;
-      let needsManualRedraw = false; // Use a flag for redraws not covered by state changes
-
-      // Update hover state (doesn't use state, directly uses ref and schedules draw if needed)
-      const world = HexUtils.screenToWorld(
-        mX,
-        mY,
-        canvas.width,
-        canvas.height,
-        currentOffsetRef.current,
-        zoom
-      );
-      const hexUnderMouse = world ? getHexUnderCursor(e) : null;
-      const newHoverId = hexUnderMouse ? hexUnderMouse.id : null;
-      if (newHoverId !== hoveredHexIdRef.current) {
-        hoveredHexIdRef.current = newHoverId;
-        needsManualRedraw = true; // Hover change needs explicit redraw
-      }
-
-      // Handle dragging (updates ref directly, needs explicit redraw)
-      if (isDragging) {
-        const nX = (e.clientX - dragStart.x) * Config.PAN_SENSITIVITY;
-        const nY = (e.clientY - dragStart.y) * Config.PAN_SENSITIVITY;
-        if (isSafeNumber(nX) && isSafeNumber(nY)) {
-          if (
-            currentOffsetRef.current.x !== nX ||
-            currentOffsetRef.current.y !== nY
-          ) {
-            currentOffsetRef.current = { x: nX, y: nY };
-            needsManualRedraw = true; // Offset change needs explicit redraw
-          }
-        }
-      }
-
-      if (needsManualRedraw) {
-        drawMainCanvas(); // Schedule draw only if hover or offset changed
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        canvas.style.cursor = "grab";
-      }
-    };
-
-    const handleMouseLeave = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        canvas.style.cursor = "grab";
-      }
-      if (hoveredHexIdRef.current !== null) {
-        hoveredHexIdRef.current = null;
-        drawMainCanvas(); // Schedule draw needed to clear hover effect
-      }
-    };
-
-    const handleClick = (e: MouseEvent) => {
-      // Check if dragging occurred between mousedown and mouseup
-      const movedSignificantly =
-        Math.abs(e.clientX - (dragStart.x + currentOffsetRef.current.x)) > 5 ||
-        Math.abs(e.clientY - (dragStart.y + currentOffsetRef.current.y)) > 5;
-
-      if (isDragging && movedSignificantly) return; // Ignore click if it was likely a drag
-
-      // --- Get Clicked Hex --- 
-      const clickedHex = getHexUnderCursor(e);
-      if (!clickedHex) return; // Exit if click is outside any hex
-      const clickedTileId = clickedHex.id;
-
-      // --- Check for solving/viewing results first (applies to both actions) ---
-      if (isSolving || isFindingExactTiling) {
-          toast.warning("Cannot interact while solving.", { duration: 3000 });
-          return;
-      }
-      if (currentSolutionIndex !== -1 || currentExactTilingIndex !== -1) {
-          toast.warning("Click 'Back to Edit' first to interact.", { duration: 3000 });
-          return;
-      }
-
-      // --- Decide Action: Lock Toggle or Shape Selection --- 
-      if (LOCKABLE_TILE_IDS.has(clickedTileId)) {
-          // Action: Toggle Lock State for Lockable Tiles
-          // handleToggleTileLock already checks internally if it's actually lockable, 
-          // but this outer check ensures we only call it for potentially lockable ones.
-          handleToggleTileLock(clickedTileId); 
-      } else {
-          // Action: Toggle Shape Selection for Non-Lockable Tiles
-          
-          // First, ensure the non-lockable tile isn't somehow locked
-          if (isTileLocked(lockedTilesMask, clickedTileId)) {
-              toast.warning("Cannot select a locked tile.", { duration: 2000 });
-              return; // Stop if the non-lockable tile is locked
-          }
-
-          // Proceed with toggling selection
-          setSelectedTiles(prevSelected => {
-              const newSelection = new Set(prevSelected);
-              if (newSelection.has(clickedTileId)) {
-                  // Always allow removing a tile
-                  newSelection.delete(clickedTileId);
-              } else {
-                  // Logic for adding a tile
-                  if (newSelection.size < 4) {
-                      // Check adjacency only if it's not the first tile
-                      if (newSelection.size > 0) {
-                          const neighborsOfClick = Config.ADJACENT_LIST[clickedTileId] || [];
-                          const isAdjacentToSelection = Array.from(newSelection).some(selectedId => 
-                              neighborsOfClick.includes(selectedId)
-                          );
-                          
-                          if (!isAdjacentToSelection) {
-                              toast.error("New tiles must be adjacent to the current selection.");
-                              return prevSelected; // Return the original set unchanged
-                          }
-                      }
-                      // If first tile OR adjacent, add it
-                      newSelection.add(clickedTileId);
-                  } else {
-                      toast.error("Maximum 4 tiles selected.");
-                  }
-              }
-              return newSelection;
-          });
-      }
-    };
-
-    // Add listeners
-    canvas.addEventListener("wheel", handleWheel, { passive: false });
-    canvas.addEventListener("mousedown", handleMouseDown);
-    canvas.addEventListener("mousemove", handleMouseMove);
-    // Use window for mouseup to catch drags ending outside canvas
-    window.addEventListener("mouseup", handleMouseUp);
-    canvas.addEventListener("mouseleave", handleMouseLeave);
-    canvas.addEventListener("click", handleClick);
-    canvas.style.cursor = "grab";
-
-    // Cleanup function
-    return () => {
-      canvas.removeEventListener("wheel", handleWheel);
-      canvas.removeEventListener("mousedown", handleMouseDown);
-      canvas.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp); // Remove from window
-      canvas.removeEventListener("mouseleave", handleMouseLeave);
-      canvas.removeEventListener("click", handleClick);
-      if (animationFrameIdRef.current) {
-        cancelAnimationFrame(animationFrameIdRef.current);
-        animationFrameIdRef.current = null;
-      }
-    };
-  }, [
-    // Dependencies for interaction effect
-    isClient,
-    zoom,
-    setZoom,
-    isDragging,
-    setIsDragging,
-    dragStart,
-    setDragStart, // State used directly in handlers
-    drawMainCanvas, // Dependency added
-    currentSolutionIndex,
-    setSelectedTiles, // State/Setters used in click handler
-    // Config.ADJACENT_LIST is constant
-    // toast is stable library function
-    // Refs (canvasRef, currentOffsetRef, hoveredHexIdRef) don't need to be deps
-  ]);
 
   // --- Core Solving Logic / Check Potential ---
   const checkPotential = useCallback((potential: string): number => {
@@ -733,17 +330,6 @@ export default function ShapeDoctor() {
     setSelectedTiles(new Set());
   }, [setSelectedTiles]);
 
-  // --- NEW: Tile Locking Handlers ---
-  const handleToggleTileLock = useCallback((tileId: number) => {
-    // Only allow toggling for designated lockable tiles
-    if (!LOCKABLE_TILE_IDS.has(tileId)) {
-      toast.warning(`Tile ${tileId} is not lockable.`);
-      return;
-    }
-    setLockedTilesMask(prevMask => toggleTileLock(prevMask, tileId));
-  }, [setLockedTilesMask]); // LOCKABLE_TILE_IDS is constant
-  // --- END NEW ---
-
   const handleResetSelection = useCallback(() => {
     setSelectedTiles(new Set());
     setPotentials([]);
@@ -759,13 +345,9 @@ export default function ShapeDoctor() {
   }, []);
 
   const handleSavePotential = useCallback(() => {
-    if (selectedTiles.size === 0) {
-      toast.error("Select tiles first.", { duration: 3000 });
-      return;
-    }
     // Allow saving shapes of size 1 to 4
-    if (selectedTiles.size > 4) {
-      toast.error("Select maximum 4 tiles.", { duration: 3000 });
+    if (selectedTiles.size !== 4) {
+      toast.error("Select exactly 4 tiles to save a potential shape.", { duration: 3000 });
       return;
     }
 
@@ -774,12 +356,16 @@ export default function ShapeDoctor() {
       potentialString += selectedTiles.has(i) ? "1" : "0";
     }
 
+    // Validate length (should always be correct if TOTAL_TILES is right)
+    if (potentialString.length !== Config.TOTAL_TILES) {
+        toast.error(`Internal Error: Generated potential string has wrong length (${potentialString.length}). Expected ${Config.TOTAL_TILES}. Potential not saved.`);
+        console.error("Generated invalid potential string:", potentialString);
+        return; 
+    }
+
     // Check connectivity using the checkPotential function
-    const numberOfOnes = Array.from(potentialString).filter(
-      (c) => c === "1"
-    ).length;
-    if (checkPotential(potentialString) !== numberOfOnes) {
-      // This check might be redundant if the click handler prevents non-adjacent selections, but good safeguard.
+    // Use selectedTiles.size which we already know is 4
+    if (checkPotential(potentialString) !== 4) { 
       toast.error("Selected tiles must form a single connected shape.", {
         duration: 4000,
       });
@@ -787,587 +373,512 @@ export default function ShapeDoctor() {
     }
 
     setPotentials((prev) => [...prev, potentialString]);
-    toast.success(`Potential ${potentials.length + 1} saved.`);
+    toast.success(`Potential ${potentials.length + 1} (4 tiles) saved.`);
     setSelectedTiles(new Set()); // Clear selection after saving
   }, [
     selectedTiles,
-    potentials,
+    potentials, // Keep potentials dependency for the success message index
     checkPotential,
     setPotentials,
     setSelectedTiles,
-  ]); // Dependencies seem correct
-
-  // REVISED handleSolveClick to process saved potentials
-  const handleSolveClick = async () => {
-    // Check potentials array instead of selectedTiles
-    if (potentials.length === 0) {
-      toast.error("Please save potential shapes first.");
-      return;
-    }
-
-    setIsSolving(true);
-    setSolveProgress(0); // Reset progress
-    setBestSolutions([]); // Clear previous solutions
-    setCurrentSolutionIndex(-1);
-    setExactTilingSolutions([]); 
-    setCurrentExactTilingIndex(-1);
-    setGridState(Array(Config.TOTAL_TILES + 1).fill(-1)); 
-    toast.info(`Starting solver for ${potentials.length} potential shapes...`);
-
-    const pool = workerPoolRef.current;
-    if (!pool) {
-      console.error("Workerpool not initialized.");
-      toast.error("Solver pool not ready. Please refresh.");
-      setIsSolving(false);
-      return;
-    }
-
-    try {
-      // --- REFACTORED PART ---
-      // 1. Prepare single task data payload for backtracking solver
-      const shapesToPlace = potentials.map(shapeStr => ({ id: shapeStr }));
-      const taskData: SolverExecDataBacktracking = {
-        shapesToPlace,
-        lockedTilesMask,
-      };
-      console.log(`Submitting single backtracking task to workerpool:`, taskData);
-
-      // 2. Execute the single task
-      const result: SolverResultPayloadBacktracking = await pool.exec('runSolver', [taskData]);
-      console.log("Backtracking task finished. Result:", result);
-      setSolveProgress(100); // Set progress to 100 on completion
-
-      // 3. Process the result
-      if (result && result.error) {
-          console.error("Solver worker returned an error:", result.error);
-          toast.error(`Solving failed: ${result.error}`);
-          setBestSolutions([]);
-          setCurrentSolutionIndex(-1);
-      } else if (result && result.solutions && typeof result.maxShapes === 'number') {
-          // Destructure maxShapes and the array of SolutionRecord objects
-          const { maxShapes, solutions: solutionRecords } = result;
-
-          if (solutionRecords.length === 0) {
-              toast.info(`Solving complete. No placements found for ${maxShapes} shapes.`);
-              setBestSolutions([]);
-              setCurrentSolutionIndex(-1);
-          } else {
-              // Convert SolutionRecord[] to number[][] for UI state
-              const solutionsForDisplay: number[][] = solutionRecords.map(record => {
-                  // Create an empty grid state for this solution
-                  const displayGridState = Array(Config.TOTAL_TILES + 1).fill(-1);
-                  // Iterate through the placements in this solution
-                  record.placements.forEach(placement => {
-                      const { shapeId, placementMask } = placement;
-                      // Find the original index of this shape in the potentials array
-                      const potentialIndex = potentials.findIndex(p => p === shapeId);
-                      if (potentialIndex !== -1) {
-                          // Get the tile IDs covered by this placement
-                          const tileIds = bitmaskToTileIds(placementMask);
-                          // Update the display grid state
-                          tileIds.forEach(tileId => {
-                              displayGridState[tileId] = potentialIndex; // Use 0-based index for color lookup
-                          });
-                      } else {
-                          console.warn(`Could not find original potential index for shapeId: ${shapeId}`);
-                      }
-                  });
-                  return displayGridState;
-              });
-
-              setBestSolutions(solutionsForDisplay);
-              setCurrentSolutionIndex(0); // Start at the first solution
-              setCurrentExactTilingIndex(-1);
-              toast.success(`Solving complete! Found ${solutionsForDisplay.length} solution(s) placing ${maxShapes} shapes.`);
-          }
-      } else {
-          console.error("Received unexpected result structure from solver worker:", result);
-          toast.error("Received an unexpected result from the solver.");
-          setBestSolutions([]);
-          setCurrentSolutionIndex(-1);
-      }
-      // --- END REFACTORED PART ---
-
-    } catch (error) {
-      console.error("Error during backtracking solve execution:", error); // Updated error context
-      toast.error("An error occurred during the solving process.");
-      setSolveProgress(100); // Still mark as complete for UI consistency
-    } finally {
-      setIsSolving(false);
-    }
-  };
-
-  // Effect to update grid when solution changes
-  useEffect(() => {
-    let solutionToApply: number[] | null = null;
-    // Check backtracking solutions first
-    if (currentSolutionIndex !== -1 && bestSolutions[currentSolutionIndex]) {
-      solutionToApply = bestSolutions[currentSolutionIndex];
-    }
-    // Check exact tiling solutions if backtracking isn't active 
-    else if (currentExactTilingIndex !== -1 && exactTilingSolutions[currentExactTilingIndex]) {
-        // Convert SolutionRecord to the number[] format expected by setGridState
-        const exactSolutionRecord = exactTilingSolutions[currentExactTilingIndex];
-        const displayGridState = Array(Config.TOTAL_TILES + 1).fill(-1);
-        // Use a consistent way to color tiles, maybe based on original potential index?
-        // For now, use placement index like before.
-        exactSolutionRecord.placements.forEach((placement, index) => {
-            const tileIds = bitmaskToTileIds(placement.placementMask);
-            tileIds.forEach(tileId => {
-                if (tileId > 0 && tileId <= Config.TOTAL_TILES) {
-                    displayGridState[tileId] = index; 
-                }
-            });
-        });
-        solutionToApply = displayGridState;
-    }
-    
-    // Apply the determined solution or reset the grid
-    if (solutionToApply) {
-        setGridState(solutionToApply);
-    } else {
-        setGridState(Array(Config.TOTAL_TILES + 1).fill(-1));
-    }
-    // Update dependencies to include exact tiling state
-  }, [currentSolutionIndex, bestSolutions, currentExactTilingIndex, exactTilingSolutions, setGridState]);
-
-  // Backtracking navigation handlers (keep existing)
-  const handleNextSolution = useCallback(() => {
-    if (bestSolutions.length === 0) return;
-    setCurrentSolutionIndex((prev) => (prev + 1) % bestSolutions.length);
-    setSelectedTiles(new Set());
-  }, [bestSolutions.length, setCurrentSolutionIndex, setSelectedTiles]);
-  const handlePrevSolution = useCallback(() => {
-    if (bestSolutions.length === 0) return;
-    setCurrentSolutionIndex(
-      (prev) => (prev - 1 + bestSolutions.length) % bestSolutions.length
-    );
-    setSelectedTiles(new Set());
-  }, [bestSolutions.length, setCurrentSolutionIndex, setSelectedTiles]);
-
-  // --- NEW Exact Tiling Navigation Handlers ---
-  const handleNextExactTilingSolution = useCallback(() => {
-    if (exactTilingSolutions.length === 0) return;
-    setCurrentExactTilingIndex((prev) => (prev + 1) % exactTilingSolutions.length);
-    setSelectedTiles(new Set());
-  }, [exactTilingSolutions.length, setCurrentExactTilingIndex, setSelectedTiles]);
-
-  const handlePrevExactTilingSolution = useCallback(() => {
-    if (exactTilingSolutions.length === 0) return;
-    setCurrentExactTilingIndex(
-      (prev) => (prev - 1 + exactTilingSolutions.length) % exactTilingSolutions.length
-    );
-    setSelectedTiles(new Set());
-  }, [exactTilingSolutions.length, setCurrentExactTilingIndex, setSelectedTiles]);
-  // --- END NEW Handlers ---
-
-  const handleBackToEdit = useCallback(() => {
-    setSelectedTiles(new Set());
-    setGridState(Array(Config.TOTAL_TILES + 1).fill(-1));
-    setCurrentSolutionIndex(-1); // Reset backtracking index
-    setCurrentExactTilingIndex(-1); // Reset exact tiling index
-    toast.info("Editing mode activated."); 
-  }, [setSelectedTiles, setGridState, setCurrentSolutionIndex, setCurrentExactTilingIndex]);
-  
-  const handleDeletePotential = useCallback(
-    (indexToDelete: number) => {
-      setPotentials((prevPotentials) => {
-        // Check if index is valid
-        if (indexToDelete < 0 || indexToDelete >= prevPotentials.length)
-          return prevPotentials;
-
-        // Delete the canvas ref *before* updating state
-        potentialCanvasRefs.current.delete(indexToDelete);
-        // Adjust keys for remaining refs AFTER the deleted one (important!)
-        const newRefs = new Map<number, HTMLCanvasElement>();
-        potentialCanvasRefs.current.forEach((canvas, key) => {
-          if (key > indexToDelete) {
-            newRefs.set(key - 1, canvas); // Decrement key
-          } else if (key < indexToDelete) {
-            newRefs.set(key, canvas); // Keep same key
-          }
-        });
-        potentialCanvasRefs.current = newRefs; // Update the refs map
-
-        const updated = prevPotentials.filter(
-          (_, index) => index !== indexToDelete
-        );
-        toast.info(`Potential ${indexToDelete + 1} deleted.`);
-        return updated;
-      });
-    },
-    [setPotentials]
-  ); // Dependency is correct
-
-  // --- Potential Preview Drawing ---
-  // Using the corrected version from previous step
-  const drawPotential = useCallback(
-    (canvasElement: HTMLCanvasElement, shapeString: string) => {
-      const ctx = canvasElement.getContext("2d");
-      if (!ctx) return;
-      const { width, height } = canvasElement;
-      ctx.clearRect(0, 0, width, height);
-      const tileIds: number[] = [];
-      for (let i = 0; i < shapeString.length; i++) {
-        if (shapeString.charAt(i) === "1") {
-          tileIds.push(i + 1);
-        }
-      }
-      if (tileIds.length === 0) return;
-
-      let minQ = Infinity,
-        maxQ = -Infinity,
-        minR = Infinity,
-        maxR = -Infinity;
-      const potentialHexes = tileIds
-        .map((id) => {
-          const hex = Config.HEX_GRID_COORDS.find((h) => h.id === id);
-          if (hex) {
-            minQ = Math.min(minQ, hex.q);
-            maxQ = Math.max(maxQ, hex.q);
-            minR = Math.min(minR, hex.r);
-            maxR = Math.max(maxR, hex.r);
-          }
-          return hex;
-        })
-        .filter((hex): hex is HexCoord => !!hex);
-
-      if (potentialHexes.length === 0) return;
-
-      const centerQ = (minQ + maxQ) / 2;
-      const centerR = (minR + maxR) / 2;
-      const previewHexSize = 8; // Base size
-      const previewLineWidth = 0.5;
-
-      const previewDrawHexagon = (
-        x: number,
-        y: number,
-        size: number,
-        fillColor: string,
-        strokeStyle: string
-      ) => {
-        if (
-          !isSafeNumber(x) ||
-          !isSafeNumber(y) ||
-          !isSafeNumber(size) ||
-          size <= 0
-        ) {
-          return;
-        }
-        ctx.beginPath();
-        for (let i = 0; i < 6; i++) {
-          const angle = (Math.PI / 3) * i;
-          const xPos = x + size * Math.cos(angle);
-          const yPos = y + size * Math.sin(angle);
-          if (!isSafeNumber(xPos) || !isSafeNumber(yPos)) {
-            ctx.closePath();
-            return;
-          }
-          if (i === 0) ctx.moveTo(xPos, yPos);
-          else ctx.lineTo(xPos, yPos);
-        }
-        ctx.closePath();
-        try {
-          ctx.fillStyle = fillColor;
-          ctx.fill();
-          ctx.strokeStyle = strokeStyle;
-          ctx.lineWidth = previewLineWidth; // Revert to fixed line width
-          ctx.stroke();
-        } catch (e) {
-          console.error("Error drawing preview hex:", e);
-        }
-      };
-
-      potentialHexes.forEach((hex) => {
-        const adjustedQ = hex.q - centerQ;
-        const adjustedR = hex.r - centerR;
-        const x = width / 2 + previewHexSize * ((3 / 2) * adjustedQ);
-        const y =
-          height / 2 +
-          previewHexSize *
-            ((Math.sqrt(3) / 2) * adjustedQ + Math.sqrt(3) * adjustedR);
-        previewDrawHexagon(
-          x,
-          y,
-          previewHexSize,
-          Config.SELECTED_COLOR,
-          Config.STROKE_COLOR_ACTIVE
-        );
-      });
-    },
-    []
-  ); // Still self-contained, empty array is correct
-
-  // Ref setter for SAVED potentials
-  const setPotentialCanvasRef = useCallback(
-    (index: number, element: HTMLCanvasElement | null) => {
-      if (element) {
-        potentialCanvasRefs.current.set(index, element);
-        // Immediately draw potential if it exists in state
-        const potentialString = potentials[index];
-        if (potentialString) {
-          drawPotential(element, potentialString);
-        }
-      } else {
-        potentialCanvasRefs.current.delete(index);
-      }
-    },
-    [potentials, drawPotential]
-  ); // Needs potentials and drawPotential as deps
-
-  // Effect to draw SAVED potentials (This might be redundant if setPotentialCanvasRef draws immediately)
-  // Let's keep it for ensuring redraws if potentials array itself changes externally
-  useEffect(() => {
-    if (!isClient) return;
-    potentials.forEach((pString, index) => {
-      const canvas = potentialCanvasRefs.current.get(index);
-      if (canvas) {
-        drawPotential(canvas, pString);
-      }
-    });
-  }, [isClient, potentials, drawPotential]); // Dependencies are correct
-
-  // Ref setter for PREDEFINED shapes
-  const setPredefinedCanvasRef = useCallback(
-    (index: number, element: HTMLCanvasElement | null) => {
-      if (element) {
-        predefinedCanvasRefs.current.set(index, element);
-        // Immediately draw predefined shape
-        const shapeString = Config.PREDEFINED_SHAPES[index];
-        if (shapeString) {
-          drawPotential(element, shapeString);
-        }
-      } else {
-        predefinedCanvasRefs.current.delete(index);
-      }
-    },
-    [drawPotential]
-  ); // Depends on drawPotential (PREDEFINED_SHAPES is constant)
-
-  // --- Handler to Add Predefined Shape ---
-  const handleAddPredefinedPotential = useCallback(
-    (shapeString: string) => {
-      if (isSolving) {
-        toast.warning("Cannot add potentials while solving.", {
-          duration: 3000,
-        });
-        return;
-      }
-      setPotentials((prevPotentials) => {
-        toast.success(`Shape added to potentials.`);
-        return [...prevPotentials, shapeString];
-      });
-    },
-    [isSolving, setPotentials]
-  ); // Dependencies are correct
+  ]);
 
   // --- Solver Logic ---
-  // Existing handler for backtracking solver (Max Placement)
-  const handleSolveBacktracking = async () => {
-    // ... (existing implementation)
-  };
+  const handleUnifiedSolve = async () => {
+    console.log("[handleUnifiedSolve] Initiating solve...");
+    setSolverError(null); 
+    setIsSolving(true); 
+    setCurrentSolver(null); 
+    setBestSolutions([]); 
+    setCurrentSolutionIndex(-1);
+    setExactTilingSolutions([]);
+    setCurrentExactTilingIndex(-1);
+    setGridState(Array(Config.TOTAL_TILES + 1).fill(-1)); 
 
-  // NEW Handler for DLX Exact Tiling Solver
-  const handleFindExactTiling = async () => {
     if (!workerPoolRef.current) {
       toast.error("Worker pool not initialized.");
+      setIsSolving(false);
       return;
     }
-    const currentPotentials = potentials; // Capture current state
-    if (currentPotentials.length < 11) {
-        toast.info("Select at least 11 potential shapes to search for an exact tiling.");
+    
+    // Filter potentials first by LENGTH
+    const validLengthPotentials = potentials.filter(p => {
+        if (typeof p !== 'string' || p.length !== Config.TOTAL_TILES) {
+             console.warn(`[handleUnifiedSolve] Filtering out potential with invalid length ${p?.length ?? 'undefined'}: ${p?.substring(0, 20)}...`);
+             return false;
+        }
+        return true;
+    });
+
+    // Filter potentials AGAIN by TILE COUNT (must be 4)
+    const validFourTilePotentials = validLengthPotentials.filter(p => {
+        const tileCount = countSetBitsFromString(p);
+        if (tileCount !== 4) {
+             console.warn(`[handleUnifiedSolve] Filtering out potential with invalid tile count (${tileCount}): ${p.substring(0,20)}...`);
+             return false;
+        }
+        return true;
+    });
+
+    // Report filtering actions
+    const lengthExcludedCount = potentials.length - validLengthPotentials.length;
+    const tileCountExcludedCount = validLengthPotentials.length - validFourTilePotentials.length;
+    if (lengthExcludedCount > 0) {
+         toast.warning(`Excluded ${lengthExcludedCount} potential shape(s) due to incorrect length.`);
+    }
+     if (tileCountExcludedCount > 0) {
+         toast.warning(`Excluded ${tileCountExcludedCount} potential shape(s) because they did not contain exactly 4 tiles.`);
+    }
+
+    // Use the final filtered list for solving
+    const potentialsToSolve = validFourTilePotentials;
+
+    if (potentialsToSolve.length === 0) {
+         toast.error("No valid 4-tile potential shapes to solve.");
+        setIsSolving(false);
         return;
     }
 
-    setIsFindingExactTiling(true);
-    setExactTilingSolutions([]); 
-    setCurrentExactTilingIndex(-1);
-    setBestSolutions([]); 
-    setCurrentSolutionIndex(-1);
-    setGridState(Array(Config.TOTAL_TILES + 1).fill(-1)); 
-    toast.info(`Searching combinations of 11 shapes from ${currentPotentials.length} potentials (duplicates allowed)...`);
+    // calculate availableTileCount, numSelectedShapes, numShapesNeeded using potentialsToSolve.length
+    const currentLockedMask = lockedTilesMask;
+    const availableTileCount = Config.TOTAL_TILES - countSetBits(currentLockedMask);
+    // Use potentialsToSolve.length here
+    const numSelectedShapes = potentialsToSolve.length;
+    const numShapesNeeded = availableTileCount > 0 && availableTileCount % 4 === 0 
+                            ? availableTileCount / 4 
+                            : -1;
+
+    console.log(`[handleUnifiedSolve] Available Tiles: ${availableTileCount}, Selected 4-Tile Shapes: ${numSelectedShapes}, Shapes Needed for Exact: ${numShapesNeeded}`); // Updated log
+
+    const tryExactTilingFirst = 
+        availableTileCount > 0 && 
+        availableTileCount % 4 === 0 && 
+        numShapesNeeded === numSelectedShapes;
+        
+    let finalResult: SolverResultPayloadBacktracking | null = null;
+    let ranExactTiling = false;
 
     try {
-      // --- Prepare Data for ALL potentials, preserving duplicates --- 
-      const allPotentialsData: { uniqueId: string; baseMaskString: string }[] = [];
-      let validShapeCount = 0;
-      currentPotentials.forEach((shapeString, index) => {
-          try {
-              const baseMask = shapeStringToBitmask(shapeString);
-              if (baseMask === 0n) {
-                  console.warn(`Skipping potential shape at index ${index} with empty mask: ${shapeString}`);
-                  return; // Skip this potential
-              }
-              // Create a unique ID, e.g., by combining index and shape string (or just index)
-              const uniqueId = `${index}::${shapeString}`;
-              allPotentialsData.push({ 
-                  uniqueId: uniqueId, 
-                  baseMaskString: baseMask.toString() 
-              });
-              validShapeCount++;
-          } catch (err) {
-              console.warn(`Skipping invalid potential shape string at index ${index}: ${shapeString}`, err);
-          }
-      });
-      
-      // Ensure we still have at least 11 valid shapes after potential filtering
-       if (validShapeCount < 11) {
-           toast.error(`Only ${validShapeCount} valid potential shapes found. Need at least 11.`);
-           setIsFindingExactTiling(false);
-           return;
-       }
+      if (tryExactTilingFirst) {
+        console.log(`[handleUnifiedSolve] Condition met. Attempting Exact Tiling with ${numShapesNeeded} shapes...`);
+        setCurrentSolver('exact'); 
+        ranExactTiling = true;
+        toast.info(`Attempting Exact Tiling with ${numShapesNeeded} shapes...`); 
+        
+        // Use potentialsToSolve here
+        const exactTilingTaskData: SolverExecDataExactTiling & { k: number; shapesToTileWith: { id: string }[] } = {
+          allPotentialsData: potentialsToSolve.map((shapeString, index) => {
+             const baseMask = shapeStringToBitmask(shapeString);
+             const originalIndex = potentials.indexOf(shapeString); // Find original index for ID consistency
+             const uniqueId = `${originalIndex >= 0 ? originalIndex : index}::${shapeString}`;
+             return { uniqueId: uniqueId, baseMaskString: baseMask.toString() };
+          }),
+          initialGridState: "0",
+          lockedTilesMask: currentLockedMask.toString(),
+          k: numShapesNeeded,
+          // Use potentialsToSolve here
+          shapesToTileWith: potentialsToSolve.map((shapeString, index) => {
+              const originalIndex = potentials.indexOf(shapeString);
+              const uniqueId = `${originalIndex >= 0 ? originalIndex : index}::${shapeString}`;
+              return { id: uniqueId };
+          }),
+        };
 
-      // --- Prepare Task Data ---
-      // Send the full list of potentials with unique IDs and their base masks
-      const taskData = {
-          allPotentialsData: allPotentialsData, // Array of { uniqueId, baseMaskString }
-          initialGridState: 0n.toString(), // Send BigInt as string
-          lockedTilesMask: lockedTilesMask, // Add this line
-      };
-      
-      // Execute the combinatorial exact tiling finder function on the worker
-      const result: SolverResultPayloadBacktracking = await workerPoolRef.current.exec(
-          'runCombinatorialExactTiling', 
-          [taskData] 
-      );
-
-      console.log("Combinatorial Exact Tiling task finished. Result:", result);
-
-      if (result.error) {
-        toast.error(`Combinatorial Solver Error: ${result.error}`);
-        setExactTilingSolutions([]);
-      } else if (result.solutions && result.solutions.length > 0) {
-        toast.success(
-          `Found ${result.solutions.length} exact 11-shape tiling solution(s) from combinations!`
+        // Add logging before exact tiling worker call if needed for deep debug
+        // console.log("[handleUnifiedSolve] Data for Exact Tiling Worker:", JSON.stringify(exactTilingTaskData));
+        try {
+             finalResult = await workerPoolRef.current.exec(
+          'runCombinatorialExactTiling',
+          [exactTilingTaskData]
         );
-        setExactTilingSolutions(result.solutions);
-        setCurrentExactTilingIndex(0); 
-         // Update grid state to show the first found exact solution
-        const firstSolution = result.solutions[0];
-        const newGridState = Array(Config.TOTAL_TILES + 1).fill(-1);
-        firstSolution.placements.forEach((placement, index) => {
-            const tileIds = bitmaskToTileIds(placement.placementMask);
-            tileIds.forEach(tileId => {
-                if (tileId > 0 && tileId <= Config.TOTAL_TILES) {
-                    newGridState[tileId] = index; 
-                }
-            });
-        });
-        setGridState(newGridState);
-
-      } else {
-        toast.info("No exact 11-shape tiling solutions found from any combination.");
-        setExactTilingSolutions([]);
+             // console.log("[handleUnifiedSolve] Worker result for Exact Tiling:", finalResult);
+        } catch (workerError) {
+             console.error("[handleUnifiedSolve] Error EXECUTING Exact Tiling worker task:", workerError);
+             setSolverError(`Worker execution error (Exact Tiling): ${workerError instanceof Error ? workerError.message : String(workerError)}`);
+             finalResult = null;
+        }
       }
-    } catch (err) {
-      console.error("Error executing combinatorial exact tiling solver task:", err);
-      toast.error(`Error executing task: ${err instanceof Error ? err.message : String(err)}`);
-      setExactTilingSolutions([]);
+
+      if (!finalResult || finalResult.maxShapes === 0) {
+        if (ranExactTiling) {
+            console.log("[handleUnifiedSolve] Exact Tiling returned no solution. Falling back to Maximal Placement...");
+            toast.info("Exact Tiling failed, trying Maximal Placement (Backtracking)...");
+        } else {
+            console.log("[handleUnifiedSolve] Condition not met for Exact Tiling. Proceeding directly to Maximal Placement (Backtracking)...");
+            toast.info("Attempting Maximal Placement (Backtracking)...");
+        }
+        setCurrentSolver('maximal'); 
+        
+        // Use potentialsToSolve here
+        const maximalPlacementTaskData: SolverExecDataBacktracking = {
+          shapesToPlace: potentialsToSolve.map((shapeString, index) => {
+              const originalIndex = potentials.indexOf(shapeString);
+              const uniqueId = `${originalIndex >= 0 ? originalIndex : index}::${shapeString}`;
+              return { id: uniqueId };
+          }),
+          initialGridState: "0", 
+          lockedTilesMask: currentLockedMask.toString(),
+        };
+
+        // Log Input
+        console.log("[handleUnifiedSolve] Data for Maximal Placement Worker:", JSON.stringify(maximalPlacementTaskData.shapesToPlace));
+        maximalPlacementTaskData.shapesToPlace.forEach(shape => {
+            const tileCount = countSetBitsFromString(shape.id.split('::')[1]);
+            if (tileCount !== 4) {
+                console.error(`[handleUnifiedSolve] ERROR: Sending non-4-tile shape (${tileCount} tiles) to worker:`, shape.id);
+            }
+        });
+        // ----------------------------- //
+
+        console.log("[handleUnifiedSolve] Executing worker for runMaximalPlacementBacktracking...");
+         try {
+            finalResult = await workerPoolRef.current.exec(
+                'runMaximalPlacementBacktracking',
+                [maximalPlacementTaskData],
+                {
+                    on: (payload: any) => { /* ... streaming handler ... */
+                        if (payload && payload.event === 'solutionUpdate' && payload.data) {
+                            console.log("[handleUnifiedSolve] Received streamed solution update:", payload.data);
+                            const { maxShapes, solution } = payload.data as { maxShapes: number; solution: SolutionRecord };
+                            setBestSolutions([solution]);
+                            setCurrentSolutionIndex(0);
+                            updateGridStateFromSolution(solution); 
+                            toast.info(`Solver found solution with ${maxShapes} shapes...`, { id: 'solver-progress-toast' });
+                            setExactTilingSolutions([]);
+                            setCurrentExactTilingIndex(-1);
+                        } 
+                     }
+                }
+            );
+            
+            // Log Output from Worker (with null checks)
+            console.log("[handleUnifiedSolve] Worker FINAL result for Maximal Placement (Backtracking):", finalResult);
+            if (finalResult && finalResult.solutions && finalResult.solutions.length > 0) {
+                console.log("--- Checking Solution Placement Masks ---");
+                finalResult.solutions.forEach((sol, solIndex) => {
+                    console.log(`  Solution ${solIndex + 1}:`);
+                    if (sol.placements) {
+                        sol.placements.forEach((pl, plIndex) => {
+                            const mask = pl.placementMask;
+                            const tiles = typeof mask === 'bigint' ? bitmaskToTileIds(mask) : []; 
+                            console.log(`    Placement ${plIndex + 1} (ShapeId: ${pl.shapeId}): Mask=${mask?.toString()}, Tiles=[${tiles.join(',')}] (Count: ${tiles.length})`);
+                            if (tiles.length !== 4) {
+                                console.error(`    ERROR: Placement mask resulted in ${tiles.length} tiles!`);
+                            }
+                        });
+                    } else {
+                        console.warn(`    Solution ${solIndex + 1} has no placements array.`);
+                    }
+                });
+                console.log("---------------------------------------");
+            }
+            // ------------------------------------------------- //
+
+         } catch (workerError) {
+             console.error("[handleUnifiedSolve] Error EXECUTING Maximal Placement (Backtracking) worker task:", workerError);
+             setSolverError(`Worker execution error (Maximal Placement - Backtracking): ${workerError instanceof Error ? workerError.message : String(workerError)}`);
+             finalResult = null;
+             toast.dismiss('solver-progress-toast');
+         }
+      }
+
+      // --- Process Final Result --- 
+      toast.dismiss('solver-progress-toast'); 
+      if (finalResult && finalResult.solutions && finalResult.solutions.length > 0) {
+          if (!bestSolutions || bestSolutions.length === 0 || finalResult.maxShapes > (bestSolutions[0]?.placements?.length ?? 0)) {
+              console.log("[handleUnifiedSolve] Final result is better than last streamed, updating state."); 
+              setBestSolutions(finalResult.solutions);
+              setCurrentSolutionIndex(0);
+              if (finalResult.solutions[0]) updateGridStateFromSolution(finalResult.solutions[0]);
+          }
+          toast.success(`Finished. Found ${finalResult.solutions.length} solution(s) using ${finalResult.maxShapes} shapes (${currentSolver} mode).`);
+      } else if (finalResult && finalResult.error) {
+          toast.error(`Solver Error (${currentSolver}): ${finalResult.error}`);
+          setSolverError(`Solver Error (${currentSolver}): ${finalResult.error}`);
+      } else if (!finalResult && !solverError) { 
+          toast.error(`Solver (${currentSolver}) returned no result or an unexpected format.`);
+          setSolverError(`Solver (${currentSolver}) returned no result.`);
+      } else if (!ranExactTiling && (!finalResult || finalResult.solutions?.length === 0)) {
+          toast.info(`No solution found (${currentSolver} mode).`); 
+      } else if (ranExactTiling && (!finalResult || finalResult.solutions?.length === 0)) {
+          toast.info(`Exact tiling failed, and no solution found via maximal placement.`);
+      }
+
+    } catch (error) {
+        console.error("[handleUnifiedSolve] Error during solve process:", error);
+        toast.error(`An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`);
+        setSolverError(`Client-side error: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
-      setIsFindingExactTiling(false);
+        setIsSolving(false); 
+      console.log("[handleUnifiedSolve] Solve process finished.");
     }
   };
 
   // --- Rendering Logic ---
+  useEffect(() => {
+    setIsClient(true);
+    requestAnimationFrame(drawMainCanvas);
+    return () => {
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+      }
+    };
+  }, [drawMainCanvas]);
+
+  useEffect(() => {
+    drawPotentialShapes();
+  }, [potentials, drawPotentialShapes]);
+
+  // Handle grid update when solution index changes
+  useEffect(() => {
+    if (currentSolutionIndex >= 0 && bestSolutions[currentSolutionIndex]) {
+      updateGridStateFromSolution(bestSolutions[currentSolutionIndex]);
+    } else if (currentExactTilingIndex >= 0 && exactTilingSolutions[currentExactTilingIndex]) {
+      updateGridStateFromSolution(exactTilingSolutions[currentExactTilingIndex]);
+    } else if (!isSolving) {
+      // Reset grid if no solution is selected and not solving
+      // setGridState(Array(Config.TOTAL_TILES + 1).fill(-1)); // Avoid resetting if user is interacting
+    }
+  }, [currentSolutionIndex, bestSolutions, currentExactTilingIndex, exactTilingSolutions, isSolving]); // Removed updateGridStateFromSolution dependency
+
+  // --- Predefined Shapes --- 
+  const handleAddPredefinedPotential = useCallback(
+    (shapeString: string) => {
+        // Avoid adding duplicates?
+        if (potentials.includes(shapeString)) {
+            toast.info("Shape already saved.");
+            return;
+        }
+        // Validate length
+        if (shapeString.length !== Config.TOTAL_TILES) {
+             toast.error(`Cannot add predefined shape: Invalid length (${shapeString.length}). Expected ${Config.TOTAL_TILES}.`);
+             console.error("Invalid predefined shape string:", shapeString);
+             return;
+        }
+        setPotentials((prev) => [...prev, shapeString]);
+        toast.success("Predefined shape added to saved potentials.");
+    },
+    [potentials] // Add potentials to dependency array
+  );
+
+  const handleDeletePotential = useCallback(
+    (indexToDelete: number) => {
+      setPotentials((prev) => prev.filter((_, index) => index !== indexToDelete));
+    },
+    [setPotentials]
+  );
+
+  const setPredefinedCanvasRef = useCallback(
+    (index: number, element: HTMLCanvasElement | null) => {
+      if (element) {
+        predefinedCanvasRefs.current.set(index, element);
+        // Call drawPreviewGrid with override parameters for predefined shapes
+        HexUtils.drawPreviewGrid(
+          element,
+          Config.PREDEFINED_SHAPES[index],
+          index,
+          0.5, // Default sizeRatio - Explicitly set smaller value
+          '#a78bfa', // Tailwind violet-400 equivalent for the single color
+          true      // Hide the background grid
+        );
+    } else {
+        predefinedCanvasRefs.current.delete(index);
+      }
+    },
+    [] // No dependencies needed here as Config and HexUtils are stable
+  );
+
+  const setPotentialCanvasRef = useCallback(
+    (index: number, element: HTMLCanvasElement | null) => {
+      if (element) {
+        potentialCanvasRefs.current.set(index, element);
+        // Call drawPreviewGrid normally for saved potentials (no overrides)
+        HexUtils.drawPreviewGrid(
+          element,
+          potentials[index],
+          index
+          // Using default sizeRatio, no color override, grid visible
+        );
+      } else {
+        potentialCanvasRefs.current.delete(index);
+      }
+    },
+    [potentials] // Depends on potentials array
+  );
+
+  // --- Event Handlers for Canvas Interaction (with Correct Types) --- 
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const delta = e.deltaY * -0.005;
+    setZoom((prevZoom) => Math.min(Math.max(0.2, prevZoom + delta), 3));
+  }, []); 
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - currentOffsetRef.current.x, y: e.clientY - currentOffsetRef.current.y });
+  }, []); 
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    
+    // Calculate hex under cursor using correct sequence
+    let hex: HexCoord | null = null;
+    const worldPos = HexUtils.screenToWorld(screenX, screenY, canvas.width, canvas.height, currentOffsetRef.current, zoom);
+    if (worldPos) {
+        const axial = HexUtils.pixelToAxial(worldPos.x, worldPos.y);
+        if (axial) {
+            const rounded = HexUtils.hexRound(axial.q, axial.r);
+            if (rounded) {
+                hex = HexUtils.findHexByCoords(rounded.q, rounded.r) || null;
+            }
+        }
+    }
+    hoveredHexIdRef.current = hex ? hex.id : null;
+
+    if (isDragging) {
+      currentOffsetRef.current = {
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      };
+    }
+  }, [isDragging, zoom, dragStart.x, dragStart.y]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsDragging(false);
+    hoveredHexIdRef.current = null;
+  }, []);
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas || isDragging) return; // Ignore clicks during drag
+
+    const rect = canvas.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+
+    // Calculate hex under cursor using correct sequence
+    let hex: HexCoord | null = null;
+    const worldPos = HexUtils.screenToWorld(screenX, screenY, canvas.width, canvas.height, currentOffsetRef.current, zoom);
+    if (worldPos) {
+        const axial = HexUtils.pixelToAxial(worldPos.x, worldPos.y);
+        if (axial) {
+            const rounded = HexUtils.hexRound(axial.q, axial.r);
+            if (rounded) {
+                hex = HexUtils.findHexByCoords(rounded.q, rounded.r) || null;
+            }
+        }
+    }
+
+    if (hex && hex.id > 0 && hex.id <= Config.TOTAL_TILES) {
+        if (LOCKABLE_TILE_IDS.has(hex.id)) {
+            handleToggleTileLock(hex.id); // Use the dedicated handler (defined earlier)
+        } else {
+            if (isTileLocked(lockedTilesMask, hex.id)) {
+                 toast.warning("Cannot select a locked tile.");
+                 return;
+             }
+            setSelectedTiles((prev) => {
+                const newSelection = new Set(prev);
+                if (newSelection.has(hex.id)) {
+                    newSelection.delete(hex.id);
+      } else {
+                    if (newSelection.size < 4) { 
+                        newSelection.add(hex.id);
+                    } else {
+                        toast.error("Maximum 4 tiles selected.");
+                    }
+                }
+                return newSelection;
+            });
+        }
+    }
+  }, [
+    isDragging, 
+    zoom, 
+    lockedTilesMask, 
+    handleToggleTileLock, // Dependency is now defined before usage 
+    setSelectedTiles
+  ]);
+
+  // --- Rendering ---
   return (
-    // Outer container from old layout
-    <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col min-h-screen bg-background text-foreground">
-      {/* Header (Optional - Re-add if needed) */}
-      {/* <div className="mb-6 flex-shrink-0"> ... </div> */}
-
-      {/* Main Layout Grid (Restored) */}
-      <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
-        
-        {/* Left Column: Canvas and Controls (Restored Structure) */}
-        <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
-          <Card className="flex flex-col flex-grow bg-card">
-            <CardHeader className="pb-3 flex-shrink-0">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-lg flex items-center gap-2 text-card-foreground">
-                  <Puzzle className="h-5 w-5 text-violet-400" /> Puzzle Grid
-                </CardTitle>
-                {/* Reset button needs handleResetSelection */}
-                <Button variant="outline" size="sm" className="text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive-foreground))] cursor-pointer" onClick={handleResetSelection} disabled={isSolving || isFindingExactTiling}>
-                   <RefreshCw className="h-4 w-4 mr-1" /> Reset All
-                 </Button>
-              </div>
-              <CardDescription className="pt-1 text-xs text-muted-foreground">
-                {currentSolutionIndex !== -1
-                  ? `Viewing solution ${currentSolutionIndex + 1} / ${bestSolutions.length}.`
-                  : "Click tiles (max 4), Save, then Solve saved potentials. Wheel=Zoom, Drag=Pan."}
-              </CardDescription>
-            </CardHeader>
-            
-            {/* ShapeCanvas (Restored Placement) */}
-            <div ref={containerRef} className="flex-grow relative bg-muted/40 min-h-[300px]"> {/* Added min-h for visibility */}
-              <ShapeCanvas 
-                canvasRef={canvasRef} 
-                containerRef={containerRef}
-                isClient={isClient}
-                isSolving={isSolving || isFindingExactTiling} // Combined solving state
-                solveProgress={solveProgress} 
-                formattedProgress={formattedProgress} 
-                zoom={zoom}
-                setZoom={setZoom}
-                handleReset={handleResetSelection}
-                lockedTilesMask={lockedTilesMask}        // Pass lock state
-                lockableTiles={LOCKABLE_TILE_IDS} // ADD THIS LINE
-                onTileClick={handleToggleTileLock}     // Pass lock toggle handler
-              />
-            </div>
-
-            {/* ControlPanel (Restored Placement) */}
-            <ControlPanel
-              currentSolutionIndex={currentSolutionIndex}
-              bestSolutions={bestSolutions}
-              exactTilingSolutions={exactTilingSolutions}
-              currentExactTilingIndex={currentExactTilingIndex}
-              handlePrevSolution={handlePrevSolution}
-              handleNextSolution={handleNextSolution}
-              handleBackToEdit={handleBackToEdit}
-              handleSolve={handleSolveClick}
-              handleSavePotential={handleSavePotential}
-              handleClearSelection={handleClearSelection}
-              onSolveBacktracking={handleSolveBacktracking}
-              onFindExactTiling={handleFindExactTiling}
-              isFindingExactTiling={isFindingExactTiling}
-              potentialsCount={potentials.length}
-              isSolving={isSolving}
-              selectedTiles={selectedTiles}
-              selectedTilesCount={selectedTiles.size}
-              potentials={potentials}
-              handlePrevExactTilingSolution={handlePrevExactTilingSolution}
-              handleNextExactTilingSolution={handleNextExactTilingSolution}
-            />
-          </Card>
+    <main className="flex flex-col h-screen bg-gradient-to-br from-gray-900 to-black text-gray-100 overflow-hidden relative p-4 gap-4">
+      {/* <CookieConsentBanner /> */} 
+      <div className="flex flex-1 min-h-0 gap-4">
+        {/* Center Panel: Canvas (Now Left) */}
+        <div ref={containerRef} className="w-2/3 bg-gray-800/30 rounded-lg overflow-hidden border border-border/50 relative">
+          <canvas
+            ref={canvasRef}
+            className="absolute top-0 left-0 w-full h-full cursor-grab active:cursor-grabbing"
+            onWheel={handleWheel}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+            onClick={handleClick}
+          />
         </div>
 
-        {/* Right Column: Status and Tabs (Restored Structure) */}
-        <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
-          {/* StatusPanel (Restored Placement) */}
+        {/* Right Sidebar: Controls, Status, Shapes */}
+        <div className="flex flex-col flex-grow flex-shrink-0 gap-4 overflow-y-auto border border-border/50 rounded-lg p-2 bg-gray-800/30">
+          {/* Controls */}
+          <ControlPanel
+            isSolving={isSolving}
+            handleSolve={handleUnifiedSolve}
+            handleSavePotential={handleSavePotential}
+            handleClearSelection={handleClearSelection}
+            selectedTilesCount={selectedTiles.size}
+            currentSolutionIndex={currentSolutionIndex}
+            bestSolutions={bestSolutions.map(sol => [])}
+            selectedTiles={selectedTiles}
+            potentials={potentials}
+            handlePrevSolution={()=>{}}
+            handleNextSolution={()=>{}}
+            handleBackToEdit={()=>{}}
+            potentialsCount={potentials.length}
+            isFindingExactTiling={isFindingExactTiling}
+            exactTilingSolutions={exactTilingSolutions}
+            currentExactTilingIndex={currentExactTilingIndex}
+            handlePrevExactTilingSolution={()=>{}}
+            handleNextExactTilingSolution={()=>{}}
+            lockedTilesMask={lockedTilesMask}
+          />
+          {/* Status */}
           <StatusPanel
             potentials={potentials}
             bestSolutions={bestSolutions}
             currentSolutionIndex={currentSolutionIndex}
             isSolving={isSolving}
-            handleSolve={handleSolveClick} // Can still trigger solve from here if needed
+            handleSolve={handleUnifiedSolve}
+            lockedTilesCount={countSetBits(lockedTilesMask)}
+            availableTiles={Config.TOTAL_TILES - countSetBits(lockedTilesMask)}
+            currentSolver={currentSolver}
+            solverError={solverError}
           />
-          {/* ResultsTabs (Restored Placement) */}
-          <ResultsTabs
-            isClient={isClient}
-            potentials={potentials}
-            isSolving={isSolving}
-            setPredefinedCanvasRef={setPredefinedCanvasRef}
-            setPotentialCanvasRef={setPotentialCanvasRef}
-            handleAddPredefinedPotential={handleAddPredefinedPotential}
-            handleDeletePotential={handleDeletePotential}
-          />
+          {/* Shapes Tabs (Moved from bottom) */}
+          <div className="flex-grow min-h-[200px]"> {/* Ensure it takes remaining space */}
+            <ResultsTabs
+              isClient={isClient}
+              potentials={potentials}
+              isSolving={isSolving}
+              setPredefinedCanvasRef={setPredefinedCanvasRef}
+              setPotentialCanvasRef={setPotentialCanvasRef}
+              handleAddPredefinedPotential={handleAddPredefinedPotential}
+              handleDeletePotential={handleDeletePotential}
+            />
+          </div>
         </div>
-
       </div>
-
-      {/* Footer (Optional - Re-add if needed) */}
-      {/* <footer className="text-center text-xs text-muted-foreground mt-auto pt-8 flex-shrink-0"> ... </footer> */}
-    </div>
+    </main>
   );
 }
+

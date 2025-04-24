@@ -7,10 +7,12 @@
  *   with `id: i + 1` as defined in `shapedoctor.config.ts::HEX_GRID_COORDS`.
  * - This mapping utilizes bits 0 through 43 (inclusive) for the 44 grid tiles.
  */
-import { TOTAL_TILES, HEX_GRID_COORDS } from './shapedoctor.config';
+import { TOTAL_TILES as CONFIG_TOTAL_TILES, HEX_GRID_COORDS } from './shapedoctor.config';
+// Export TOTAL_TILES for use in tests
+export const TOTAL_TILES = CONFIG_TOTAL_TILES;
 // Helper map for quick lookup of tile ID by axial coordinates
 const coordToIdMap = new Map();
-HEX_GRID_COORDS.forEach(coord => {
+HEX_GRID_COORDS.forEach((coord) => {
     coordToIdMap.set(`${coord.q},${coord.r}`, coord.id);
 });
 /**
@@ -293,4 +295,65 @@ export const countSetBits = (mask) => {
     }
     return count;
 };
+/**
+ * Sets the bit corresponding to a specific tile ID in the mask (locks the tile).
+ *
+ * @param mask - The current bitmask.
+ * @param tileId - The 1-based ID of the tile to lock.
+ * @returns The new bitmask with the specified tile's bit set.
+ */
+export const setTileLock = (mask, tileId) => {
+    if (tileId < 1 || tileId > TOTAL_TILES) {
+        console.warn(`Attempted to set lock for invalid tile ID: ${tileId}`);
+        return mask;
+    }
+    const bitPosition = BigInt(tileId - 1);
+    return mask | (1n << bitPosition);
+};
+/**
+ * Clears the bit corresponding to a specific tile ID in the mask (unlocks the tile).
+ *
+ * @param mask - The current bitmask.
+ * @param tileId - The 1-based ID of the tile to unlock.
+ * @returns The new bitmask with the specified tile's bit cleared.
+ */
+export const clearTileLock = (mask, tileId) => {
+    if (tileId < 1 || tileId > TOTAL_TILES) {
+        console.warn(`Attempted to clear lock for invalid tile ID: ${tileId}`);
+        return mask;
+    }
+    const bitPosition = BigInt(tileId - 1);
+    return mask & ~(1n << bitPosition);
+};
+/**
+ * Toggles the bit corresponding to a specific tile ID in the mask.
+ *
+ * @param mask - The current bitmask.
+ * @param tileId - The 1-based ID of the tile to toggle.
+ * @returns The new bitmask with the specified tile's bit toggled.
+ */
+export const toggleTileLock = (mask, tileId) => {
+    if (tileId < 1 || tileId > TOTAL_TILES) {
+        console.warn(`Attempted to toggle lock for invalid tile ID: ${tileId}`);
+        return mask;
+    }
+    const bitPosition = BigInt(tileId - 1);
+    return mask ^ (1n << bitPosition);
+};
+/**
+ * Checks if a specific tile is locked (bit is set) in the mask.
+ *
+ * @param mask - The current bitmask.
+ * @param tileId - The 1-based ID of the tile to check.
+ * @returns True if the tile is locked, false otherwise.
+ */
+export const isTileLocked = (mask, tileId) => {
+    if (tileId < 1 || tileId > TOTAL_TILES) {
+        console.warn(`Attempted to check lock status for invalid tile ID: ${tileId}`);
+        return false; // Or throw an error, depending on desired behavior
+    }
+    const bitPosition = BigInt(tileId - 1);
+    return (mask & (1n << bitPosition)) !== 0n;
+};
 // Add other bitmask utility functions here in subsequent tasks... 
+//# sourceMappingURL=bitmaskUtils.js.map

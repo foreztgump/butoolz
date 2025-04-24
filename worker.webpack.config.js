@@ -9,8 +9,12 @@ const config = {
   // Mode: 'production' for optimized builds, 'development' for easier debugging
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   
-  // Entry point: the source TypeScript worker file
-  entry: './app/shapedoctor/solver.worker.ts',
+  // *** Disable Webpack Cache ***
+  cache: false,
+  // *** End Disable Cache ***
+  
+  // CHANGE Entry point: Point to the ORIGINAL TypeScript worker file
+  entry: './app/shapedoctor/solver.worker.ts', 
   
   // Output configuration
   output: {
@@ -24,32 +28,34 @@ const config = {
   
   // Resolve TypeScript and JavaScript files
   resolve: {
-    extensions: ['.ts', '.js'],
+    // CHANGE: Add .ts extension
+    extensions: ['.ts', '.js'], 
+    // REMOVE fullySpecified: false (likely not needed now)
+    // fullySpecified: false, 
     // Add fallbacks for Node.js built-ins used by workerpool
     fallback: {
       "worker_threads": false,
       "os": false,
       "child_process": false,
-      // Add others here if more errors appear
-      "fs": false, // Often needed indirectly
-      "path": false // Often needed indirectly
+      "fs": false, 
+      "path": false 
     }
   },
   
-  // Module rules (specifically for TypeScript)
+  // ADD Module rules for TypeScript
   module: {
     rules: [
       {
-        // Use ts-loader for .ts files
         test: /\.ts$/,
-        loader: 'ts-loader',
-        options: {
-          // Explicitly point ts-loader to the correct config file
-          configFile: 'tsconfig.worker.json'
-        },
-        // Exclude node_modules from being processed by ts-loader
         exclude: /node_modules/,
-      },
+        use: {
+          loader: 'ts-loader',
+          // CHANGE: Explicitly tell ts-loader which config file to use
+          options: {
+            configFile: 'tsconfig.worker.json' 
+          }
+        }
+      }
     ],
   },
   

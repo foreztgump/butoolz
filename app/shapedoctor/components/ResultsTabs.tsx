@@ -63,9 +63,9 @@ const ResultsTabs: React.FC<ResultsTabsProps> = ({
             Config.PREDEFINED_SHAPES.map((shapeString, index) => (
               <Button
                 key={`predefined-${index}`}
-                variant="outline"
+                variant="ghost"
                 size="icon"
-                className="w-20 h-20 p-1 border-[hsl(var(--border)_/_0.5)] text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] focus-visible:ring-[hsl(var(--primary))] cursor-pointer"
+                className="w-20 h-20 p-0 bg-transparent hover:bg-muted/50 text-muted-foreground hover:text-foreground flex items-center justify-center rounded-md cursor-pointer transition-colors duration-150"
                 onClick={() => handleAddPredefinedPotential(shapeString)}
                 disabled={isSolving}
                 aria-label={`Add predefined shape ${index + 1}`}
@@ -74,7 +74,7 @@ const ResultsTabs: React.FC<ResultsTabsProps> = ({
                   ref={(el) => setPredefinedCanvasRef(index, el)}
                   width="72"
                   height="72"
-                  className={`border-none rounded-sm ${Config.PREVIEW_BG}`}
+                  className="rounded-sm"
                 />
               </Button>
             ))}
