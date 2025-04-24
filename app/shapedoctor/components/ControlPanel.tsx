@@ -27,6 +27,7 @@ interface ControlPanelProps {
   potentials: string[];
   handleSavePotential: () => void;
   handleClearSelection: () => void;
+  handleResetAll: () => void;
   handleSolve: () => void;
   handlePrevSolution: () => void;
   handleNextSolution: () => void;
@@ -49,6 +50,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   potentials,
   handleSavePotential,
   handleClearSelection,
+  handleResetAll,
   handleSolve,
   handlePrevSolution,
   handleNextSolution,
@@ -129,6 +131,15 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             disabled={isSolving || selectedTiles.size === 0}
           >
             <XOctagon className="h-4 w-4 mr-1" /> Clear Sel.
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="text-[hsl(var(--destructive-foreground))] transition-colors hover:bg-[hsl(var(--destructive)_/_0.9)] cursor-pointer"
+            onClick={handleResetAll}
+            disabled={isSolving || isFindingExactTiling}
+          >
+            <RotateCcw className="h-4 w-4 mr-1" /> Reset All
           </Button>
           <Button
             variant="default"

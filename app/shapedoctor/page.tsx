@@ -341,8 +341,10 @@ export default function ShapeDoctor() {
     setSolveProgress(0);
     currentOffsetRef.current = { x: 0, y: 0 };
     setZoom(1);
-    toast.info("Selection and results cleared.");
-  }, []);
+    setLockedTilesMask(0n); // Reset locked tiles
+    setSolverError(null); // Also clear any solver errors
+    toast.info("Selection, results, and locked tiles cleared.");
+  }, []); // Dependencies remain the same as state setters are stable
 
   const handleSavePotential = useCallback(() => {
     // Allow saving shapes of size 1 to 4
@@ -836,6 +838,7 @@ export default function ShapeDoctor() {
             handleSolve={handleUnifiedSolve}
             handleSavePotential={handleSavePotential}
             handleClearSelection={handleClearSelection}
+            handleResetAll={handleResetSelection}
             selectedTilesCount={selectedTiles.size}
             currentSolutionIndex={currentSolutionIndex}
             bestSolutions={bestSolutions.map(sol => [])}

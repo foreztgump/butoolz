@@ -264,9 +264,8 @@ export const drawPreviewGrid = (
     }
   }
 
-  // --- LOGGING --- 
-  console.log(`[drawPreviewGrid] Index: ${colorIndex}, Shape: ${shape}, Tiles: [${tileIds.sort((a, b) => a - b).join(',')}]`);
-  // --------------- 
+  // --- LOGGING ---\n  // console.log(`[drawPreviewGrid] Index: ${colorIndex}, Shape: ${shape}, Tiles: [${tileIds.sort((a, b) => a - b).join(',')}]`);
+  // ---------------
 
   if (shapeCoords.length === 0) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
