@@ -62423,127 +62423,105 @@ kValue, context) => {
 // Internal function for Backtracking (structure remains, needs adaptation for parallel start)
 // This function will need significant changes to accept a starting point/
 // branch and return the best result *for that branch only*.
-const solveBacktrackingBranch = async (payload) => {
-    const { context } = payload;
+const solveBacktrackingBranch = async (payload // Accepts the specific payload for this branch
+) => {
+    const { context, startPlacements, startPotentialIndex } = payload; // Destructure payload
     const { shapeDataMap, initialGridState, lockedTilesMask, potentials } = context;
-    console.log(`[Worker solveBacktrackingBranch] Started with ${potentials.length} potentials.`);
-    // Backtracking state
-    let maxK = 0;
+    // Note: initialGridState from context might be ignored if startPlacements are provided, or used as base
+    console.log(`[Worker solveBacktrackingBranch] Started. startPotentialIndex: ${startPotentialIndex ?? 'N/A'}, startPlacements count: ${startPlacements.length}`);
+    // --- Initialize State from Payload --- 
+    let currentMaxK = 0;
     let bestSolutions = [];
-    let rawSolutionCountAtMaxK = 0; // Counter for solutions found at the current maxK
-    const RAW_SOLUTION_LIMIT = 30000; // Stop collecting raw solutions after this many
-    let iterations = 0; // Counter for progress/debugging
-    // Potential Refinement: Could sort placements once outside the recursive calls if beneficial,
-    // but the current logic accesses placements per-potential inside the loop.
-    // For Task 7, let's keep the structure but ensure clarity.
+    let rawSolutionCountAtMaxK = 0;
+    const RAW_SOLUTION_LIMIT = 30000;
+    let iterations = 0;
+    // Initialize grid state and placed shapes based on startPlacements
+    let startingGridState = initialGridState; // Start with base grid (usually 0n)
+    const initialPlacedShapes = [];
+    for (const placement of startPlacements) {
+        // Assume startPlacements are valid and don't overlap each other (dispatcher ensures this)
+        startingGridState |= placement.placementMask; // Apply placement mask
+        initialPlacedShapes.push({ ...placement }); // Copy placement record
+    }
+    console.log(`[Worker solveBacktrackingBranch] Initialized gridState: ${startingGridState.toString(16)}, placedShapes: ${initialPlacedShapes.length}`);
+    // Determine the index of the potential to start the search from
+    const actualStartPotentialIndex = startPotentialIndex ?? 0; // Default to 0 if not provided
+    // --- Backtracking Recursive Function (Largely Unchanged Internally) --- 
     const backtrack = (potentialIndex, currentGridState, placedShapes) => {
         iterations++;
-        // Periodically emit progress update
-        if (iterations % 50000 === 0) {
+        // Periodically emit progress update (consider making interval dynamic or based on branch size)
+        if (iterations % 50000 === 0) { // Re-enable progress emit for debugging
             try {
-                // Use type assertion for workerEmit if necessary
                 workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
                     type: 'BACKTRACKING_PROGRESS',
                     payload: {
                         iterations: iterations,
-                        currentMaxK: maxK
+                        currentMaxK: currentMaxK
                     }
                 });
             }
             catch (e) {
-                // Handle potential errors during emit, though unlikely
                 console.error("[Worker Backtrack] Error emitting progress:", e);
             }
         }
         // --- Base Case ---
-        // Condition is clear: all potentials considered for this specific path.
         if (potentialIndex >= potentials.length) {
             const currentK = placedShapes.length;
-            // Logic for updating best solutions seems correct.
-            if (currentK > maxK) {
-                maxK = currentK;
+            if (currentK > currentMaxK) { // Use currentMaxK scoped to this branch
+                currentMaxK = currentK;
                 const newBestSolution = {
                     gridState: currentGridState,
-                    placements: [...placedShapes], // Copy placedShapes array for the solution record
-                    maxShapes: maxK
+                    placements: [...placedShapes],
+                    maxShapes: currentMaxK
                 };
-                bestSolutions = [newBestSolution]; // Reset bestSolutions with the new single best
-                rawSolutionCountAtMaxK = 1; // Reset counter for the new maxK
-                // console.log(`[Worker Backtrack DBG] New max k! k=${maxK}. Resetting solutions. Added gridState: ${currentGridState.toString(16)}`);
+                bestSolutions = [newBestSolution];
+                rawSolutionCountAtMaxK = 1;
             }
-            else if (currentK === maxK && maxK > 0) {
-                // Store multiple solutions achieving the current maxK, up to a limit
+            else if (currentK === currentMaxK && currentMaxK > 0) {
                 if (rawSolutionCountAtMaxK < RAW_SOLUTION_LIMIT) {
                     const tiedSolution = {
                         gridState: currentGridState,
-                        placements: [...placedShapes], // Copy placedShapes array
-                        maxShapes: maxK
+                        placements: [...placedShapes],
+                        maxShapes: currentMaxK
                     };
                     bestSolutions.push(tiedSolution);
                     rawSolutionCountAtMaxK++;
-                    // console.log(`[Worker Backtrack DBG] Tied max k! k=${maxK}. Appending solution (${rawSolutionCountAtMaxK}/${RAW_SOLUTION_LIMIT}). Added gridState: ${currentGridState.toString(16)}. Total raw now: ${bestSolutions.length}`);
                 }
                 else if (rawSolutionCountAtMaxK === RAW_SOLUTION_LIMIT) {
-                    // Log only once when the limit is first hit for this maxK
-                    // console.log(`[Worker Backtrack DBG] Reached raw solution limit (${RAW_SOLUTION_LIMIT}) for k=${maxK}. Will stop collecting, but continue searching for potentially higher k.`);
-                    rawSolutionCountAtMaxK++; // Increment past limit to prevent re-logging
+                    rawSolutionCountAtMaxK++;
                 }
-                // If rawSolutionCountAtMaxK > RAW_SOLUTION_LIMIT, do nothing (don't add to bestSolutions)
             }
             return; // End this recursive path
         }
         // --- Recursive Step --- //
         const currentPotential = potentials[potentialIndex];
-        // Defensive check for robustness, although shouldn't happen with correct logic.
         if (!currentPotential) {
-            console.error(`[Worker Backtrack] Error: potentialIndex ${potentialIndex} out of bounds for potentials array (length ${potentials.length}). Stopping this path.`);
+            console.error(`[Worker Backtrack] Error: potentialIndex ${potentialIndex} out of bounds.`);
             return;
         }
-        // Look up precomputed valid placements for the shape's canonical form.
         const canonicalData = shapeDataMap.get(currentPotential.canonicalForm);
-        // validPlacements were pre-filtered against locked tiles.
         const validPlacements = canonicalData?.validPlacements ?? [];
         // --- Option 1: Try placing the current potential ---
-        // Iterate through all valid placements for the current potential's canonical form.
         for (const placementMask of validPlacements) {
-            // Check for overlap with the *current grid state* (already placed shapes).
             if ((currentGridState & placementMask) === 0n) {
-                // If placement is valid, place it:
-                // Add the specific instance ID and its placement mask to the current path.
                 placedShapes.push({ shapeId: currentPotential.id, placementMask });
-                // Recurse for the *next* potential index. This ensures that each potential
-                // instance (from the input 'potentials' array) is considered at most once
-                // down any single path, satisfying the instance uniqueness constraint.
                 backtrack(potentialIndex + 1, currentGridState | placementMask, placedShapes);
-                // Backtrack: Remove the shape just placed to explore other possibilities
-                // (e.g., different placements of this potential, or skipping it entirely).
                 placedShapes.pop();
             }
         }
         // --- Option 2: Skip the current potential ---
-        // Always explore the path where the current potential instance is *not* placed.
-        // This is crucial because skipping an earlier potential might allow for a
-        // better overall solution using later potentials.
-        // Recurse for the *next* potential index, keeping gridState and placedShapes unchanged.
         backtrack(potentialIndex + 1, currentGridState, placedShapes);
     };
-    // Start the backtracking search from the first potential (index 0)
-    // console.log(`[Worker Backtrack] Starting search for ${potentials.length} potentials.`);
-    // --- Heuristic: Sort potentials by fewest valid placements first --- 
-    const sortedPotentials = [...potentials].sort((a, b) => {
-        const placementsA = shapeDataMap.get(a.canonicalForm)?.validPlacements?.length ?? Infinity;
-        const placementsB = shapeDataMap.get(b.canonicalForm)?.validPlacements?.length ?? Infinity;
-        return placementsA - placementsB;
-    });
-    // console.log("[Worker Backtrack] Potentials sorted by placement count:", sortedPotentials.map(p => ({ id: p.id, count: shapeDataMap.get(p.canonicalForm)?.validPlacements?.length ?? 'N/A' })));
-    // Start the search using the sorted potentials
-    backtrack(0, initialGridState, []); // Start with potential index 0
-    // console.log(`[Worker Backtrack] Search finished. Max k found: ${maxK}. Found ${bestSolutions.length} raw solutions achieving max k.`); // Log finish
-    // ADDED LOG: Log the collected raw solutions before filtering
-    // Note: This might be very verbose if many solutions are found.
-    // Consider stringifying only gridStates if output is too large.
-    // console.log(`[Worker Backtrack] Raw bestSolutions (first few):`, bestSolutions.slice(0, 5).map(s => ({ gridState: s.gridState.toString(), k: s.maxShapes }))); 
-    // --- Filter for unique solutions and limit to 500 --- //
+    // --- Start the Search for this Branch --- 
+    console.log(`[Worker solveBacktrackingBranch] Starting search from index ${actualStartPotentialIndex}`);
+    // Heuristic: Sorting might still be beneficial globally, 
+    // but applying it *within* each branch might be complex/less effective.
+    // The dispatcher in page.tsx could potentially pass sorted potentials.
+    // For now, we use the order provided in context.potentials.
+    // Start the search using the INITIALIZED state for this branch
+    backtrack(actualStartPotentialIndex, startingGridState, initialPlacedShapes);
+    // console.log(`[Worker solveBacktrackingBranch] Branch search finished. Max k for branch: ${currentMaxK}. Found ${bestSolutions.length} raw solutions.`); // Keep commented
+    // --- Filter and Return Results for this Branch --- //
     let filteredSolutions = [];
     if (bestSolutions.length > 0) {
         const uniqueGridStates = new Set();
@@ -62551,107 +62529,93 @@ const solveBacktrackingBranch = async (payload) => {
             if (!uniqueGridStates.has(solution.gridState)) {
                 uniqueGridStates.add(solution.gridState);
                 filteredSolutions.push(solution);
-                if (filteredSolutions.length >= 500) {
-                    console.log(`[Worker Backtrack] Reached limit of 500 unique solutions.`);
-                    break; // Stop collecting more unique solutions
-                }
+                // Limit is applied AFTER aggregation in the main thread now
+                // if (filteredSolutions.length >= 500) break;
             }
         }
-        // console.log(`[Worker Backtrack] Filtered down to ${filteredSolutions.length} unique solutions.`);
     }
-    // Return the array of unique, limited best solutions (or null if k=0)
+    // Return the array of unique solutions found *within this branch*
     const result = filteredSolutions.length > 0 ? filteredSolutions : null;
-    // console.log(`[Worker Backtrack] Returning ${filteredSolutions.length} unique solutions for k=${maxK}`);
+    // console.log(`[Worker solveBacktrackingBranch] Returning ${filteredSolutions.length} unique solutions for k=${currentMaxK} from this branch.`);
+    // Log the actual result being returned
+    // console.log("[Worker solveBacktrackingBranch] Actual return value:", JSON.stringify(result, (key, value) => 
+    //     typeof value === 'bigint' ? value.toString() : value // Handle BigInt serialization for logging
+    // , 2));
+    // console.log(`[Worker solveBacktrackingBranch] FINISHED branch. Returning ${result ? result.length : 0} solutions.`); // <-- Remove log
     return result;
 };
 // --- NEW Main Worker Entry Point for Parallel Tasks ---
 const processParallelTask = async (task) => {
     const taskStartTime = Date.now();
     const originatingSolverType = task.data.originatingSolverType; // Extract type
+    let finalResult = null; // Variable to store the final result (serialized)
     try {
         switch (task.type) {
             case 'DLX_BATCH':
                 const { combinations, kValue, context } = task.data;
                 const totalInBatch = combinations.length;
+                let batchSolution = null; // Use Serialized type
                 // console.log(`[Worker processParallelTask] Processing DLX_BATCH with ${totalInBatch} combinations.`);
-                // Emit initial progress for this batch
-                workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
-                    type: 'PARALLEL_PROGRESS',
-                    payload: { checked: 0, total: totalInBatch }
-                });
+                // Emit initial progress for this batch (Optional: Keep if progress reporting is desired outside promise value)
+                // workerpool.workerEmit({ 
+                //     type: 'PARALLEL_PROGRESS', 
+                //     payload: { checked: 0, total: totalInBatch } 
+                // } as WorkerParallelProgressMessage);
                 for (let i = 0; i < combinations.length; i++) {
-                    // Check for cancellation before processing each combination
                     if (workerpool__WEBPACK_IMPORTED_MODULE_0__.isCancelled && workerpool__WEBPACK_IMPORTED_MODULE_0__.isCancelled()) {
-                        // console.log("[Worker processParallelTask] DLX_BATCH task cancelled.");
-                        return; // Exit if cancelled
+                        return null; // Exit if cancelled, returning null
                     }
                     const combination = combinations[i];
                     const solution = solveExactTilingCombination(combination, kValue, context);
-                    // Emit progress update
-                    workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
-                        type: 'PARALLEL_PROGRESS',
-                        payload: { checked: i + 1, total: totalInBatch }
-                    });
+                    // Emit progress update (Optional)
+                    // workerpool.workerEmit({ 
+                    //     type: 'PARALLEL_PROGRESS', 
+                    //     payload: { checked: i + 1, total: totalInBatch } 
+                    // } as WorkerParallelProgressMessage);
                     if (solution) {
-                        // Solution found! Emit result and stop processing this batch.
-                        const resultPayload = {
+                        // Solution found! Serialize and prepare to return.
+                        batchSolution = {
                             ...solution,
                             gridState: solution.gridState.toString(), // Serialize BigInt
                             placements: solution.placements.map(p => ({
                                 ...p,
                                 placementMask: p.placementMask.toString() // Serialize BigInt
                             }))
-                        };
-                        workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
-                            type: 'PARALLEL_RESULT',
-                            payload: resultPayload,
-                            originatingSolverType: originatingSolverType // Include type in result
-                        }); // Use type assertion to bypass strict check
-                        return; // Found solution, task done
+                        }; // No type assertion needed, shape matches SerializedSolutionRecord
+                        break; // Stop processing this batch
                     }
-                    // Optional: Yield control briefly to allow cancellation checks etc.
-                    // await new Promise(resolve => setTimeout(resolve, 0)); 
                 }
-                // If loop completes without finding a solution in this batch
-                // console.log("[Worker processParallelTask] DLX_BATCH finished processing all combinations, no solution found in this batch.");
-                workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
-                    type: 'PARALLEL_RESULT',
-                    payload: null,
-                    originatingSolverType: originatingSolverType // Include type in result
-                }); // Use type assertion
+                finalResult = batchSolution; // Set the result for this batch (serialized solution or null)
                 break;
             case 'BACKTRACKING_BRANCH':
                 // console.log("[Worker processParallelTask] Processing BACKTRACKING_BRANCH...");
                 const branchSolutions = await solveBacktrackingBranch(task.data);
                 // console.log("[Worker processParallelTask] BACKTRACKING_BRANCH finished.");
-                // Serialize the entire array of solutions, or send null if no solutions found
-                const branchResultPayload = branchSolutions ? branchSolutions.map(solution => ({
+                // Serialize the entire array of solutions, or keep null if no solutions found
+                finalResult = branchSolutions ? branchSolutions.map(solution => ({
                     ...solution,
                     gridState: solution.gridState.toString(), // Serialize BigInt for gridState
                     placements: solution.placements.map(p => ({
                         ...p,
                         placementMask: p.placementMask.toString() // Serialize BigInt for placementMask
                     }))
-                    // maxShapes is already a number, no need to serialize
-                })) : null;
-                workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
-                    type: 'PARALLEL_RESULT',
-                    payload: branchResultPayload, // Send the array (or null)
-                    originatingSolverType: originatingSolverType // Include type in result
-                }); // Use type assertion
+                })) : null; // Type matches SerializedSolutionRecord[] | null
                 break;
             default:
                 console.error("[Worker processParallelTask] Unknown task type received:", task);
+                // Optionally emit error message
                 workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
                     type: 'PARALLEL_ERROR',
                     payload: { message: `Unknown task type: ${task.type}` }
                 });
+                finalResult = null; // Return null on unknown type
         }
     }
     catch (error) {
         const isCancellation = error instanceof workerpool__WEBPACK_IMPORTED_MODULE_0__.Promise.CancellationError || error.name === 'CancellationError';
         if (!isCancellation) {
             console.error(`[Worker processParallelTask] Error processing task type ${task.type}:`, error);
+            // Optionally emit error message
             workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
                 type: 'PARALLEL_ERROR',
                 payload: {
@@ -62660,19 +62624,21 @@ const processParallelTask = async (task) => {
                 }
             });
         }
-        // Do not emit anything further if cancelled, let the main thread handle timeout/cleanup
+        finalResult = null; // Return null on error
     }
     finally {
         const taskEndTime = Date.now();
         // console.log(`[Worker processParallelTask] Finished task type ${task.type} in ${taskEndTime - taskStartTime}ms`);
     }
+    // Return the final result (serialized solution(s) or null)
+    return finalResult;
 };
 // --- Worker Registration (Updated) ---
 workerpool__WEBPACK_IMPORTED_MODULE_0__.worker({
     initializeSolverContext: initializeSolverContext,
     processParallelTask: processParallelTask
 });
-// console.log('[Solver Worker] Worker updated for parallel tasks and ready.');
+// console.log('[Solver Worker] Worker updated for parallel tasks and ready.'); // Keep commented
 
 })();
 

@@ -43,6 +43,7 @@ import {
     type BacktrackingBranchPayload,
     type WorkerTaskPayload,
     type WorkerParallelResponseMessage,
+    type SerializedSolutionRecord,
 } from './types';
 import { 
     bitmaskToTileIds, 
@@ -489,8 +490,8 @@ export default function ShapeDoctor() {
 
   // Central handler for messages from any worker
   const handleWorkerMessage = useCallback((message: WorkerParallelResponseMessage) => {
-    console.log(`[Main Thread] handleWorkerMessage triggered. Type: ${message.type}`);
-    // console.log(`[Main Thread] currentSolver state inside handleWorkerMessage: ${currentSolver}`); // No longer need component state here
+    // console.log(`[Main Thread] handleWorkerMessage triggered. Type: ${message.type}`); // Keep commented out
+    // console.log(`[Main Thread] currentSolver state inside handleWorkerMessage: ${currentSolver}`); 
 
     switch (message.type) {
       case 'PARALLEL_PROGRESS':
@@ -505,24 +506,44 @@ export default function ShapeDoctor() {
         // Handle solutions found by a worker
         const resultPayload = message.payload; // Payload can be SolutionRecord | SolutionRecord[] | null
         const solverType = message.originatingSolverType; // <-- Use type from message
-        console.log(`[Main Thread] Processing PARALLEL_RESULT from originating solver: ${solverType}`); // Log originating type
+        // console.log(`[Main Thread] Processing PARALLEL_RESULT from originating solver: ${solverType}`); // Keep this for distinguishing
         
         if (resultPayload) {
             if (solverType === 'exact') { // <-- Check message type
                 // Exact tiling sends single solutions (should not be an array)
                 if (!Array.isArray(resultPayload)) { 
                     const solution = resultPayload as SolutionRecord; // Safe assertion now
-                    console.log(`[Main Thread] Exact Tiling SOLUTION FOUND by worker:`, solution);
+                    // console.log(`[Main Thread] Exact Tiling SOLUTION FOUND by worker:`, solution);
+                    
+                    // --- Cancellation Logic ---
                     if (!anyExactSolutionFound.current) {
-                       anyExactSolutionFound.current = true;
-                       console.log("Setting anyExactSolutionFound to true");
-                       updateGridStateFromSolution(solution);
-                    }
-                    setExactTilingSolutions(prev => [...prev, solution]);
-                    if (exactTilingSolutions.length === 0) { 
+                       console.log("[Main Thread] First exact solution found. Cancelling other active worker tasks...");
+                       activeWorkerPromisesRef.current.forEach(p => {
+                           try {
+                               if (p && typeof p.cancel === 'function') { // Check if cancel exists
+                                   p.cancel();
+                               }
+                           } catch (cancelError) {
+                               console.warn("[Main Thread] Error attempting to cancel a promise:", cancelError);
+                           }
+                       });
+                       activeWorkerPromisesRef.current = []; // Clear the refs after attempting cancellation
+                       anyExactSolutionFound.current = true; // Set flag AFTER initiating cancellation
+                       console.log("[Main Thread] Set anyExactSolutionFound to true");
+                       updateGridStateFromSolution(solution); // Update grid with the first solution
+                       setExactTilingSolutions(prev => [...prev, solution]); // Store the first solution
+                       
+                       // Always set index to 0 for the first found solution
                        setCurrentExactTilingIndex(0); 
+                       
+                       toast.success("Exact tiling solution found!");
+                    } else {
+                        // Store subsequent solutions if needed, but don't trigger cancellation again
+                        console.log("[Main Thread] Subsequent exact solution found by another worker (already cancelled). Storing.");
+                        setExactTilingSolutions(prev => [...prev, solution]);
                     }
-                    toast.success("Exact tiling solution found!");
+                    // --- End Cancellation Logic ---
+
                 } else {
                     console.error("[Main Thread] Received ARRAY payload for Exact Tiling result. Expected single object.", resultPayload);
                 }
@@ -530,12 +551,13 @@ export default function ShapeDoctor() {
                  // Backtracking sends an array of solutions (or null)
                  if (Array.isArray(resultPayload)) { // Check if it's an array
                      const solutions = resultPayload as SolutionRecord[]; // Safe assertion now
-                     console.log(`[Main Thread] Backtracking SOLUTIONS FOUND by worker (count: ${solutions.length})`);
+                     // console.log(`[Main Thread] Backtracking SOLUTIONS FOUND by worker (count: ${solutions.length})`); // Commented out per-worker log
                      if (solutions.length > 0) {
-                        setBestSolutions(solutions);
-                        setCurrentSolutionIndex(0);
-                        toast.success(`Maximal placement found (${solutions[0].maxShapes} shapes)! Found ${solutions.length} layouts.`);
-                        updateGridStateFromSolution(solutions[0]); 
+                        // Storing results is now handled AFTER all workers finish in runParallelMaximalPlacement
+                        // setBestSolutions(solutions);
+                        // setCurrentSolutionIndex(0);
+                        // toast.success(`Maximal placement found (${solutions[0].maxShapes} shapes)! Found ${solutions.length} layouts.`);
+                        // updateGridStateFromSolution(solutions[0]); 
                      }
                  } else {
                     console.error("[Main Thread] Received NON-ARRAY payload for Maximal Placement result. Expected array.", resultPayload);
@@ -543,11 +565,11 @@ export default function ShapeDoctor() {
             }
         } else {
            // Null payload handling (e.g., backtracking found k=0)
-           console.log(`[Main Thread] Received null result payload (solver: ${solverType}).`);
+           // console.log(`[Main Thread] Received null result payload (solver: ${solverType}).`); // Commented out
            if (solverType === 'maximal') {
-               toast.info("Backtracking finished: No placements possible.");
-               setBestSolutions([]); // Clear previous solutions
-               setCurrentSolutionIndex(-1);
+               // toast.info("Backtracking finished: No placements possible."); // Toast moved to aggregation
+               // setBestSolutions([]); // Clearing moved to aggregation
+               // setCurrentSolutionIndex(-1);
            }
            // Handle null for exact if needed, though current worker impl sends empty array
         }
@@ -587,11 +609,11 @@ export default function ShapeDoctor() {
         break;
 
       // Add case for BACKTRACKING_PROGRESS
-      case 'BACKTRACKING_PROGRESS':
-        const { iterations, currentMaxK } = message.payload;
+      case 'BACKTRACKING_PROGRESS': // Keep case but comment out processing
+        // const { iterations, currentMaxK } = message.payload;
         // Update UI state for progress display (e.g., a status message)
-        setSolverStatusMessage(`Searching... Iteration: ${iterations.toLocaleString()}, Max K Found: ${currentMaxK}`);
-        break;
+        // setSolverStatusMessage(`Searching... Iteration: ${iterations.toLocaleString()}, Max K Found: ${currentMaxK}`);
+        break; // Add break to satisfy switch structure
 
       default:
         // Type guard for exhaustive check (optional but good practice)
@@ -609,7 +631,8 @@ export default function ShapeDoctor() {
       updateGridStateFromSolution,
       setBestSolutions,
       setCurrentSolutionIndex,
-      setSolverStatusMessage
+      setSolverStatusMessage,
+      exactTilingSolutions.length
   ]);
 
   // Dynamic Batch Size Calculation
@@ -624,168 +647,413 @@ export default function ShapeDoctor() {
     return batchSize;
   }, []); // Empty dependency array if it doesn't depend on component state
 
-  // Helper to dispatch a batch
-  const dispatchBatch = useCallback(( // Use useCallback
+  // Helper to dispatch a batch specifically for Exact Tiling
+  const dispatchBatchForExactTiling = useCallback(( 
       batchCombinations: string[][],
       kValue: number,
-      context: SolverTaskContext, // Pass the actual context object
-      promisesArray: workerpool.Promise<any>[]
-  ) => {
-      if (!workerPoolRef.current || batchCombinations.length === 0) return;
+      context: SolverTaskContext 
+  ): workerpool.Promise<SerializedSolutionRecord | null> | null => {
+      if (!workerPoolRef.current || batchCombinations.length === 0) return null;
 
       const batchPayload: DLXBatchPayload = {
           combinations: batchCombinations,
           kValue: kValue,
-          context: context, // Pass context directly
-          originatingSolverType: 'exact' // Add type
+          context: context,
+          originatingSolverType: 'exact'
       };
+      const taskPayload: WorkerTaskPayload = { type: 'DLX_BATCH', data: batchPayload };
 
       try {
-          const promise = workerPoolRef.current.exec('processParallelTask', [
-              { type: 'DLX_BATCH', data: batchPayload } as WorkerTaskPayload
-          ], {
-              on: handleWorkerMessage // Use the memoized handler directly
-          });
-          promisesArray.push(promise);
+          // Execute WITHOUT 'on' callback, return the promise
+          const promise = workerPoolRef.current.exec('processParallelTask', [taskPayload]); 
+          return promise;
       } catch (execError) {
-          console.error("Error dispatching worker batch:", execError);
-          if (!solverError) { // Check solverError state
+          console.error("Error dispatching worker batch for Exact Tiling:", execError);
+          if (!solverError) {
               setSolverError("Failed to dispatch solver task.");
               toast.error("Failed to dispatch solver task.");
           }
+          return null;
       }
-  }, [handleWorkerMessage, solverError]); // Add dependencies
+  }, [solverError]); // Dependencies
 
-  // Function to handle parallel exact tiling
-  const runParallelExactTiling = useCallback(async ( // Use useCallback
+  // Function to handle parallel exact tiling - MODIFIED FOR AGGREGATION & LIMIT
+  const runParallelExactTiling = useCallback(async ( 
       potentialsToUse: PotentialShape[],
       kValue: number,
       initialGridState: bigint,
       lockedTilesMask: bigint,
       shapeDataMap: ShapeDataMap
-  ) => {
-      if (!workerPoolRef.current) return;
+  ): Promise<boolean> => {
+      // console.log("[runParallelExactTiling] Entered function."); // <-- Remove log
+      if (!workerPoolRef.current) {
+          console.error("Worker pool not ready for exact tiling.");
+          return false;
+      }
 
       const nValue = potentialsToUse.length;
       let totalCombs = 0;
       try {
         totalCombs = calculateTotalCombinations(nValue, kValue);
-        console.log(`Total combinations C(${nValue}, ${kValue}) = ${totalCombs}`);
+        // console.log(`Total combinations C(${nValue}, ${kValue}) = ${totalCombs}`);
          if (totalCombs > 10_000_000) { 
-             toast.error(`Too many combinations (${totalCombs}).`);
-             setSolverError(`Aborted: Too many combinations C(${nValue}, ${kValue})`);
-             setIsSolving(false);
-             return;
+             toast.error(`Too many combinations (${totalCombs}). Attempting fallback...`); // Changed message
+             setSolverError(`Too many combinations C(${nValue}, ${kValue})`);
+             // Don't set isSolving false, let the fallback run
+             // Return a specific value or throw an error to signal fallback needed
+             throw new Error('CombinationsExceeded'); // Signal caller to fallback
          }
         setTotalCombinations(totalCombs);
-      } catch (e) { /* ... error handling ... */ return; }
+        setCombinationsChecked(0); 
+      } catch (e) { 
+          if ((e as Error).message === 'CombinationsExceeded') {
+              throw e; // Re-throw specific error for fallback
+          }
+          console.error("Error calculating combinations:", e);
+          setSolverError("Failed to calculate combinations.");
+          setIsSolving(false);
+          return false; // Explicitly return false
+      }
       
-      anyExactSolutionFound.current = false;
+      // Reset state for this run
+      setExactTilingSolutions([]); 
+      setCurrentExactTilingIndex(-1);
 
       const potentialIds = potentialsToUse.map(p => p.id);
       const combinationGenerator = combinations(potentialIds, kValue);
-      const BATCH_SIZE = determineDynamicBatchSize(totalCombs || 0);
+      const BATCH_SIZE = Math.max(10, Math.min(2000, determineDynamicBatchSize(totalCombs || 0))); 
       let batch: string[][] = [];
-      const allPromises: workerpool.Promise<any>[] = [];
+      const allPromises: workerpool.Promise<SerializedSolutionRecord | null>[] = []; 
       let dispatchedCount = 0;
 
-      const context: SolverTaskContext = {
-          lockedTilesMask,
-          initialGridState,
-          shapeDataMap,
-          potentials: potentialsToUse
-      };
+      const context: SolverTaskContext = { lockedTilesMask, initialGridState, shapeDataMap, potentials: potentialsToUse };
+      
+      // console.log(`[runParallelExactTiling] Starting dispatch with batch size ${BATCH_SIZE}...`);
 
+      // --- Dispatch loop --- 
       for (const combination of combinationGenerator) {
-          if (anyExactSolutionFound.current) break;
           batch.push(combination);
           if (batch.length >= BATCH_SIZE) {
               dispatchedCount += batch.length;
-              dispatchBatch(batch, kValue, context, allPromises);
+              const promise = dispatchBatchForExactTiling(batch, kValue, context); 
+              if(promise) allPromises.push(promise);
               batch = [];
-              await new Promise(resolve => setTimeout(resolve, 0));
+              await new Promise(resolve => setTimeout(resolve, 0)); 
           }
       }
+      // Dispatch any remaining combinations
       if (batch.length > 0) {
           dispatchedCount += batch.length;
-          dispatchBatch(batch, kValue, context, allPromises);
+          const promise = dispatchBatchForExactTiling(batch, kValue, context); 
+          if(promise) allPromises.push(promise);
       }
-      console.log(`Dispatched ${dispatchedCount} combinations in ${allPromises.length} batches.`);
+
+      // console.log(`[runParallelExactTiling] Dispatched ${dispatchedCount} combinations in ${allPromises.length} batches. Waiting for all results...`);
       activeWorkerPromisesRef.current = allPromises;
+      setSolverStatusMessage(`Checking ${totalCombs.toLocaleString()} combinations...`);
 
+      // --- Wait for ALL tasks and Aggregate Results --- 
+      let finalUniqueSolutions: SolutionRecord[] = [];
       try {
-          await Promise.allSettled(allPromises);
-          console.log("All DLX worker promises settled.");
-      } catch (error) { /* ... error handling ... */ }
-       finally {
-           activeWorkerPromisesRef.current = [];
-       }
-  }, [dispatchBatch, determineDynamicBatchSize, solverError]); // Add dependencies
+          // console.log(`[runParallelExactTiling] Waiting for ${allPromises.length} promises...`); // <-- Remove log
+          const settledResults = await Promise.allSettled(allPromises);
+          // console.log("[runParallelExactTiling] All promises settled."); // <-- Remove log
+          setSolverStatusMessage('Aggregating results...');
 
-  // Function to handle parallel Maximal Placement (Backtracking) - Modified for Sequential Test
+          // Process results from settled promises
+          const candidateSolutionsSerialized: SerializedSolutionRecord[] = []; 
+
+          settledResults.forEach((result, index) => {
+              if (result.status === 'fulfilled' && result.value) {
+                  // Value should be SerializedSolutionRecord | null
+                  const workerSolution = result.value as SerializedSolutionRecord; // Assert serialized type
+                  if (workerSolution) { // Check if not null
+                     candidateSolutionsSerialized.push(workerSolution);
+                  }
+              } else if (result.status === 'rejected') {
+                   const reason = result.reason;
+                   const isCancellation = reason instanceof Error && (reason.name === 'CancellationError' || reason.message.includes('cancelled')); 
+                   if (!isCancellation) {
+                       // console.error(`[runParallelExactTiling] Exact Tiling worker task ${index} rejected:`, reason); // Keep commented
+                       // Don't set global error, allow fallback
+                   }
+               }
+          });
+
+          // console.log(`[runParallelExactTiling] Aggregation complete. Found ${candidateSolutionsSerialized.length} candidate serialized solutions.`); // Keep commented
+          setSolverStatusMessage('Filtering unique solutions...');
+
+          // Log all candidate solutions BEFORE filtering
+          // console.log(`[runParallelExactTiling] Candidate solutions count: ${candidateSolutionsSerialized.length}`); // <-- Remove log
+          
+          // --- Detailed Log for First Few Candidates --- 
+          // if (candidateSolutionsSerialized.length > 0) { // <-- Remove log block
+          //     console.log("--- First Few Candidate Details (Before Filtering) ---");
+          //     const limit = Math.min(10, candidateSolutionsSerialized.length); // Log up to 10
+          //     for (let i = 0; i < limit; i++) {
+          //         const sol = candidateSolutionsSerialized[i];
+          //         const shapeIds = sol.placements.map(p => p.shapeId).sort().join(', '); // Get sorted list of shape IDs used
+          //         console.log(`  Candidate ${i}: gridState=${sol.gridState}, shapes=[${shapeIds}]`);
+          //     }
+          //     console.log("-----------------------------------------------------");
+          // } 
+          // --- End Detailed Log ---
+
+          // Filter for unique solutions based on SHAPE COMBINATION (string) and limit to 50
+          if (candidateSolutionsSerialized.length > 0) {
+              const uniqueSolutionsMap = new Map<string, SerializedSolutionRecord>(); // Key is now shape combination string
+              for (const solution of candidateSolutionsSerialized) {
+                  // Create a key based on sorted shape instance IDs
+                  const shapeCombinationKey = solution.placements
+                      .map(p => p.shapeId)
+                      .sort()
+                      .join(','); // Join sorted IDs into a string key
+                  
+                  if (!uniqueSolutionsMap.has(shapeCombinationKey)) {
+                      uniqueSolutionsMap.set(shapeCombinationKey, solution);
+                      if (uniqueSolutionsMap.size >= 50) { // Apply limit of 50
+                           console.log("[runParallelExactTiling] Reached limit of 50 unique solutions (by shape combination)."); 
+                          break;
+                      }
+                  }
+              }
+              const finalUniqueSolutionsSerialized = Array.from(uniqueSolutionsMap.values());
+
+              // Log the final result before returning
+              // console.log(`[runParallelExactTiling] Final solutions count (unique by shape combo): ${finalUniqueSolutionsSerialized.length}`); // <-- Remove log
+              // Optional: Log the actual solutions if count is small or for debugging
+              // if (finalUniqueSolutionsSerialized.length < 10) { 
+              //    console.log("[runParallelExactTiling] Final unique solutions (by shape combo):", finalUniqueSolutionsSerialized);
+              // }
+
+              // Deserialize final results
+              finalUniqueSolutions = finalUniqueSolutionsSerialized.map(s => ({ 
+                  ...s,
+                  gridState: BigInt(s.gridState),
+                  placements: s.placements.map(p => ({
+                      ...p,
+                      placementMask: BigInt(p.placementMask)
+                  }))
+              }));
+            
+              setExactTilingSolutions(finalUniqueSolutions);
+              setCurrentExactTilingIndex(finalUniqueSolutions.length > 0 ? 0 : -1);
+              if (finalUniqueSolutions.length > 0) {
+                 updateGridStateFromSolution(finalUniqueSolutions[0]); 
+                 toast.success(`Exact tiling found! Displaying ${finalUniqueSolutions.length} unique solution(s).`);
+                 setSolverStatusMessage(`Found ${finalUniqueSolutions.length} unique solution(s).`);
+              } 
+              // No explicit toast if none found, fallback handles it
+          } 
+          // No explicit toast if none found initially, fallback handles it
+          else {
+              // If candidates were found but filtered to zero unique (unlikely but possible)
+              toast.info("Exact tiling finished: No unique solutions found.");
+          }
+
+      } catch (error: any) {
+          // This catch block might not be reached often with Promise.allSettled
+          // console.error("[runParallelExactTiling] Error during Promise.allSettled or aggregation:", error); // Keep commented
+          setSolverError("An error occurred during exact tiling search.");
+          toast.error("An error occurred during exact tiling search.");
+          // Re-throw to potentially trigger fallback in handleUnifiedSolve if needed?
+          // Or handle error state directly
+          return false; // Indicate failure on unexpected error
+      } finally {
+          activeWorkerPromisesRef.current = []; 
+          setSolverStatusMessage(null);
+          // isSolving is reset in handleUnifiedSolve
+          // console.log("[runParallelExactTiling] finished.");
+      }
+      
+      // console.log(`[runParallelExactTiling] Returning ${finalUniqueSolutions.length > 0}`); // <-- Remove log
+      // Return boolean indicating if solutions were found for the fallback logic
+      return finalUniqueSolutions.length > 0;
+      
+  }, [
+      determineDynamicBatchSize, 
+      solverError, 
+      updateGridStateFromSolution, 
+      setSolverStatusMessage,
+      dispatchBatchForExactTiling 
+  ]);
+
+  // Function to handle parallel Maximal Placement (Backtracking) - MODIFIED FOR PARALLEL DISPATCH & PROMISE VALUE PROCESSING
   const runParallelMaximalPlacement = useCallback(async (
     potentialsToUse: PotentialShape[],
     initialGridState: bigint,
     lockedTilesMask: bigint,
-    shapeDataMap: ShapeDataMap | null // Changed from Optional to Required for context
+    shapeDataMap: ShapeDataMap 
   ) => {
-    if (!workerPoolRef.current || !shapeDataMap) {
-        toast.error("Worker pool or shape data not ready for backtracking.");
-        console.error("Worker pool or shape data map is missing for backtracking.");
-        setIsSolving(false); // Ensure solving state is reset
+    // console.log("[runParallelMaximalPlacement] Entered function."); // <-- Remove log
+    if (!workerPoolRef.current) { 
+        toast.error("Worker pool not ready for backtracking.");
+        console.error("Worker pool is missing for backtracking.");
+        setIsSolving(false);
         return;
     }
 
-    console.log("[runParallelMaximalPlacement] Dispatching SINGLE sequential backtracking task...");
-    setCurrentSolver('maximal'); // Ensure solver state is set
+    console.log("[runParallelMaximalPlacement] Starting PARALLEL backtracking dispatch...");
+    setCurrentSolver('maximal');
+    setBestSolutions([]); 
+    setCurrentSolutionIndex(-1);
+    setSolverStatusMessage('Dispatching tasks...'); // Initial status
+    const allPromises: workerpool.Promise<SerializedSolutionRecord[] | null>[] = []; // Expect serialized result
 
-    // Construct the context needed by the worker task
+    // Create the common context for all tasks
     const context: SolverTaskContext = {
-        shapeDataMap: shapeDataMap, // Use the provided map
+        shapeDataMap: shapeDataMap,
         initialGridState: initialGridState,
         lockedTilesMask: lockedTilesMask,
-        potentials: potentialsToUse // Pass the potentials directly
+        potentials: potentialsToUse
     };
 
-    // Construct the payload for the single branch (representing the whole search space)
-    const branchPayload: BacktrackingBranchPayload = {
-        startPlacements: [], // Empty start placements for a full sequential run
-        context: context,
-        originatingSolverType: 'maximal' // Add type
-    };
+    // --- Partitioning Strategy --- 
+    if (potentialsToUse.length > 0) {
+        const firstPotential = potentialsToUse[0];
+        const firstPotentialData = shapeDataMap.get(firstPotential.canonicalForm);
+        const firstPlacements = firstPotentialData?.validPlacements ?? [];
+        // console.log(`[runParallelMaximalPlacement] Found ${firstPlacements.length} valid placements for the first potential (${firstPotential.id}).`);
 
-    // Create the task payload
-    const taskPayload: WorkerTaskPayload = {
-        type: 'BACKTRACKING_BRANCH',
-        data: branchPayload
-    };
+        // Task 1: Skip First
+        const skipFirstPayload: BacktrackingBranchPayload = { startPlacements: [], startPotentialIndex: 1, context: context, originatingSolverType: 'maximal' };
+        const skipFirstTask: WorkerTaskPayload = { type: 'BACKTRACKING_BRANCH', data: skipFirstPayload };
+        try {
+            const skipPromise = workerPoolRef.current.exec('processParallelTask', [skipFirstTask]); // REMOVED 'on' callback
+            allPromises.push(skipPromise);
+        } catch (execError) { console.error("Error dispatching 'skip first' backtracking task:", execError); }
 
-    // Clear previous promises and execute the single task
-    activeWorkerPromisesRef.current.forEach(p => p.cancel());
-    activeWorkerPromisesRef.current = [];
+        // Tasks 2...N: Place First
+        for (const placementMask of firstPlacements) {
+            const startPlacement: PlacementRecord = { shapeId: firstPotential.id, placementMask };
+            const branchPayload: BacktrackingBranchPayload = { startPlacements: [startPlacement], startPotentialIndex: 1, context: context, originatingSolverType: 'maximal' };
+            const branchTask: WorkerTaskPayload = { type: 'BACKTRACKING_BRANCH', data: branchPayload };
+            try {
+                const branchPromise = workerPoolRef.current.exec('processParallelTask', [branchTask]); // REMOVED 'on' callback
+                allPromises.push(branchPromise);
+            } catch (execError) { console.error(`Error dispatching backtracking task for placement ${placementMask}:`, execError); }
+        }
+    } else {
+        console.warn("[runParallelMaximalPlacement] No potentials provided.");
+        setIsSolving(false);
+        return;
+    }
+    
+    console.log(`[runParallelMaximalPlacement] Dispatched ${allPromises.length} backtracking tasks. Waiting for results...`);
+    setSolverStatusMessage(`Waiting for ${allPromises.length} tasks...`);
+    activeWorkerPromisesRef.current = allPromises; // Still useful for cancellation
 
+    // --- Wait for all tasks and Aggregate Results --- 
     try {
-        const promise = workerPoolRef.current.exec('processParallelTask', [taskPayload], {
-            on: handleWorkerMessage // Use the same handler for results/errors/progress
+        // console.log(`[runParallelMaximalPlacement] Waiting for ${allPromises.length} promises...`); // <-- Remove log
+        const settledResults = await Promise.allSettled(allPromises);
+        // console.log("[runParallelMaximalPlacement] All backtracking promises settled."); // <-- Remove log
+        setSolverStatusMessage('Aggregating results...');
+
+        // Process results directly from settled promises
+        let overallMaxK = 0;
+        // Store serialized results initially
+        const candidateSolutionsSerialized: SerializedSolutionRecord[] = []; 
+
+        settledResults.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                // Log the raw value received from the worker promise
+                // console.log(`[DEBUG] Raw result.value from worker ${index}:`, result.value); // REMOVE DEBUG LOG
+
+                if (result.value) { // Value should be SerializedSolutionRecord[] | null
+                    const workerSolutions = result.value as SerializedSolutionRecord[]; // Assert serialized type
+
+                    if (Array.isArray(workerSolutions) && workerSolutions.length > 0) {
+                        const workerMaxK = workerSolutions[0]?.maxShapes; 
+                        
+                        if (typeof workerMaxK === 'number' && isFinite(workerMaxK)) {
+                            // console.log(`  Worker ${index} finished...`); 
+                            if (workerMaxK > overallMaxK) {
+                                overallMaxK = workerMaxK;
+                                candidateSolutionsSerialized.length = 0; // Clear previous candidates
+                                candidateSolutionsSerialized.push(...workerSolutions); // Add serialized solutions
+                            } else if (workerMaxK === overallMaxK && overallMaxK > 0) {
+                                candidateSolutionsSerialized.push(...workerSolutions); // Add serialized solutions
+                            }
+                        } else {
+                            console.warn(`  Worker ${index} returned solutions but maxShapes was invalid or missing:`, workerMaxK, workerSolutions[0]);
+                        }
+                    } 
+                } 
+            } else if (result.status === 'rejected') {
+                 const reason = result.reason;
+                 const isCancellation = reason instanceof Error && (reason.name === 'CancellationError' || reason.message.includes('cancelled')); 
+                 if (!isCancellation) {
+                     // console.error(`[runParallelMaximalPlacement] Backtracking worker task ${index} rejected:`, reason); // Keep commented
+                 }
+             }
         });
-        activeWorkerPromisesRef.current.push(promise);
 
-        // Wait for this single promise to settle
-        await Promise.allSettled([promise]);
-        console.log("Backtracking worker promise settled.");
+        // console.log(`[runParallelMaximalPlacement] Aggregation complete. Overall Max K: ${overallMaxK}. Found ${candidateSolutionsSerialized.length} candidate serialized solutions.`); // Keep commented
+        setSolverStatusMessage('Filtering unique solutions...');
 
-    } catch (execError) {
-        console.error("Error dispatching worker task for backtracking:", execError);
-        if (!solverError) { // Access solverError state via its state variable
-            setSolverError("Failed to dispatch backtracking task.");
-            toast.error("Failed to dispatch backtracking task.");
+        // Filter for unique solutions based on gridState (still string) and limit
+        if (candidateSolutionsSerialized.length > 0) {
+            const uniqueSolutionsMap = new Map<string, SerializedSolutionRecord>();
+            for (const solution of candidateSolutionsSerialized) {
+                const gridStateKey = solution.gridState; // Already a string
+                if (!uniqueSolutionsMap.has(gridStateKey)) {
+                    uniqueSolutionsMap.set(gridStateKey, solution);
+                    if (uniqueSolutionsMap.size >= 500) {
+                        // console.log("[runParallelMaximalPlacement] Reached limit of 500 unique solutions during aggregation."); // Keep commented
+                        break;
+                    }
+                }
+            }
+            const finalUniqueSolutionsSerialized = Array.from(uniqueSolutionsMap.values());
+            // console.log(`[runParallelMaximalPlacement] Filtered down to ${finalUniqueSolutionsSerialized.length} unique serialized solutions.`); // Keep commented
+
+            // --- DESERIALIZE FINAL RESULTS --- 
+            const finalUniqueSolutions = finalUniqueSolutionsSerialized.map(s => ({
+                ...s,
+                gridState: BigInt(s.gridState), // Convert back to BigInt
+                placements: s.placements.map(p => ({
+                    ...p,
+                    placementMask: BigInt(p.placementMask) // Convert back to BigInt
+                }))
+            }));
+            // --- END DESERIALIZATION --- 
+            
+            setBestSolutions(finalUniqueSolutions);
+            setCurrentSolutionIndex(finalUniqueSolutions.length > 0 ? 0 : -1);
+            if (finalUniqueSolutions.length > 0) {
+               updateGridStateFromSolution(finalUniqueSolutions[0]); // Show first best solution
+               toast.success(`Maximal placement found (${overallMaxK} shapes)! Found ${finalUniqueSolutions.length} unique layouts.`);
+            } else {
+               // This case shouldn't be reached if candidateSolutionsSerialized.length > 0
+               toast.info("Backtracking finished: No placements possible (after filtering).?"); 
+            }
+        } else {
+             // No candidate solutions found from any worker
+             toast.info("Backtracking finished: No placements possible.");
+        }
+
+    } catch (error) {
+        console.error("[runParallelMaximalPlacement] Error waiting for backtracking promises:", error);
+        if (!solverError) { 
+            setSolverError("Error processing backtracking results.");
+            toast.error("Error processing backtracking results.");
         }
     } finally {
-        // Resetting isSolving is handled in handleUnifiedSolve's finally block
-        activeWorkerPromisesRef.current = []; // Clear promises here too
+        activeWorkerPromisesRef.current = []; 
+        setSolverStatusMessage(null); // Clear status message
+        // isSolving is reset in handleUnifiedSolve
     }
 
-  }, [handleWorkerMessage, solverError]); // Added handleWorkerMessage and solverError dependencies
+    // --- Add Log Before Exiting (even though it doesn't return a value) ---
+    // console.log("[runParallelMaximalPlacement] Exiting function."); // <-- Remove log
+  }, [
+      // Removed handleWorkerMessage
+      solverError, 
+      updateGridStateFromSolution, 
+      determineDynamicBatchSize, // Added dependency
+      setSolverStatusMessage // Added dependency
+  ]); 
 
   // --- Unified Solve Handler --- 
   const handleUnifiedSolve = async () => {
@@ -875,16 +1143,29 @@ export default function ShapeDoctor() {
         console.log(`Available Tiles: ${availableTileCount}, k=${k}, N(valid)=${numValidPotentials}, Attempt Exact Tiling: ${attemptExactTiling}`);
 
         // --- 3. Execute Solver --- // (Modify calls within this section)
+        let exactSolutionFound = false;
         if (attemptExactTiling) {
             setCurrentSolver('exact');
             toast.info(`Attempting Exact Tiling with k=${k} shapes...`);
             if (shapeDataMapRef.current) {
-                await runParallelExactTiling(validPotentials, k, initialGridState, currentLockedMask, shapeDataMapRef.current);
+                try {
+                    // Capture the boolean return value
+                    exactSolutionFound = await runParallelExactTiling(validPotentials, k, initialGridState, currentLockedMask, shapeDataMapRef.current);
+                } catch (error: any) {
+                    if (error.message === 'CombinationsExceeded') {
+                        // Allow fallback to proceed
+                        console.log("Combination limit exceeded, proceeding to fallback.");
+                    } else {
+                        // Rethrow other errors
+                        throw error;
+                    }
+                }
             } else {
                  throw new Error("Shape data map was not initialized correctly.");
              }
 
-             if (!anyExactSolutionFound.current) {
+             // Use the captured boolean for fallback decision
+             if (!exactSolutionFound) {
                  console.log("Exact Tiling finished, no solution found. Falling back to Maximal Placement.");
                  toast.info("Exact tiling not found. Trying Maximal Placement...");
                  setCurrentSolver('maximal');
@@ -893,10 +1174,7 @@ export default function ShapeDoctor() {
                  } else {
                      throw new Error("Shape data map was not available for fallback.");
                  }
-             } else {
-                 console.log("Exact Tiling finished, solution was found.");
-                 toast.success("Exact Tiling solution found!");
-             }
+             } 
 
         } else {
             setCurrentSolver('maximal');

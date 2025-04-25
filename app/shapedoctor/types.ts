@@ -45,6 +45,21 @@ export interface SolutionRecord {
     maxShapes?: number; // Add optional field for max shapes found (for backtracking)
 }
 
+// --- SERIALIZED VERSIONS FOR WORKER COMMUNICATION --- //
+// Represents a single placed shape instance with stringified mask
+export type SerializedPlacementRecord = {
+  shapeId: string;        // ID of the shape type placed (matches PotentialShape id)
+  placementMask: string;  // The specific bitmask of this placement as a STRING
+};
+
+// Represents a complete solution with stringified state/masks
+export interface SerializedSolutionRecord {
+    gridState: string; // Final grid state as a STRING bitmask
+    placements: SerializedPlacementRecord[]; // List of shapes and their final positions
+    maxShapes?: number; // Optional field for max shapes found (for backtracking)
+}
+// --- END SERIALIZED VERSIONS --- //
+
 // --- MAIN THREAD -> WORKER INITIAL EXECUTION --- //
 
 // Common data for initial solver calls
@@ -100,25 +115,29 @@ export interface SolverTaskContext {
     shapeDataMap: ShapeDataMap;
     initialGridState: bigint;
     lockedTilesMask: bigint;
-    potentials: PotentialShape[]; // Add potentials needed by backtracking to gather placements
+    potentials: PotentialShape[]; // Full list of potentials for reference if needed
 }
 
-// Specific payload for a batch of DLX combinations
-export type DLXBatchPayload = {
-    combinations: string[][]; // Array of shape ID combinations
-    kValue: number; // The target k for these combinations
+// Payload for a batch of DLX combination checks
+export interface DLXBatchPayload {
+    combinations: string[][]; // Array of combinations (each combination is an array of shape IDs)
+    kValue: number;
     context: SolverTaskContext;
-    originatingSolverType: 'exact'; // Added: Indicate the source
-};
+    originatingSolverType: 'exact'; // Added to identify the source
+}
 
-// Specific payload for a backtracking search branch (Placeholder)
-export type BacktrackingBranchPayload = {
-    startPlacements: PlacementRecord[]; // Initial placements defining the branch
+// Payload for a backtracking search branch
+export interface BacktrackingBranchPayload {
+    startPlacements: PlacementRecord[]; // Initial placement(s) defining this branch
+    startPotentialIndex?: number; // Optional: Index to start searching potentials from
     context: SolverTaskContext;
-    originatingSolverType: 'maximal'; // Added: Indicate the source
-};
+    originatingSolverType: 'maximal'; // Added to identify the source
+}
 
-// Union type for different task payloads sent TO the worker
+// Union type for task data
+export type WorkerTaskData = DLXBatchPayload | BacktrackingBranchPayload;
+
+// Re-define the wrapper type for tasks sent to the worker
 export type WorkerTaskPayload =
     | { type: 'DLX_BATCH', data: DLXBatchPayload }
     | { type: 'BACKTRACKING_BRANCH', data: BacktrackingBranchPayload };
@@ -150,16 +169,16 @@ export type WorkerParallelProgressMessage = {
     };
 };
 
-// Message indicating an error occurred during a parallel task
-export type WorkerParallelErrorMessage = {
+// Error message
+export interface WorkerParallelErrorMessage {
     type: 'PARALLEL_ERROR';
     payload: {
         message: string;
         originalTaskType?: WorkerTaskPayload['type'];
     };
-};
+}
 
-// Message for logging from a parallel task
+// Log message (for debugging/info from worker)
 export type WorkerParallelLogMessage = {
     type: 'PARALLEL_LOG';
     payload: {
