@@ -230,6 +230,13 @@ const solveExactTilingCombination = (
 ): SolutionRecord | null => {
     // console.log(`[Worker solveExactTilingCombination] Solving for combination: ${combination.join(', ')}`);
     try {
+      // --- Add cancellation check early ---
+      if ((workerpool as any).isCancelled && (workerpool as any).isCancelled()) {
+          // console.log("[Worker solveExactTilingCombination] Cancelled before DLX execution.");
+          return null; 
+      }
+      // ---------------------------------
+
       const { shapeDataMap, initialGridState, lockedTilesMask } = context;
 
       // The shapes to use are defined by the combination array
@@ -329,6 +336,14 @@ const solveBacktrackingBranch = async (
 
   // --- Backtracking Recursive Function (Largely Unchanged Internally) --- 
   const backtrack = (potentialIndex: number, currentGridState: bigint, placedShapes: PlacementRecord[]) => {
+    
+    // --- Cancellation Check --- 
+    if ((workerpool as any).isCancelled && (workerpool as any).isCancelled()) {
+        // console.log("[Worker Backtrack] Cancellation detected.");
+        return; // Stop exploration if cancelled
+    }
+    // ------------------------
+
     iterations++;
 
     // Periodically emit progress update (consider making interval dynamic or based on branch size)
@@ -452,26 +467,17 @@ const processParallelTask = async (task: WorkerTaskPayload): Promise<SerializedS
                 let batchSolution: SerializedSolutionRecord | null = null; // Use Serialized type
                 // console.log(`[Worker processParallelTask] Processing DLX_BATCH with ${totalInBatch} combinations.`);
 
-                // Emit initial progress for this batch (Optional: Keep if progress reporting is desired outside promise value)
-                // workerpool.workerEmit({ 
-                //     type: 'PARALLEL_PROGRESS', 
-                //     payload: { checked: 0, total: totalInBatch } 
-                // } as WorkerParallelProgressMessage);
-
                 for (let i = 0; i < combinations.length; i++) {
+                    // -- Check cancellation WITHIN loop --
                     if ((workerpool as any).isCancelled && (workerpool as any).isCancelled()) {
+                        // console.log("[Worker processParallelTask] DLX_BATCH cancelled during loop.");
                         return null; // Exit if cancelled, returning null
                     }
+                    // --------------------------------
 
                     const combination = combinations[i];
                     const solution = solveExactTilingCombination(combination, kValue, context);
                     
-                    // Emit progress update (Optional)
-                    // workerpool.workerEmit({ 
-                    //     type: 'PARALLEL_PROGRESS', 
-                    //     payload: { checked: i + 1, total: totalInBatch } 
-                    // } as WorkerParallelProgressMessage);
-
                     if (solution) {
                         // Solution found! Serialize and prepare to return.
                         batchSolution = {
@@ -485,6 +491,15 @@ const processParallelTask = async (task: WorkerTaskPayload): Promise<SerializedS
                         break; // Stop processing this batch
                     }
                 }
+
+                // --- Emit progress AFTER loop completes --- 
+                // Report the total number of combinations processed in THIS batch
+                workerpool.workerEmit({ 
+                    type: 'PARALLEL_PROGRESS',
+                    payload: { checked: totalInBatch } // Report batch size as 'checked'
+                } as WorkerParallelProgressMessage);
+                // -----------------------------------------
+
                 finalResult = batchSolution; // Set the result for this batch (serialized solution or null)
                 break;
 

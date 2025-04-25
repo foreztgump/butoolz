@@ -62363,6 +62363,12 @@ const solveExactTilingCombination = (combination, // Array of shape IDs for *thi
 kValue, context) => {
     // console.log(`[Worker solveExactTilingCombination] Solving for combination: ${combination.join(', ')}`);
     try {
+        // --- Add cancellation check early ---
+        if (workerpool__WEBPACK_IMPORTED_MODULE_0__.isCancelled && workerpool__WEBPACK_IMPORTED_MODULE_0__.isCancelled()) {
+            // console.log("[Worker solveExactTilingCombination] Cancelled before DLX execution.");
+            return null;
+        }
+        // ---------------------------------
         const { shapeDataMap, initialGridState, lockedTilesMask } = context;
         // The shapes to use are defined by the combination array
         const shapesToUseInput = combination.map(id => ({ id }));
@@ -62428,7 +62434,7 @@ const solveBacktrackingBranch = async (payload // Accepts the specific payload f
     const { context, startPlacements, startPotentialIndex } = payload; // Destructure payload
     const { shapeDataMap, initialGridState, lockedTilesMask, potentials } = context;
     // Note: initialGridState from context might be ignored if startPlacements are provided, or used as base
-    console.log(`[Worker solveBacktrackingBranch] Started. startPotentialIndex: ${startPotentialIndex ?? 'N/A'}, startPlacements count: ${startPlacements.length}`);
+    // console.log(`[Worker solveBacktrackingBranch] Started. startPotentialIndex: ${startPotentialIndex ?? 'N/A'}, startPlacements count: ${startPlacements.length}`); // <-- Comment out
     // --- Initialize State from Payload --- 
     let currentMaxK = 0;
     let bestSolutions = [];
@@ -62443,11 +62449,17 @@ const solveBacktrackingBranch = async (payload // Accepts the specific payload f
         startingGridState |= placement.placementMask; // Apply placement mask
         initialPlacedShapes.push({ ...placement }); // Copy placement record
     }
-    console.log(`[Worker solveBacktrackingBranch] Initialized gridState: ${startingGridState.toString(16)}, placedShapes: ${initialPlacedShapes.length}`);
+    // console.log(`[Worker solveBacktrackingBranch] Initialized gridState: ${startingGridState.toString(16)}, placedShapes: ${initialPlacedShapes.length}`); // <-- Comment out
     // Determine the index of the potential to start the search from
     const actualStartPotentialIndex = startPotentialIndex ?? 0; // Default to 0 if not provided
     // --- Backtracking Recursive Function (Largely Unchanged Internally) --- 
     const backtrack = (potentialIndex, currentGridState, placedShapes) => {
+        // --- Cancellation Check --- 
+        if (workerpool__WEBPACK_IMPORTED_MODULE_0__.isCancelled && workerpool__WEBPACK_IMPORTED_MODULE_0__.isCancelled()) {
+            // console.log("[Worker Backtrack] Cancellation detected.");
+            return; // Stop exploration if cancelled
+        }
+        // ------------------------
         iterations++;
         // Periodically emit progress update (consider making interval dynamic or based on branch size)
         if (iterations % 50000 === 0) { // Re-enable progress emit for debugging
@@ -62513,7 +62525,7 @@ const solveBacktrackingBranch = async (payload // Accepts the specific payload f
         backtrack(potentialIndex + 1, currentGridState, placedShapes);
     };
     // --- Start the Search for this Branch --- 
-    console.log(`[Worker solveBacktrackingBranch] Starting search from index ${actualStartPotentialIndex}`);
+    // console.log(`[Worker solveBacktrackingBranch] Starting search from index ${actualStartPotentialIndex}`); // <-- Comment out
     // Heuristic: Sorting might still be beneficial globally, 
     // but applying it *within* each branch might be complex/less effective.
     // The dispatcher in page.tsx could potentially pass sorted potentials.
@@ -62556,22 +62568,15 @@ const processParallelTask = async (task) => {
                 const totalInBatch = combinations.length;
                 let batchSolution = null; // Use Serialized type
                 // console.log(`[Worker processParallelTask] Processing DLX_BATCH with ${totalInBatch} combinations.`);
-                // Emit initial progress for this batch (Optional: Keep if progress reporting is desired outside promise value)
-                // workerpool.workerEmit({ 
-                //     type: 'PARALLEL_PROGRESS', 
-                //     payload: { checked: 0, total: totalInBatch } 
-                // } as WorkerParallelProgressMessage);
                 for (let i = 0; i < combinations.length; i++) {
+                    // -- Check cancellation WITHIN loop --
                     if (workerpool__WEBPACK_IMPORTED_MODULE_0__.isCancelled && workerpool__WEBPACK_IMPORTED_MODULE_0__.isCancelled()) {
+                        // console.log("[Worker processParallelTask] DLX_BATCH cancelled during loop.");
                         return null; // Exit if cancelled, returning null
                     }
+                    // --------------------------------
                     const combination = combinations[i];
                     const solution = solveExactTilingCombination(combination, kValue, context);
-                    // Emit progress update (Optional)
-                    // workerpool.workerEmit({ 
-                    //     type: 'PARALLEL_PROGRESS', 
-                    //     payload: { checked: i + 1, total: totalInBatch } 
-                    // } as WorkerParallelProgressMessage);
                     if (solution) {
                         // Solution found! Serialize and prepare to return.
                         batchSolution = {
@@ -62585,6 +62590,13 @@ const processParallelTask = async (task) => {
                         break; // Stop processing this batch
                     }
                 }
+                // --- Emit progress AFTER loop completes --- 
+                // Report the total number of combinations processed in THIS batch
+                workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
+                    type: 'PARALLEL_PROGRESS',
+                    payload: { checked: totalInBatch } // Report batch size as 'checked'
+                });
+                // -----------------------------------------
                 finalResult = batchSolution; // Set the result for this batch (serialized solution or null)
                 break;
             case 'BACKTRACKING_BRANCH':
