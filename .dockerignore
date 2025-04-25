@@ -9,6 +9,16 @@ README.md
 .env*
 .env*.local
 *.tsbuildinfo
+temp_worker_compile/
+
+# Ignored Documentation / Goals
+README-task-master.md
+goal
+butools-template.md
+django_bu_app.git.md
+
+# Ignored Test Config
+jest.config.js
 
 # Optional: uncomment if you don't want to include these
 # .vscode/

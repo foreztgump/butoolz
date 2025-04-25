@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "dev:webpack": "next dev",
-    "build": "next build",
-    "build:worker:tsc": "tsc --project tsconfig.worker.json",
-    "build:worker": "webpack --config worker.webpack.config.js --mode development",
+    "build": "npm run build:worker:prod && next build",
+    "build:worker:dev": "webpack --config worker.webpack.config.js --mode development",
+    "build:worker:prod": "webpack --config worker.webpack.config.js --mode production",
+    "build:worker": "npm run build:worker:dev",
     "start": "next start",
     "lint": "next lint",
     "list": "node scripts/dev.js list",
