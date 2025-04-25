@@ -135,6 +135,7 @@ export interface BacktrackingBranchPayload {
     startPotentialIndex?: number; // Optional: Index to start searching potentials from
     context: SolverTaskContext;
     originatingSolverType: 'maximal'; // Added to identify the source
+    partitionIndexToSkip?: number; // Optional: Index of the potential used for partitioning
 }
 
 // Union type for task data

@@ -135,23 +135,25 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
           )}
         </div>
 
-        {/* Instructions */}
-        <div className="border-t border-border/50 pt-3">
-          <h3 className="font-medium mb-1 text-card-foreground text-sm">
+        {/* Remove Instructions */}
+        {/* 
+        <div className=\"border-t border-border/50 pt-3\">
+          <h3 className=\"font-medium mb-1 text-card-foreground text-sm\">
             How to Use
           </h3>
-          <ol className="text-muted-foreground space-y-0.5 list-decimal pl-4 text-xs">
+          <ol className=\"text-muted-foreground space-y-0.5 list-decimal pl-4 text-xs\">
             <li>Click tiles to select up to 4 connected hexes.</li>
             <li>Click lockable tiles (purple outline) to lock/unlock.</li>
-            <li>Click "Save (x/4)" to save selection to "Saved Potentials".</li>
-            <li>Or, add from "Predefined Shapes".</li>
-            <li>Click "Solve" to find placements.</li>
+            <li>Click \"Save (x/4)\" to save selection to \"Saved Potentials\".</li>
+            <li>Or, add from \"Predefined Shapes\".</li>
+            <li>Click \"Solve\" to find placements.</li>
             <li>Use Next/Prev to view solutions.</li>
-            <li>Click "Back to Edit" to clear the solution view.</li>
-            <li>Click "Reset All" to clear everything.</li>
+            <li>Click \"Back to Edit\" to clear the solution view.</li>
+            <li>Click \"Reset All\" to clear everything.</li>
             <li>Wheel=Zoom, Drag=Pan grid.</li>
           </ol>
-        </div>
+        </div> 
+        */}
       </CardContent>
     </Card>
   );

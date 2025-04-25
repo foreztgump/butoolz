@@ -62429,7 +62429,8 @@ kValue, context) => {
 // Internal function for Backtracking (structure remains, needs adaptation for parallel start)
 // This function will need significant changes to accept a starting point/
 // branch and return the best result *for that branch only*.
-const solveBacktrackingBranch = async (payload // Accepts the specific payload for this branch
+const solveBacktrackingBranch = async (payload, // Accepts the specific payload for this branch
+partitionIndexToSkip // <-- Add parameter
 ) => {
     const { context, startPlacements, startPotentialIndex } = payload; // Destructure payload
     const { shapeDataMap, initialGridState, lockedTilesMask, potentials } = context;
@@ -62520,8 +62521,17 @@ const solveBacktrackingBranch = async (payload // Accepts the specific payload f
                 placedShapes.pop();
             }
         }
-        // --- Option 2: Skip the current potential ---
-        backtrack(potentialIndex + 1, currentGridState, placedShapes);
+        // --- Option 2: Skip the current potential --- 
+        // --- MODIFIED: Check partitionIndexToSkip --- 
+        if (potentialIndex !== partitionIndexToSkip) {
+            backtrack(potentialIndex + 1, currentGridState, placedShapes);
+        }
+        else {
+            // If this is the partition index, don't explore the 'skip' branch here,
+            // because a dedicated task was already dispatched for that.
+            // console.log(`[Worker Backtrack] Skipped recursive call for partition index ${potentialIndex}`);
+        }
+        // --- END MODIFICATION ---
     };
     // --- Start the Search for this Branch --- 
     // console.log(`[Worker solveBacktrackingBranch] Starting search from index ${actualStartPotentialIndex}`); // <-- Comment out
@@ -62599,8 +62609,11 @@ const processParallelTask = async (task) => {
                 finalResult = batchSolution; // Set the result for this batch (serialized solution or null)
                 break;
             case 'BACKTRACKING_BRANCH':
-                // console.log("[Worker processParallelTask] Processing BACKTRACKING_BRANCH...");
-                const branchSolutions = await solveBacktrackingBranch(task.data);
+                // Extract the skip index from the payload data
+                const partitionIndexToSkip = task.data.partitionIndexToSkip;
+                // console.log(`[Worker processParallelTask] Processing BACKTRACKING_BRANCH (partitionIndexToSkip: ${partitionIndexToSkip})...`);
+                // Pass the skip index to the solver function
+                const branchSolutions = await solveBacktrackingBranch(task.data, partitionIndexToSkip);
                 // console.log("[Worker processParallelTask] BACKTRACKING_BRANCH finished.");
                 // Serialize the entire array of solutions, or keep null if no solutions found
                 finalResult = branchSolutions ? branchSolutions.map(solution => ({

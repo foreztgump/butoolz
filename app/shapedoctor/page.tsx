@@ -18,6 +18,13 @@ import {
 import * as Config from './shapedoctor.config';
 import type { Point, HexCoord } from './types';
 import * as HexUtils from './hexUtils';
+import { Separator } from "@/components/ui/separator";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 // Import the new components
 import ShapeCanvas from "./components/ShapeCanvas";
@@ -26,7 +33,7 @@ import StatusPanel from "./components/StatusPanel";
 import ResultsTabs from "./components/ResultsTabs";
 
 // Import workerpool
-import workerpool from 'workerpool';
+import * as workerpool from 'workerpool';
 
 // Import specific types needed for the new solver
 import { 
@@ -512,7 +519,7 @@ export default function ShapeDoctor() {
         // --- Add Log --- 
         console.log(`[Main Thread] Received PARALLEL_PROGRESS: checked=${checkedInBatch}`);
         // ------------- 
-
+        
         // ONLY update the raw count here
         setCombinationsChecked(prev => prev + checkedInBatch);
         break;
@@ -532,15 +539,15 @@ export default function ShapeDoctor() {
 
         // --- At this point, solverType MUST be 'maximal' (or potentially other types if added later) --- 
         if (resultPayload) {
-            // Backtracking sends an array of solutions (or null)
-            if (Array.isArray(resultPayload)) { // Check if it's an array
-                const solutions = resultPayload as SolutionRecord[]; // Safe assertion now
+                 // Backtracking sends an array of solutions (or null)
+                 if (Array.isArray(resultPayload)) { // Check if it's an array
+                     const solutions = resultPayload as SolutionRecord[]; // Safe assertion now
                 // console.log(`[Main Thread] Backtracking SOLUTIONS FOUND by worker (count: ${solutions.length})`); 
-                if (solutions.length > 0) {
+                     if (solutions.length > 0) {
                    // Storing results is now handled AFTER all workers finish in runParallelMaximalPlacement
-                }
-            } else {
-               console.error("[Main Thread] Received NON-ARRAY payload for Maximal Placement result. Expected array.", resultPayload);
+                     }
+                 } else {
+                    console.error("[Main Thread] Received NON-ARRAY payload for Maximal Placement result. Expected array.", resultPayload);
             }
         } else {
            // Null payload handling for maximal placement
@@ -717,7 +724,7 @@ export default function ShapeDoctor() {
               const promise = dispatchBatchForExactTiling(batch, kValue, context); 
               if(promise) allPromises.push(promise);
               batch = [];
-              await new Promise(resolve => setTimeout(resolve, 0)); 
+              await new Promise(resolve => setTimeout(resolve, 0));
           }
       }
       // Dispatch any remaining combinations
@@ -839,7 +846,7 @@ export default function ShapeDoctor() {
           // Or handle error state directly
           return false; // Indicate failure on unexpected error
       } finally {
-           activeWorkerPromisesRef.current = []; 
+           activeWorkerPromisesRef.current = [];
            setSolverStatusMessage(null);
            // isSolving is reset in handleUnifiedSolve
            // console.log("[runParallelExactTiling] finished.");
@@ -871,56 +878,98 @@ export default function ShapeDoctor() {
         setIsSolving(false);
         return;
     }
+    if (!shapeDataMap || shapeDataMap.size === 0) { // Added check for shapeDataMap
+        toast.error("Shape data map is not available for backtracking.");
+        console.error("Shape data map is missing for backtracking.");
+        setIsSolving(false);
+        return;
+    }
 
-    // Reset completed task count for this run
-    setCompletedBacktrackingTasks(0); // <-- Add reset
-
+    setCompletedBacktrackingTasks(0); 
     setCurrentSolver('maximal');
     setBestSolutions([]); 
     setCurrentSolutionIndex(-1);
-    setSolverStatusMessage('Dispatching tasks...'); // Initial status
-    const allPromises: workerpool.Promise<SerializedSolutionRecord[] | null>[] = []; // Expect serialized result
+    setSolverStatusMessage('Preparing tasks...'); // Updated initial message
+    const allPromises: workerpool.Promise<SerializedSolutionRecord[] | null>[] = []; 
 
-    // Create the common context for all tasks
-    const context: SolverTaskContext = {
-        shapeDataMap: shapeDataMap,
-        initialGridState: initialGridState,
-        lockedTilesMask: lockedTilesMask,
-        potentials: potentialsToUse
-    };
+    const context: SolverTaskContext = { shapeDataMap, initialGridState, lockedTilesMask, potentials: potentialsToUse };
 
-    // --- Partitioning Strategy --- 
+    // --- Heuristic Partitioning Strategy --- 
+    let partitionPotentialIndex = -1;
+    let bestPlacementCountDiff = Infinity;
+    const targetTaskCount = (navigator.hardwareConcurrency || 4) * 2; // Target ~2x workers
+    const potentialsToConsider = Math.min(potentialsToUse.length, 5); // Check first 5 potentials
+
     if (potentialsToUse.length > 0) {
-        const firstPotential = potentialsToUse[0];
-        const firstPotentialData = shapeDataMap.get(firstPotential.canonicalForm);
-        const firstPlacements = firstPotentialData?.validPlacements ?? [];
-        // console.log(`[runParallelMaximalPlacement] Found ${firstPlacements.length} valid placements for the first potential (${firstPotential.id}).`);
+        for (let i = 0; i < potentialsToConsider; i++) {
+            const potential = potentialsToUse[i];
+            const potentialData = shapeDataMap.get(potential.canonicalForm);
+            const placementCount = potentialData?.validPlacements?.length ?? 0;
+            if (placementCount > 0) { // Only consider potentials with placements
+                 const diff = Math.abs(placementCount - targetTaskCount);
+                 if (diff < bestPlacementCountDiff) {
+                     bestPlacementCountDiff = diff;
+                     partitionPotentialIndex = i;
+                 }
+            }
+        }
+        // Fallback to first potential if none suitable found (or only one potential)
+        if (partitionPotentialIndex === -1) {
+             partitionPotentialIndex = 0;
+        }
+        console.log(`[runParallelMaximalPlacement] Partitioning based on potential index: ${partitionPotentialIndex}`);
 
-        // Task 1: Skip First
-        const skipFirstPayload: BacktrackingBranchPayload = { startPlacements: [], startPotentialIndex: 1, context: context, originatingSolverType: 'maximal' };
-        const skipFirstTask: WorkerTaskPayload = { type: 'BACKTRACKING_BRANCH', data: skipFirstPayload };
+        const partitionPotential = potentialsToUse[partitionPotentialIndex];
+        const partitionPotentialData = shapeDataMap.get(partitionPotential.canonicalForm);
+        const partitionPlacements = partitionPotentialData?.validPlacements ?? [];
+        const potentialIndexAfterPartition = partitionPotentialIndex + 1; // Index to start search in branches
+
+        // Task 1: Skip the chosen partition potential
+        const skipPayload: BacktrackingBranchPayload = { 
+            startPlacements: [], 
+            startPotentialIndex: potentialIndexAfterPartition, // Start after the skipped one
+            // Need to filter out the skipped potential from the context passed?
+            // Alternative: Worker skips the partitionPotentialIndex if encountered.
+            // Let's keep context simple and handle skipping in worker (requires small worker mod)
+            context: { ...context, // Pass full context for now
+                 potentials: potentialsToUse // Send original list 
+            }, 
+            originatingSolverType: 'maximal',
+            partitionIndexToSkip: partitionPotentialIndex // Explicitly tell worker which index to skip
+        };
+        const skipTask: WorkerTaskPayload = { type: 'BACKTRACKING_BRANCH', data: skipPayload };
         try {
-            const skipPromise = workerPoolRef.current.exec('processParallelTask', [skipFirstTask]); // REMOVED 'on' callback
-            allPromises.push(skipPromise);
-        } catch (execError) { console.error("Error dispatching 'skip first' backtracking task:", execError); }
+            const skipPromise = workerPoolRef.current.exec('processParallelTask', [skipTask]);
+            if (skipPromise) allPromises.push(skipPromise);
+        } catch (execError) { console.error("Error dispatching 'skip partition' backtracking task:", execError); }
 
-        // Tasks 2...N: Place First
-        for (const placementMask of firstPlacements) {
-            const startPlacement: PlacementRecord = { shapeId: firstPotential.id, placementMask };
-            const branchPayload: BacktrackingBranchPayload = { startPlacements: [startPlacement], startPotentialIndex: 1, context: context, originatingSolverType: 'maximal' };
+        // Tasks 2...N: Place the chosen partition potential
+        for (const placementMask of partitionPlacements) {
+            const startPlacement: PlacementRecord = { shapeId: partitionPotential.id, placementMask };
+    const branchPayload: BacktrackingBranchPayload = {
+                startPlacements: [startPlacement], 
+                startPotentialIndex: potentialIndexAfterPartition, // Start after the placed one
+                context: { ...context, // Pass full context
+                    potentials: potentialsToUse 
+                 }, 
+                originatingSolverType: 'maximal',
+                partitionIndexToSkip: partitionPotentialIndex // Still need to skip this index in sub-branches
+            };
             const branchTask: WorkerTaskPayload = { type: 'BACKTRACKING_BRANCH', data: branchPayload };
             try {
-                const branchPromise = workerPoolRef.current.exec('processParallelTask', [branchTask]); // REMOVED 'on' callback
-                allPromises.push(branchPromise);
+                const branchPromise = workerPoolRef.current.exec('processParallelTask', [branchTask]);
+                if (branchPromise) allPromises.push(branchPromise);
             } catch (execError) { console.error(`Error dispatching backtracking task for placement ${placementMask}:`, execError); }
         }
+
     } else {
         console.warn("[runParallelMaximalPlacement] No potentials provided.");
         setIsSolving(false);
         return;
     }
+    // --- End Heuristic Partitioning --- 
     
-    console.log(`[runParallelMaximalPlacement] Dispatched ${allPromises.length} backtracking tasks. Waiting for results...`);
+    console.log(`[runParallelMaximalPlacement] Dispatched ${allPromises.length} backtracking tasks. Waiting for results...`); // Log count after dispatch
     activeWorkerPromisesRef.current = allPromises; 
 
     // --- Wrap promises to track completion --- // <-- New Block
@@ -1043,7 +1092,7 @@ export default function ShapeDoctor() {
             setSolverError("Error processing backtracking results.");
             toast.error("Error processing backtracking results.");
         }
-    } finally { 
+    } finally {
         activeWorkerPromisesRef.current = []; 
         setSolverStatusMessage(null); 
         // Reset completed task count (optional, could do at start)
@@ -1196,7 +1245,7 @@ export default function ShapeDoctor() {
                  } else {
                      throw new Error("Shape data map was not available for fallback.");
                  }
-             } 
+             }
 
         } else {
             setCurrentSolver('maximal');
@@ -1538,70 +1587,76 @@ export default function ShapeDoctor() {
       {/* <CookieConsentBanner /> */} 
       <div className="flex flex-1 min-h-0 gap-4">
         {/* Center Panel: Canvas (Now Left) */}
-        <div ref={containerRef} className="w-2/3 bg-gray-800/30 rounded-lg overflow-hidden border border-border/50 relative">
-          {/* Progress Overlay */}
-          {isSolving && (
-            <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10 text-white">
-              {currentSolver === 'exact' ? (
-                <>
-                  <p className="text-xl font-semibold mb-2">Finding Exact Tilings...</p>
-                  <div className="w-3/4 h-4 bg-gray-600 rounded-full overflow-hidden mb-1">
-                    <div
-                      className="h-full bg-blue-500 transition-all duration-300 ease-out"
-                      style={{ width: `${formattedProgress}` }}
-                    ></div>
-                  </div>
-                  <p className="text-sm">
-                    {formattedProgress} 
-                    ({combinationsChecked.toLocaleString()} /
-                    {totalCombinations !== null && totalCombinations > 0
-                      ? totalCombinations.toLocaleString()
-                      : (isSolving ? 'calculating...' : '0')}
-                    combinations)
-                  </p>
-                </>
-              ) : currentSolver === 'maximal' ? (
-                <>
-                  <p className="text-xl font-semibold mb-2">Searching Maximal Placement...</p>
-                  <div className="w-3/4 h-4 bg-gray-600 rounded-full overflow-hidden mb-1">
-                     <div
-                       className="h-full bg-purple-500 transition-all duration-100 ease-linear" // Changed color, faster transition
-                       style={{ width: `${formattedProgress}` }} // Use the same formattedProgress state
-                     ></div>
-                   </div>
-                   <p className="text-sm mb-2">
-                       {formattedProgress} ({completedBacktrackingTasks} / {activeWorkerPromisesRef.current?.length ?? 0} tasks completed)
-                   </p>
-                  <p className="text-sm mb-2">
-                      {solverStatusMessage ?? 'Exploring possibilities...'}
-                  </p>
-                </>
-              ) : ( 
-                   <>
-                     <p className="text-xl font-semibold mb-2">Solver Idle</p>
-                   </>
-               ) 
-               } 
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleCancelSolve}
-                className="mt-4 bg-red-600 hover:bg-red-700 text-white transition-colors shadow-md"
-              >
-                <Ban className="h-4 w-4 mr-1" /> Cancel Search
-              </Button>
-            </div>
-          )}
-          <canvas
-            ref={canvasRef}
-            className="absolute top-0 left-0 w-full h-full cursor-grab active:cursor-grabbing"
-            onWheel={handleWheel}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseLeave}
-            onClick={handleClick}
-          />
+        <div ref={containerRef} className="w-2/3 bg-gray-800/30 rounded-lg overflow-hidden border border-border/50 relative flex flex-col"> {/* Added flex flex-col */}
+          {/* Add Title */}
+          <h2 className="text-xl font-semibold text-center py-2 text-gray-300 bg-gray-900/50 flex-shrink-0"> {/* Adjusted styling */}
+            Shape Doctor
+          </h2>
+          <div className="flex-grow relative"> {/* New wrapper for canvas and overlay */}
+            {/* Progress Overlay */}
+            {isSolving && (
+              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10 text-white">
+                {currentSolver === 'exact' ? (
+                  <>
+                    <p className="text-xl font-semibold mb-2">Finding Exact Tilings...</p>
+                    <div className="w-3/4 h-4 bg-gray-600 rounded-full overflow-hidden mb-1">
+                      <div
+                        className="h-full bg-blue-500 transition-all duration-300 ease-out"
+                        style={{ width: `${formattedProgress}` }}
+                      ></div>
+                    </div>
+                    <p className="text-sm">
+                      {formattedProgress} 
+                      ({combinationsChecked.toLocaleString()} /
+                      {totalCombinations !== null && totalCombinations > 0
+                        ? totalCombinations.toLocaleString()
+                        : (isSolving ? 'calculating...' : '0')}
+                      combinations)
+                    </p>
+                  </>
+                ) : currentSolver === 'maximal' ? (
+                  <>
+                    <p className="text-xl font-semibold mb-2">Searching Maximal Placement...</p>
+                    <div className="w-3/4 h-4 bg-gray-600 rounded-full overflow-hidden mb-1">
+                       <div
+                         className="h-full bg-purple-500 transition-all duration-100 ease-linear" // Changed color, faster transition
+                         style={{ width: `${formattedProgress}` }} // Use the same formattedProgress state
+                       ></div>
+                     </div>
+                     <p className="text-sm mb-2">
+                         {formattedProgress} ({completedBacktrackingTasks} / {activeWorkerPromisesRef.current?.length ?? 0} tasks completed)
+                     </p>
+                    <p className="text-sm mb-2">
+                        {solverStatusMessage ?? 'Exploring possibilities...'}
+                    </p>
+                  </>
+                ) : ( 
+                     <>
+                       <p className="text-xl font-semibold mb-2">Solver Idle</p>
+                     </>
+                 ) 
+                 } 
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleCancelSolve}
+                  className="mt-4 bg-red-600 hover:bg-red-700 text-white transition-colors shadow-md"
+                >
+                  <Ban className="h-4 w-4 mr-1" /> Cancel Search
+                </Button>
+              </div>
+            )}
+            <canvas
+              ref={canvasRef}
+              className="absolute top-0 left-0 w-full h-full cursor-grab active:cursor-grabbing"
+              onWheel={handleWheel}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+              onClick={handleClick}
+            />
+          </div>
         </div>
 
         {/* Right Sidebar: Controls, Status, Shapes */}
@@ -1659,6 +1714,75 @@ export default function ShapeDoctor() {
           </div>
         </div>
       </div>
+
+      {/* Wrap the entire section in an Accordion */}
+      <Accordion type="single" collapsible className="w-full max-w-4xl mx-auto mt-8 mb-16 px-4 md:px-8">
+        <AccordionItem value="how-to-faq" className="border rounded-lg bg-card">
+          <AccordionTrigger className="text-xl font-semibold px-6 py-4 hover:no-underline">
+            How to Use & FAQ
+          </AccordionTrigger>
+          <AccordionContent className="px-6 pt-0 pb-6">
+            {/* Existing Section Content (h2 removed, grid moved inside) */}
+            <Separator className="mb-6 mt-2" /> {/* Add separator inside content */}
+            <div className="grid md:grid-cols-2 gap-8">
+
+              {/* How to Use Section - Direct List */}
+              <div className="text-card-foreground"> {/* Removed card bg/border */}
+                <h3 className="text-lg font-medium mb-3">How to Use</h3> {/* Adjusted heading size/margin */}
+                <ul className="list-disc list-inside space-y-1.5 text-sm"> {/* Adjusted spacing */}
+                  <li>Click tiles to select up to 4 connected hexes.</li>
+                  <li>Click lockable tiles (purple outline) to lock/unlock.</li>
+                  <li>Click "Save (x/4)" to save selection to "Saved Potentials".</li>
+                  <li>Or, add from "Predefined Shapes".</li>
+                  <li>Click "Solve" to find placements.</li>
+                  <li>Use Next/Prev to view solutions.</li>
+                  <li>Click "Back to Edit" to clear the solution view.</li>
+                  <li>Click "Reset All" to clear everything.</li>
+                  <li>Wheel=Zoom, Drag=Pan grid.</li>
+                </ul>
+              </div>
+
+              {/* FAQ Section - Single Accordion */}
+              <div className="text-card-foreground"> {/* Removed card bg/border */}
+                <h3 className="text-lg font-medium mb-3">FAQ</h3> {/* Adjusted heading size/margin */}
+                <Accordion type="single" collapsible className="w-full"> {/* Single, collapsible accordion */}
+                  <AccordionItem value="item-1">
+                    <AccordionTrigger>Why is the solver sometimes slow?</AccordionTrigger>
+                    <AccordionContent className="text-sm">
+                      Finding the best arrangement of shapes (especially Maximal Placement) is a complex problem (NP-hard). While optimized and parallelized, very complex inputs or large numbers of shapes can still take time. The Exact Tiling mode is generally faster if a perfect fit exists for the required number of shapes.
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="item-2">
+                    <AccordionTrigger>What does 'Maximal Placement' mean?</AccordionTrigger>
+                    <AccordionContent className="text-sm">
+                      This mode finds the largest possible number of your selected shapes that can fit onto the available (unlocked) grid tiles simultaneously, without overlapping. It doesn't necessarily fill the entire board.
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="item-3">
+                    <AccordionTrigger>What does 'Exact Tiling' mean?</AccordionTrigger>
+                    <AccordionContent className="text-sm">
+                      This mode attempts to find if a specific number of shapes (`k = Available Tiles / 4`) can perfectly cover *all* the available grid tiles without any gaps or overlaps. It only runs if the number of available tiles is divisible by 4. If it fails, it automatically falls back to Maximal Placement.
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="item-4">
+                    <AccordionTrigger>Can I use shapes with fewer than 4 tiles?</AccordionTrigger>
+                    <AccordionContent className="text-sm">
+                      No, the current solver and grid logic are designed specifically for 4-tile shapes (tetrominoes/tetriamonds on a hex grid).
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="item-5">
+                    <AccordionTrigger>Why can I only lock certain tiles?</AccordionTrigger>
+                    <AccordionContent className="text-sm">
+                      Currently, only a predefined set of tiles are designated as lockable to provide specific challenge scenarios while maintaining puzzle integrity. This might be expanded in the future.
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </div>
+
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </main>
   );
 }
