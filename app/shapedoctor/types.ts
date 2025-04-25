@@ -11,6 +11,9 @@ export interface HexCoord {
   // Consider adding id here if consistently used, otherwise keep it simple
 }
 
+// --- Add SolverType definition ---
+export type SolverType = 'exact' | 'maximal';
+
 // --- CORE DATA STRUCTURES --- //
 
 // Represents a potential shape selected by the user
@@ -182,9 +185,10 @@ export interface WorkerParallelErrorMessage {
 export type WorkerParallelLogMessage = {
     type: 'PARALLEL_LOG';
     payload: {
-        message: string;
         level: 'debug' | 'info' | 'warn' | 'error';
+        message: string;
     };
+    originatingSolverType?: SolverType;
 };
 
 /** Payload for BACKTRACKING_PROGRESS */
@@ -194,17 +198,20 @@ export interface WorkerBacktrackingProgressPayload {
 }
 
 /** Message sent FROM worker with backtracking progress */
-export interface WorkerBacktrackingProgressMessage {
-  type: 'BACKTRACKING_PROGRESS';
-  payload: WorkerBacktrackingProgressPayload;
-}
+// export type WorkerBacktrackingProgressMessage = {
+//     type: 'BACKTRACKING_PROGRESS'; 
+//     payload: { 
+//         iterations: number; 
+//         currentMaxK: number; 
+//     }; 
+//     originatingSolverType?: SolverType 
+// }; 
 
 // Union type for all possible messages sent FROM the worker during parallel execution
 export type WorkerParallelResponseMessage =
     | WorkerParallelResultMessage
     | WorkerParallelProgressMessage
     | WorkerParallelErrorMessage
-    | WorkerParallelLogMessage
-    | WorkerBacktrackingProgressMessage;
+    | WorkerParallelLogMessage;
 
 // --- END OF FILE --- // 

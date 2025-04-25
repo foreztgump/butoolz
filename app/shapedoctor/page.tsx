@@ -189,9 +189,10 @@ export default function ShapeDoctor() {
   const [currentExactTilingIndex, setCurrentExactTilingIndex] = useState<number>(-1);
   const [currentSolver, setCurrentSolver] = useState<'exact' | 'maximal' | null>(null);
   const [solverError, setSolverError] = useState<string | null>(null);
-  const [totalCombinations, setTotalCombinations] = useState<number | null>(null); // <--- MODIFIED TYPE
-  const [combinationsChecked, setCombinationsChecked] = useState<number>(0); // For progress display
+  const [totalCombinations, setTotalCombinations] = useState<number | null>(null);
+  const [combinationsChecked, setCombinationsChecked] = useState<number>(0);
   const [solverStatusMessage, setSolverStatusMessage] = useState<string | null>(null);
+  const [completedBacktrackingTasks, setCompletedBacktrackingTasks] = useState<number>(0);
 
   // Calculate solveProgress based on checked and total combinations
   useEffect(() => {
@@ -581,11 +582,11 @@ export default function ShapeDoctor() {
         break;
 
       // Add case for BACKTRACKING_PROGRESS
-      case 'BACKTRACKING_PROGRESS': // Keep case but comment out processing
+      // case 'BACKTRACKING_PROGRESS': // Keep case but comment out processing // <-- REMOVE THIS CASE ENTIRELY
         // const { iterations, currentMaxK } = message.payload;
         // Update UI state for progress display (e.g., a status message)
         // setSolverStatusMessage(`Searching... Iteration: ${iterations.toLocaleString()}, Max K Found: ${currentMaxK}`);
-        break; // Add break to satisfy switch structure
+        // break; // Add break to satisfy switch structure
 
       default:
         // Type guard for exhaustive check (optional but good practice)
@@ -863,7 +864,7 @@ export default function ShapeDoctor() {
     lockedTilesMask: bigint,
     shapeDataMap: ShapeDataMap 
   ) => {
-    // console.log("[runParallelMaximalPlacement] Entered function."); // <-- Remove log
+    // console.log("[runParallelMaximalPlacement] Entered function."); 
     if (!workerPoolRef.current) { 
         toast.error("Worker pool not ready for backtracking.");
         console.error("Worker pool is missing for backtracking.");
@@ -871,7 +872,9 @@ export default function ShapeDoctor() {
         return;
     }
 
-    console.log("[runParallelMaximalPlacement] Starting PARALLEL backtracking dispatch...");
+    // Reset completed task count for this run
+    setCompletedBacktrackingTasks(0); // <-- Add reset
+
     setCurrentSolver('maximal');
     setBestSolutions([]); 
     setCurrentSolutionIndex(-1);
@@ -918,34 +921,57 @@ export default function ShapeDoctor() {
     }
     
     console.log(`[runParallelMaximalPlacement] Dispatched ${allPromises.length} backtracking tasks. Waiting for results...`);
-    setSolverStatusMessage(`Processing ${allPromises.length} backtracking tasks...`);
-    activeWorkerPromisesRef.current = allPromises; // Still useful for cancellation
+    activeWorkerPromisesRef.current = allPromises; 
 
-    // --- Wait for all tasks and Aggregate Results --- 
+    // --- Wrap promises to track completion --- // <-- New Block
+    let settledCount = 0;
+    const totalTasks = allPromises.length;
+    setSolverStatusMessage(`Processing 0 / ${totalTasks} backtracking tasks...`); // Initial message
+
+    const trackingPromises = allPromises.map(p =>
+      p.then(
+        (value) => {
+          settledCount++;
+          setCompletedBacktrackingTasks(settledCount); // Update state on success
+          // Update status message periodically or based on count
+          if (settledCount % 5 === 0 || settledCount === totalTasks) { // Update every 5 or on last task
+             setSolverStatusMessage(`Processing ${settledCount} / ${totalTasks} backtracking tasks...`);
+          }
+          return { status: 'fulfilled', value }; // Keep standard settled format
+        },
+        (reason) => {
+          settledCount++;
+          setCompletedBacktrackingTasks(settledCount); // Update state on failure
+           if (settledCount % 5 === 0 || settledCount === totalTasks) {
+               setSolverStatusMessage(`Processing ${settledCount} / ${totalTasks} backtracking tasks...`);
+           }
+          return { status: 'rejected', reason }; // Keep standard settled format
+        }
+      )
+    );
+    // --------------------------------------
+
+    // --- Wait for all TRACKING tasks and Aggregate Results --- 
     try {
-        // console.log(`[runParallelMaximalPlacement] Waiting for ${allPromises.length} promises...`); // <-- Remove log
-        const settledResults = await Promise.allSettled(allPromises);
-        // console.log("[runParallelMaximalPlacement] All backtracking promises settled."); // <-- Remove log
-        setSolverStatusMessage('Aggregating results...');
+      // console.log(`[runParallelMaximalPlacement] Waiting for ${trackingPromises.length} tracking promises...`);
+      const settledResults = await Promise.allSettled(trackingPromises); // Wait for the wrappers
+      // console.log("[runParallelMaximalPlacement] All backtracking tracking promises settled."); 
+      setSolverStatusMessage(`Aggregating results from ${totalTasks} tasks...`);
 
-        // Process results directly from settled promises
-        let overallMaxK = 0;
-        // Store serialized results initially
-        const candidateSolutionsSerialized: SerializedSolutionRecord[] = []; 
+      // Process results - IMPORTANT: result.value is now {status: ..., value: ...} or {status: ..., reason: ...}
+      let overallMaxK = 0;
+      const candidateSolutionsSerialized: SerializedSolutionRecord[] = []; 
 
-        settledResults.forEach((result, index) => {
-            if (result.status === 'fulfilled') {
-                // Log the raw value received from the worker promise
-                // console.log(`[DEBUG] Raw result.value from worker ${index}:`, result.value); // REMOVE DEBUG LOG
-
-                if (result.value) { // Value should be SerializedSolutionRecord[] | null
-                    const workerSolutions = result.value as SerializedSolutionRecord[]; // Assert serialized type
-
-                    if (Array.isArray(workerSolutions) && workerSolutions.length > 0) {
+      settledResults.forEach((wrappedResult: PromiseSettledResult<any>, index) => { // Type is now PromiseSettledResult<any> because of the wrapper
+          if (wrappedResult.status === 'fulfilled') {
+              const originalResult = wrappedResult.value; // This is our {status, value/reason} object
+              if (originalResult.status === 'fulfilled' && originalResult.value) {
+                  // Original promise was fulfilled, process originalResult.value
+                  const workerSolutions = originalResult.value as SerializedSolutionRecord[];
+                   if (Array.isArray(workerSolutions) && workerSolutions.length > 0) {
+                       // --- Start of existing aggregation logic --- 
                         const workerMaxK = workerSolutions[0]?.maxShapes; 
-                        
                         if (typeof workerMaxK === 'number' && isFinite(workerMaxK)) {
-                            // console.log(`  Worker ${index} finished...`); 
                             if (workerMaxK > overallMaxK) {
                                 overallMaxK = workerMaxK;
                                 candidateSolutionsSerialized.length = 0; // Clear previous candidates
@@ -954,39 +980,39 @@ export default function ShapeDoctor() {
                                 candidateSolutionsSerialized.push(...workerSolutions); // Add serialized solutions
                             }
                         } else {
-                            console.warn(`  Worker ${index} returned solutions but maxShapes was invalid or missing:`, workerMaxK, workerSolutions[0]);
-                        }
-                    } 
-                } 
-            } else if (result.status === 'rejected') {
-                 const reason = result.reason;
-                 const isCancellation = reason instanceof Error && (reason.name === 'CancellationError' || reason.message.includes('cancelled')); 
-                 if (!isCancellation) {
-                     // console.error(`[runParallelMaximalPlacement] Backtracking worker task ${index} rejected:`, reason); // Keep commented
-                 }
-             }
-        });
+                             console.warn(` Worker ${index} returned solutions but maxShapes was invalid or missing:`, workerMaxK, workerSolutions[0]);
+                         }
+                         // --- End of existing aggregation logic --- 
+                   }
+              } else if (originalResult.status === 'rejected') {
+                  // Original promise was rejected
+                  const reason = originalResult.reason;
+                  const isCancellation = reason instanceof Error && (reason.name === 'CancellationError' || reason.message.includes('cancelled')); 
+                  if (!isCancellation) {
+                      // console.error(` Backtracking worker task ${index} rejected (via wrapper):`, reason); 
+                  }
+              }
+          } else {
+               // Tracking promise itself rejected (shouldn't normally happen here)
+               console.error(` Tracking promise ${index} rejected:`, wrappedResult.reason);
+           }
+      });
 
-        // console.log(`[runParallelMaximalPlacement] Aggregation complete. Overall Max K: ${overallMaxK}. Found ${candidateSolutionsSerialized.length} candidate serialized solutions.`); // Keep commented
+      // ... (rest of filtering, deserialization, state updates - NO CHANGE needed here) ...
         setSolverStatusMessage('Filtering unique solutions...');
-
-        // Filter for unique solutions based on gridState (still string) and limit
         if (candidateSolutionsSerialized.length > 0) {
-            const uniqueSolutionsMap = new Map<string, SerializedSolutionRecord>();
+             const uniqueSolutionsMap = new Map<string, SerializedSolutionRecord>();
             for (const solution of candidateSolutionsSerialized) {
                 const gridStateKey = solution.gridState; // Already a string
                 if (!uniqueSolutionsMap.has(gridStateKey)) {
                     uniqueSolutionsMap.set(gridStateKey, solution);
                     if (uniqueSolutionsMap.size >= 500) {
-                        // console.log("[runParallelMaximalPlacement] Reached limit of 500 unique solutions during aggregation."); // Keep commented
+                        // console.log("[runParallelMaximalPlacement] Reached limit of 500 unique solutions during aggregation.");
                         break;
                     }
                 }
             }
             const finalUniqueSolutionsSerialized = Array.from(uniqueSolutionsMap.values());
-            // console.log(`[runParallelMaximalPlacement] Filtered down to ${finalUniqueSolutionsSerialized.length} unique serialized solutions.`); // Keep commented
-
-            // --- DESERIALIZE FINAL RESULTS --- 
             const finalUniqueSolutions = finalUniqueSolutionsSerialized.map(s => ({
                 ...s,
                 gridState: BigInt(s.gridState), // Convert back to BigInt
@@ -995,43 +1021,61 @@ export default function ShapeDoctor() {
                     placementMask: BigInt(p.placementMask) // Convert back to BigInt
                 }))
             }));
-            // --- END DESERIALIZATION --- 
-            
             setBestSolutions(finalUniqueSolutions);
             setCurrentSolutionIndex(finalUniqueSolutions.length > 0 ? 0 : -1);
             if (finalUniqueSolutions.length > 0) {
-               updateGridStateFromSolution(finalUniqueSolutions[0]); // Show first best solution
+               updateGridStateFromSolution(finalUniqueSolutions[0]); 
                toast.success(`Maximal placement found (${overallMaxK} shapes)! Found ${finalUniqueSolutions.length} unique layouts.`);
-            } else {
-               // This case shouldn't be reached if candidateSolutionsSerialized.length > 0
+            } else { 
                toast.info("Backtracking finished: No placements possible (after filtering).?"); 
+               setBestSolutions([]); // Ensure solutions are cleared
+               setCurrentSolutionIndex(-1);
             }
         } else {
-             // No candidate solutions found from any worker
              toast.info("Backtracking finished: No placements possible.");
+             setBestSolutions([]); // Ensure solutions are cleared
+             setCurrentSolutionIndex(-1);
         }
 
-    } catch (error) {
+    } catch (error) { 
         console.error("[runParallelMaximalPlacement] Error waiting for backtracking promises:", error);
         if (!solverError) { 
             setSolverError("Error processing backtracking results.");
             toast.error("Error processing backtracking results.");
         }
-    } finally {
+    } finally { 
         activeWorkerPromisesRef.current = []; 
-        setSolverStatusMessage(null); // Clear status message
-        // isSolving is reset in handleUnifiedSolve
+        setSolverStatusMessage(null); 
+        // Reset completed task count (optional, could do at start)
+        // setCompletedBacktrackingTasks(0);
+        console.log("[runParallelMaximalPlacement] Exiting function.");
     }
-
-    // --- Add Log Before Exiting (even though it doesn't return a value) ---
-    // console.log("[runParallelMaximalPlacement] Exiting function."); // <-- Remove log
   }, [
-      // Removed handleWorkerMessage
       solverError, 
       updateGridStateFromSolution, 
-      determineDynamicBatchSize, // Added dependency
-      setSolverStatusMessage // Added dependency
+      determineDynamicBatchSize, 
+      setSolverStatusMessage,
+      setCompletedBacktrackingTasks // <-- Add state setter dependency
   ]); 
+
+  // --- Add useEffect for Backtracking Progress --- // <-- New Block
+  useEffect(() => {
+    if (currentSolver === 'maximal' && activeWorkerPromisesRef.current.length > 0) {
+      const totalTasks = activeWorkerPromisesRef.current.length;
+      // Prevent division by zero if totalTasks is somehow 0
+      const progress = totalTasks > 0 ? Math.min(100, Math.round((completedBacktrackingTasks / totalTasks) * 100)) : 0;
+      setSolveProgress(progress);
+    } else if (currentSolver !== 'maximal') {
+        // Optional: Reset progress if switching away from maximal
+        // setSolveProgress(0); 
+    }
+    // Check if solve is finished (isSolving is false but solver might still be 'maximal')
+    if (!isSolving && currentSolver === 'maximal') {
+         setSolveProgress(0); // Reset progress after solve finishes
+         setCompletedBacktrackingTasks(0); // Reset count too
+    }
+  }, [completedBacktrackingTasks, currentSolver, isSolving]);
+  // ----------------------------------------------
 
   // --- Unified Solve Handler --- 
   const handleUnifiedSolve = async () => {
@@ -1504,11 +1548,11 @@ export default function ShapeDoctor() {
                   <div className="w-3/4 h-4 bg-gray-600 rounded-full overflow-hidden mb-1">
                     <div
                       className="h-full bg-blue-500 transition-all duration-300 ease-out"
-                      style={{ width: `${formattedProgress}` }} // Use formattedProgress state
+                      style={{ width: `${formattedProgress}` }}
                     ></div>
                   </div>
                   <p className="text-sm">
-                    {formattedProgress} {/* Use formattedProgress state */}
+                    {formattedProgress} 
                     ({combinationsChecked.toLocaleString()} /
                     {totalCombinations !== null && totalCombinations > 0
                       ? totalCombinations.toLocaleString()
@@ -1516,16 +1560,28 @@ export default function ShapeDoctor() {
                     combinations)
                   </p>
                 </>
-              ) : (
+              ) : currentSolver === 'maximal' ? (
                 <>
                   <p className="text-xl font-semibold mb-2">Searching Maximal Placement...</p>
-                  {/* Display the status message from state if available, else generic text */}
+                  <div className="w-3/4 h-4 bg-gray-600 rounded-full overflow-hidden mb-1">
+                     <div
+                       className="h-full bg-purple-500 transition-all duration-100 ease-linear" // Changed color, faster transition
+                       style={{ width: `${formattedProgress}` }} // Use the same formattedProgress state
+                     ></div>
+                   </div>
+                   <p className="text-sm mb-2">
+                       {formattedProgress} ({completedBacktrackingTasks} / {activeWorkerPromisesRef.current?.length ?? 0} tasks completed)
+                   </p>
                   <p className="text-sm mb-2">
                       {solverStatusMessage ?? 'Exploring possibilities...'}
                   </p>
-                  {/* No progress bar for backtracking */}
                 </>
-              )}
+              ) : ( 
+                   <>
+                     <p className="text-xl font-semibold mb-2">Solver Idle</p>
+                   </>
+               ) 
+               } 
               <Button
                 variant="destructive"
                 size="sm"

@@ -35,7 +35,6 @@ import {
   WorkerParallelErrorMessage,
   WorkerParallelLogMessage,
   WorkerParallelResponseMessage,
-  WorkerBacktrackingProgressMessage,
   SerializedSolutionRecord,
 } from './types';
 
@@ -348,17 +347,17 @@ const solveBacktrackingBranch = async (
 
     // Periodically emit progress update (consider making interval dynamic or based on branch size)
     if (iterations % 50000 === 0) { // Re-enable progress emit for debugging
-        try {
-            (workerpool.workerEmit as (msg: WorkerBacktrackingProgressMessage) => void)({
-                type: 'BACKTRACKING_PROGRESS',
-                payload: {
-                    iterations: iterations,
-                    currentMaxK: currentMaxK
-                }
-            });
-        } catch (e) {
-            console.error("[Worker Backtrack] Error emitting progress:", e);
-        }
+        // try { // <-- REMOVE this entire try-catch block
+        //     (workerpool.workerEmit as (msg: WorkerBacktrackingProgressMessage) => void)({
+        //         type: 'BACKTRACKING_PROGRESS',
+        //         payload: {
+        //             iterations: iterations,
+        //             currentMaxK: currentMaxK
+        //         }
+        //     });
+        // } catch (e) {
+        //     console.error("[Worker Backtrack] Error emitting progress:", e);
+        // }
     }
 
     // --- Base Case ---
