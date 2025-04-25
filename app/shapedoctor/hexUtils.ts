@@ -256,16 +256,16 @@ export const drawPreviewGrid = (
   const tileIds: number[] = []; // Store the Tile IDs
   for (let i = 0; i < tiles.length; i++) {
     if (tiles[i] === 1) {
-      const hex = Config.HEX_GRID_COORDS[i];
+      // Find the hex data by matching the ID, don't assume array index matches ID
+      const tileId = i + 1;
+      const hex = Config.HEX_GRID_COORDS.find(h => h.id === tileId);
+      
       if (hex) {
         shapeCoords.push({ q: hex.q, r: hex.r });
         tileIds.push(hex.id); // Add the ID
       }
     }
   }
-
-  // --- LOGGING ---\n  // console.log(`[drawPreviewGrid] Index: ${colorIndex}, Shape: ${shape}, Tiles: [${tileIds.sort((a, b) => a - b).join(',')}]`);
-  // ---------------
 
   if (shapeCoords.length === 0) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);

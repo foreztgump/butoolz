@@ -131,8 +131,13 @@ export const isGridFull = (gridState: bigint): boolean => {
 export const rotateShapeBitmask = (shapeMask: bigint): bigint => {
   let rotatedMask = 0n;
   for (const coord of HEX_GRID_COORDS) {
+    // Add logging before the potentially problematic line
+    console.log(`[rotateShapeBitmask] coord.id=${coord.id}, typeof coord.id=${typeof coord.id}`);
     const bitPosition = BigInt(coord.id - 1);
-    // Check if the current tile is part of the shape
+    console.log(`[rotateShapeBitmask] bitPosition=${bitPosition}, typeof bitPosition=${typeof bitPosition}`);
+    console.log(`[rotateShapeBitmask] shapeMask=${shapeMask}, typeof shapeMask=${typeof shapeMask}`);
+    
+    // Check if the current tile is part of the shape (Original Line 130 approx.)
     if ((shapeMask & (1n << bitPosition)) !== 0n) {
       // Calculate rotated coordinates
       const { q: rotQ, r: rotR } = rotate60ClockwiseCoords(coord.q, coord.r);
@@ -207,18 +212,24 @@ export const generateUniqueOrientations = (baseShapeMask: bigint): Set<bigint> =
 
   // Add the base shape and its 5 rotations
   for (let i = 0; i < 6; i++) {
-    if (currentMask !== 0n) { // Avoid adding empty masks if shape rotates off-grid
+    if (currentMask !== 0n) { 
         uniqueOrientations.add(currentMask);
     }
+    // Log before calling rotate
+    console.log(`[generateUniqueOrientations] Before rotate ${i+1}/6: currentMask=${currentMask}, typeof=${typeof currentMask}`);
     currentMask = rotateShapeBitmask(currentMask);
   }
 
   // Reflect the base shape and add its 6 rotations
+  // Log before calling reflect
+  console.log(`[generateUniqueOrientations] Before reflect: baseShapeMask=${baseShapeMask}, typeof=${typeof baseShapeMask}`);
   currentMask = reflectShapeBitmask(baseShapeMask);
   for (let i = 0; i < 6; i++) {
-     if (currentMask !== 0n) { // Avoid adding empty masks
+     if (currentMask !== 0n) { 
         uniqueOrientations.add(currentMask);
      }
+    // Log before calling rotate (after reflect)
+    console.log(`[generateUniqueOrientations] After reflect, before rotate ${i+1}/6: currentMask=${currentMask}, typeof=${typeof currentMask}`);
     currentMask = rotateShapeBitmask(currentMask);
   }
 
@@ -230,14 +241,25 @@ export const generateUniqueOrientations = (baseShapeMask: bigint): Set<bigint> =
  * The canonical form is defined as the orientation with the smallest bigint value
  * among all possible unique rotations and reflections.
  *
- * @param shapeMask - The bitmask of any orientation of the shape.
- * @returns The bigint bitmask of the canonical orientation, or 0n if the input mask is 0n.
+ * @param shapeString - The string representation of any orientation of the shape.
+ * @returns An object containing the canonicalMask (bigint) and the original shapeString,
+ *          or { canonicalMask: 0n, originalString: shapeString } if the input is invalid/empty.
  */
-export const getCanonicalShape = (shapeMask: bigint): bigint => {
-  if (shapeMask === 0n) {
-    return 0n;
+export const getCanonicalShape = (shapeString: string): { canonicalMask: bigint; originalString: string } => {
+  let baseShapeMask: bigint;
+  try {
+    baseShapeMask = shapeStringToBitmask(shapeString); // Convert string to mask first
+  } catch (e) {
+    console.error(`[getCanonicalShape] Error converting shape string to bitmask: ${e instanceof Error ? e.message : String(e)}. Input: "${shapeString}"`);
+    return { canonicalMask: 0n, originalString: shapeString };
   }
-  const orientations = generateUniqueOrientations(shapeMask);
+  
+  if (baseShapeMask === 0n) {
+    return { canonicalMask: 0n, originalString: shapeString };
+  }
+  
+  // Now proceed with the bigint mask
+  const orientations = generateUniqueOrientations(baseShapeMask); 
 
   let canonicalMask = -1n; // Use -1n as an initial value guaranteed to be replaced
 
@@ -248,7 +270,9 @@ export const getCanonicalShape = (shapeMask: bigint): bigint => {
   }
 
   // Should theoretically always find a mask if input wasn't 0n, but handle edge case.
-  return canonicalMask === -1n ? 0n : canonicalMask;
+  const finalCanonicalMask = canonicalMask === -1n ? 0n : canonicalMask;
+  
+  return { canonicalMask: finalCanonicalMask, originalString: shapeString }; // Return canonical mask and original string
 };
 
 /**

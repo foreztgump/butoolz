@@ -9,50 +9,55 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import * as Config from '../shapedoctor.config'; // Adjust import path
 import { SolutionRecord } from '../types';
 
 interface StatusPanelProps {
-  potentials: string[];
-  bestSolutions: SolutionRecord[];
+  potentialsCount: number;
+  solutionsList: SolutionRecord[];
   currentSolutionIndex: number;
   isSolving: boolean;
-  handleSolve: (testPotentials?: string[]) => void; // Accepts optional test set
   lockedTilesCount: number;
   availableTiles: number;
   currentSolver: 'exact' | 'maximal' | null;
   solverError: string | null;
+  solveProgress: number;
+  totalCombinations: number;
+  combinationsChecked: number;
+  isExactTilingMode: boolean;
 }
 
 const StatusPanel: React.FC<StatusPanelProps> = ({
-  potentials,
-  bestSolutions,
+  potentialsCount,
+  solutionsList,
   currentSolutionIndex,
   isSolving,
-  handleSolve,
   lockedTilesCount,
   availableTiles,
   currentSolver,
   solverError,
+  solveProgress,
+  totalCombinations,
+  combinationsChecked,
+  isExactTilingMode,
 }) => {
+  const viewingSolution = currentSolutionIndex !== -1 && solutionsList[currentSolutionIndex];
+
   return (
     <Card className="flex-shrink-0 bg-card">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2 text-card-foreground">
-          <HelpCircle className="h-5 w-5 text-violet-400" /> Status & Actions
+          <HelpCircle className="h-5 w-5 text-violet-400" /> Status & Info
         </CardTitle>
-        <CardDescription className="text-xs">
-          Current status, instructions, and global reset.
-        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 text-sm">
+      <CardContent className="space-y-3 text-sm">
         {/* Status Display */}
         <div className="space-y-1 text-card-foreground">
           <div className="flex justify-between">
             <span>Saved Potentials:</span>
-            <span className="font-semibold">{potentials.length}</span>
+            <span className="font-semibold">{potentialsCount}</span>
           </div>
           <div className="flex justify-between">
             <span>Available Tiles:</span>
@@ -63,73 +68,59 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
             <span className="font-semibold">{lockedTilesCount}</span>
           </div>
           {isSolving && (
-            <div className="flex justify-between text-sm text-blue-500">
-              <span>Solving Status:</span>
-              <span className="font-semibold">{currentSolver ? `Running ${currentSolver} solver...` : 'Initiating...'}</span>
-            </div>
+            <>
+              <div className="flex justify-between text-sm text-blue-500">
+                <span>Status:</span>
+                <span className="font-semibold flex items-center">
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" /> 
+                    Solving ({currentSolver ?? '...'})
+                </span>
+              </div>
+              {isExactTilingMode && (
+                  <div className="flex justify-between text-xs text-blue-400 pl-2">
+                      <span>Combinations:</span>
+                      <span className="font-mono">
+                         {combinationsChecked.toLocaleString()} / {totalCombinations > 0 ? totalCombinations.toLocaleString() : '?'} ({solveProgress}%)
+                      </span>
+                  </div>
+              )}
+            </>
           )}
           {solverError && (
              <div className="flex justify-between text-sm text-red-500">
-              <span>Solver Error:</span>
+              <span>Solver Status:</span>
               <span className="font-semibold truncate" title={solverError}>{solverError}</span>
             </div>
           )}
-          <div className="flex justify-between">
-            <span>Best Solutions:</span>
-            <span className="font-semibold">{bestSolutions.length}</span>
-          </div>
-          {currentSolutionIndex !== -1 && bestSolutions[currentSolutionIndex] && (
+          {solutionsList.length > 0 && (
+            <div className="flex justify-between">
+              <span>Solutions Found:</span>
+              <span className="font-semibold">{solutionsList.length}</span>
+            </div>
+          )}
+          {viewingSolution && (
             <>
+              <div className="border-t border-border/50 pt-2 mt-2"></div>
               <div className="flex justify-between">
                 <span>Viewing Solution:</span>
                 <span>
-                  {currentSolutionIndex + 1} / {bestSolutions.length}
+                  {currentSolutionIndex + 1} / {solutionsList.length}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Placed Shapes:</span>
                 <span className="font-semibold">
-                    {bestSolutions[currentSolutionIndex].placements.length}
+                    {solutionsList[currentSolutionIndex].placements.length}
                 </span>
               </div>
               <div className="flex justify-between">
                   <span>Empty Tiles:</span>
                   <span className="font-semibold">
-                      {availableTiles - (bestSolutions[currentSolutionIndex].placements.length * 4)}
+                      {availableTiles - (solutionsList[currentSolutionIndex].placements.length * 4)}
                   </span>
               </div>
             </>
           )}
-        </div>
-
-        {/* Profiling Buttons */}
-        <div className="border-t border-border/50 pt-3">
-          <h3 className="font-medium mb-2 text-card-foreground text-sm">
-            Run Solver Profile
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {[5, 10, 15, 25].map((num) => (
-              <Button
-                key={`profile-${num}`}
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                onClick={() => {
-                  const testSet = Config.PREDEFINED_SHAPES.slice(0, num);
-                  if (testSet.length < num) {
-                    toast.error(
-                      `Not enough predefined shapes for ${num} test.`
-                    );
-                  } else {
-                    handleSolve(testSet); // Call handleSolve with the test set
-                  }
-                }}
-                disabled={isSolving}
-              >
-                Profile {num}
-              </Button>
-            ))}
-          </div>
         </div>
 
         {/* Instructions */}
@@ -138,11 +129,14 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
             How to Use
           </h3>
           <ol className="text-muted-foreground space-y-0.5 list-decimal pl-4 text-xs">
-            <li>Select up to 4 connected hexes OR browse "Predefined Shapes" tab.</li>
-            <li>Manually selected shapes: Click "Save Potential".</li>
-            <li>Added/Saved shapes appear in "Saved Potentials" tab.</li>
-            <li>Click "Solve" to find placements for saved potentials.</li>
-            <li>Use Next/Prev to view solutions on the grid.</li>
+            <li>Click tiles to select up to 4 connected hexes.</li>
+            <li>Click lockable tiles (purple outline) to lock/unlock.</li>
+            <li>Click "Save (x/4)" to save selection to "Saved Potentials".</li>
+            <li>Or, add from "Predefined Shapes".</li>
+            <li>Click "Solve" to find placements.</li>
+            <li>Use Next/Prev to view solutions.</li>
+            <li>Click "Back to Edit" to clear the solution view.</li>
+            <li>Click "Reset All" to clear everything.</li>
             <li>Wheel=Zoom, Drag=Pan grid.</li>
           </ol>
         </div>
