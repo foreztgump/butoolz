@@ -101,9 +101,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             variant="destructive"
             size="sm"
             onClick={handleCancelSolve}
-            className="min-w-[90px]"
+            className="min-w-[90px] bg-red-600 hover:bg-red-700 text-white transition-colors shadow-md"
           >
-            <Ban className="h-4 w-4 mr-1" /> Cancel ({solveProgress}%)
+            <Ban className="h-4 w-4 mr-1" /> Cancel
           </Button>
           <span className="text-sm text-muted-foreground px-2 flex items-center">
             <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Solving ({currentSolver ?? '...'})

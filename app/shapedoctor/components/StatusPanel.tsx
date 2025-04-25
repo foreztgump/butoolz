@@ -27,6 +27,7 @@ interface StatusPanelProps {
   totalCombinations: number;
   combinationsChecked: number;
   isExactTilingMode: boolean;
+  solverStatusMessage: string | null;
 }
 
 const StatusPanel: React.FC<StatusPanelProps> = ({
@@ -42,6 +43,7 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
   totalCombinations,
   combinationsChecked,
   isExactTilingMode,
+  solverStatusMessage,
 }) => {
   const viewingSolution = currentSolutionIndex !== -1 && solutionsList[currentSolutionIndex];
 
@@ -73,7 +75,9 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
                 <span>Status:</span>
                 <span className="font-semibold flex items-center">
                     <Loader2 className="h-4 w-4 mr-1 animate-spin" /> 
-                    Solving ({currentSolver ?? '...'})
+                    {currentSolver === 'maximal' && solverStatusMessage 
+                        ? solverStatusMessage 
+                        : `Solving (${currentSolver ?? '...'})`}
                 </span>
               </div>
               {isExactTilingMode && (
@@ -107,6 +111,14 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
                   {currentSolutionIndex + 1} / {solutionsList.length}
                 </span>
               </div>
+              {currentSolver === 'maximal' && (
+                <div className="flex justify-between">
+                  <span>Max Shapes (K):</span>
+                  <span className="font-semibold">
+                    {solutionsList[currentSolutionIndex]?.maxShapes ?? 'N/A'}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>Placed Shapes:</span>
                 <span className="font-semibold">

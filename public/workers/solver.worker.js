@@ -46,8 +46,11 @@ __webpack_require__.r(__webpack_exports__);
 const TOTAL_TILES = _shapedoctor_config__WEBPACK_IMPORTED_MODULE_0__.TOTAL_TILES;
 // Helper map for quick lookup of tile ID by axial coordinates
 const coordToIdMap = new Map();
+// Helper map for quick lookup of coordinates by tile ID
+const idToCoordMap = new Map();
 _shapedoctor_config__WEBPACK_IMPORTED_MODULE_0__.HEX_GRID_COORDS.forEach((coord) => {
     coordToIdMap.set(`${coord.q},${coord.r}`, coord.id);
+    idToCoordMap.set(coord.id, { q: coord.q, r: coord.r });
 });
 /**
  * Calculates the axial coordinates after a 60-degree clockwise rotation.
@@ -303,31 +306,35 @@ const findLowestSetBitIndex = (mask) => {
     return index;
 };
 /**
- * Translates a shape bitmask based on a delta in axial coordinates.
+ * Translates a shape bitmask based on a delta in axial coordinates. (Optimized)
  *
  * @param shapeMask - The bitmask of the shape to translate.
  * @param deltaQ - The change in the q coordinate.
  * @param deltaR - The change in the r coordinate.
- * @returns The bitmask of the translated shape, or 0n if translation results in invalid coordinates.
+ * @returns The bitmask of the translated shape, or 0n if translation results in invalid coordinates or the input mask is 0n.
  */
 const translateShapeBitmask = (shapeMask, deltaQ, deltaR) => {
+    if (shapeMask === 0n)
+        return 0n;
     let translatedMask = 0n;
-    for (const coord of _shapedoctor_config__WEBPACK_IMPORTED_MODULE_0__.HEX_GRID_COORDS) {
-        const bitPosition = BigInt(coord.id - 1);
-        // Check if the current tile is part of the shape
-        if ((shapeMask & (1n << bitPosition)) !== 0n) {
-            // Calculate translated coordinates
-            const q_trans = coord.q + deltaQ;
-            const r_trans = coord.r + deltaR;
-            // Find the ID of the tile at the translated coordinates
-            const translatedId = coordToIdMap.get(`${q_trans},${r_trans}`);
-            // If the translated coordinate is valid and exists on the grid
-            if (translatedId !== undefined) {
-                const translatedBitPosition = BigInt(translatedId - 1);
-                translatedMask |= 1n << translatedBitPosition;
-            }
-            // If translated coordinate is off-grid, that part of the shape is lost
+    const originalTileIds = bitmaskToTileIds(shapeMask); // Get IDs of set bits
+    for (const originalId of originalTileIds) {
+        const originalCoord = idToCoordMap.get(originalId);
+        if (!originalCoord) {
+            console.warn(`[translateShapeBitmask] Could not find coordinates for original tile ID: ${originalId}`);
+            continue; // Skip if coordinate mapping fails (shouldn't happen)
         }
+        // Calculate translated coordinates
+        const q_trans = originalCoord.q + deltaQ;
+        const r_trans = originalCoord.r + deltaR;
+        // Find the ID of the tile at the translated coordinates
+        const translatedId = coordToIdMap.get(`${q_trans},${r_trans}`);
+        // If the translated coordinate is valid and exists on the grid
+        if (translatedId !== undefined) {
+            const translatedBitPosition = BigInt(translatedId - 1);
+            translatedMask |= 1n << translatedBitPosition;
+        }
+        // If translated coordinate is off-grid, that part of the shape is lost
     }
     return translatedMask;
 };
@@ -62196,8 +62203,16 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-;
-; // ADD BACK local definition
+; // Used internally by solver.dlx
+// Define the type for the taskData specific to runCombinatorialExactTiling
+// Based on the data passed from page.tsx
+// REMOVE THIS INTERFACE as it references the old type and seems unused now
+/*
+interface ExactTilingTaskData extends SolverExecDataExactTiling {
+    k: number;
+    shapesToTileWith: { id: string }[];
+}
+*/
 // --- Utility Function: Generate Combinations ---
 function* combinations(arr, k) {
     if (k < 0 || k > arr.length) {
@@ -62223,11 +62238,10 @@ function* combinations(arr, k) {
     }
 }
 const FULL_GRID_MASK = (1n << BigInt(_shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.TOTAL_TILES)) - 1n; // Mask for a full grid
-// State variable to store precomputed data for each shape
-let allShapeData = new Map();
-// --- Precomputation Function ---
-const precomputeAllShapeData = (shapesToPlace, lockedTilesMask) => {
-    // console.log("[Worker Precompute] Starting precomputation (Single Orientation, All Translations)..."); // Reduced
+// --- Precomputation Function (Now internal, called by initializeSolverContext) ---
+const precomputeAllShapeDataInternal = (potentials, // Use PotentialShape from types.ts
+lockedTilesMask) => {
+    // console.log("[Worker Precompute] Starting precomputation (Single Orientation, All Translations)...");
     const computationStartTime = Date.now();
     const computedData = new Map();
     const lockedTilesMaskBigint = typeof lockedTilesMask === 'string' ? BigInt(lockedTilesMask) : lockedTilesMask;
@@ -62235,77 +62249,85 @@ const precomputeAllShapeData = (shapesToPlace, lockedTilesMask) => {
     _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.HEX_GRID_COORDS.forEach((coord, index) => {
         coordsMap.set(index, { q: coord.q, r: coord.r });
     });
-    shapesToPlace.forEach((shapeInput) => {
-        const shapeId = shapeInput.id;
+    potentials.forEach((potential) => {
+        const shapeId = potential.id; // This is the unique ID like shapeA::11001010...
+        const canonicalForm = potential.canonicalForm; // This is the canonical string '11001010...'
+        const baseShapeMask = potential.bitmask; // Use the bitmask directly
         try {
-            const shapeStringParts = shapeId.split('::');
-            if (shapeStringParts.length !== 2 || shapeStringParts[1].length !== _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.TOTAL_TILES) {
-                console.error(`[Worker Precompute] Invalid shapeId format or length: ${shapeId}. Skipping.`);
-                computedData.set(shapeId, { id: shapeId, validPlacements: new Set() });
-                return;
-            }
-            const actualShapeString = shapeStringParts[1];
-            const baseShapeMask = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.shapeStringToBitmask)(actualShapeString);
-            if (baseShapeMask === 0n) {
-                console.warn(`[Worker Precompute] Skipping shape with empty mask (from ${shapeId})`);
-                computedData.set(shapeId, { id: shapeId, validPlacements: new Set() });
-                return;
-            }
-            // ---> Add check for exactly 4 tiles <--- //
-            const initialTileCount = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(baseShapeMask);
-            if (initialTileCount !== 4) {
-                console.warn(`[Worker Precompute] Skipping shape ${shapeId} because initial mask has ${initialTileCount} tiles, not 4.`);
-                computedData.set(shapeId, { id: shapeId, validPlacements: new Set() });
-                return; // Skip this shape
-            }
-            // --------------------------------------- //
-            const validPlacements = new Set();
-            const sourceTileIndex = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.findLowestSetBitIndex)(baseShapeMask);
-            if (sourceTileIndex === -1) {
-                console.warn(`[Worker Precompute] Could not find anchor for non-empty shape ${shapeId}. Skipping.`);
-                computedData.set(shapeId, { id: shapeId, validPlacements: new Set() });
-                return;
-            }
-            const sourceCoords = coordsMap.get(sourceTileIndex);
-            if (!sourceCoords) {
-                console.error(`[Worker Precompute] Could not find coordinates for source index ${sourceTileIndex} of shape ${shapeId}. Check HEX_GRID_COORDS structure/order. Skipping.`);
-                computedData.set(shapeId, { id: shapeId, validPlacements: new Set() });
-                return;
-            }
-            const { q: sourceQ, r: sourceR } = sourceCoords;
-            for (let targetTileIndex = 0; targetTileIndex < _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.TOTAL_TILES; targetTileIndex++) {
-                const targetCoords = coordsMap.get(targetTileIndex);
-                if (!targetCoords) {
-                    console.error(`[Worker Precompute] Missing coordinates for target index ${targetTileIndex}. Skipping translation.`);
-                    continue;
+            if (!computedData.has(canonicalForm)) { // Compute only once per canonical form
+                // console.log(`[Worker Precompute] Computing for canonical form: ${canonicalForm}`);
+                if (baseShapeMask === 0n) {
+                    console.warn(`[Worker Precompute] Skipping shape with empty mask (from ${shapeId})`);
+                    computedData.set(canonicalForm, { id: canonicalForm, canonicalBitmask: 0n, validPlacements: [] });
+                    return;
                 }
-                const { q: targetQ, r: targetR } = targetCoords;
-                const deltaQ = targetQ - sourceQ;
-                const deltaR = targetR - sourceR;
-                const translatedMask = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.translateShapeBitmask)(baseShapeMask, deltaQ, deltaR);
-                if (translatedMask !== 0n && (translatedMask & lockedTilesMaskBigint) === 0n) {
-                    // ---> Add check for 4 tiles AFTER translation <--- //
-                    const translatedTileCount = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(translatedMask);
-                    if (translatedTileCount === 4) {
-                        validPlacements.add(translatedMask);
+                const initialTileCount = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(baseShapeMask);
+                if (initialTileCount !== 4) {
+                    console.warn(`[Worker Precompute] Skipping shape ${canonicalForm} because initial mask has ${initialTileCount} tiles, not 4.`);
+                    computedData.set(canonicalForm, { id: canonicalForm, canonicalBitmask: baseShapeMask, validPlacements: [] });
+                    return; // Skip this shape
+                }
+                const validPlacements = []; // Store as array
+                const sourceTileIndex = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.findLowestSetBitIndex)(baseShapeMask);
+                if (sourceTileIndex === -1) {
+                    console.warn(`[Worker Precompute] Could not find anchor for non-empty shape ${canonicalForm}. Skipping.`);
+                    computedData.set(canonicalForm, { id: canonicalForm, canonicalBitmask: baseShapeMask, validPlacements: [] });
+                    return;
+                }
+                const sourceCoords = coordsMap.get(sourceTileIndex);
+                if (!sourceCoords) {
+                    console.error(`[Worker Precompute] Could not find coordinates for source index ${sourceTileIndex} of shape ${canonicalForm}. Check HEX_GRID_COORDS structure/order. Skipping.`);
+                    computedData.set(canonicalForm, { id: canonicalForm, canonicalBitmask: baseShapeMask, validPlacements: [] });
+                    return;
+                }
+                const { q: sourceQ, r: sourceR } = sourceCoords;
+                for (let targetTileIndex = 0; targetTileIndex < _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.TOTAL_TILES; targetTileIndex++) {
+                    const targetCoords = coordsMap.get(targetTileIndex);
+                    if (!targetCoords) {
+                        console.error(`[Worker Precompute] Missing coordinates for target index ${targetTileIndex}. Skipping translation.`);
+                        continue;
                     }
-                    // Optional: Log if a translation resulted in fewer tiles
-                    // else if (translatedTileCount > 0) { 
-                    //    console.log(`[Worker Precompute] Shape ${shapeId} translation resulted in ${translatedTileCount} tiles. Discarding.`);
-                    // }
-                    // -------------------------------------------------- //
+                    const { q: targetQ, r: targetR } = targetCoords;
+                    const deltaQ = targetQ - sourceQ;
+                    const deltaR = targetR - sourceR;
+                    const translatedMask = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.translateShapeBitmask)(baseShapeMask, deltaQ, deltaR);
+                    if (translatedMask !== 0n && (translatedMask & lockedTilesMaskBigint) === 0n) {
+                        const translatedTileCount = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(translatedMask);
+                        if (translatedTileCount === 4) {
+                            validPlacements.push(translatedMask);
+                        }
+                    }
                 }
+                computedData.set(canonicalForm, { id: canonicalForm, canonicalBitmask: baseShapeMask, validPlacements });
             }
-            computedData.set(shapeId, { id: shapeId, validPlacements });
+            else {
+                // console.log(`[Worker Precompute] Canonical form ${canonicalForm} already computed.`);
+            }
         }
         catch (e) {
-            console.error(`[Worker Precompute] Error precomputing shape ${shapeId}:`, e);
-            computedData.set(shapeId, { id: shapeId, validPlacements: new Set() });
+            console.error(`[Worker Precompute] Error precomputing shape ${canonicalForm} (from ${shapeId}):`, e);
+            computedData.set(canonicalForm, { id: canonicalForm, canonicalBitmask: baseShapeMask, validPlacements: [] });
         }
     });
     const computationEndTime = Date.now();
-    // console.log(`[Worker Precompute] Precomputation finished in ${computationEndTime - computationStartTime}ms. Computed data for ${computedData.size} shapes (Single Orientation, All Translations).`); // Reduced
+    // console.log(`[Worker Precompute] Precomputation finished in ${computationEndTime - computationStartTime}ms. Computed data for ${computedData.size} canonical shapes.`);
     return computedData;
+};
+// --- NEW Exported Function: Initialize Context ---
+const initializeSolverContext = async (potentials, lockedTilesMaskStr // Expect string due to workerpool serialization
+) => {
+    // console.log("[Worker Initialize] Received initialization request.");
+    try {
+        const lockedTilesMask = BigInt(lockedTilesMaskStr);
+        const shapeDataMap = precomputeAllShapeDataInternal(potentials, lockedTilesMask);
+        // We return the map directly; the workerpool promise handles the async nature.
+        // console.log("[Worker Initialize] Context initialized successfully.");
+        return shapeDataMap;
+    }
+    catch (error) {
+        console.error("[Worker Initialize] Error during initialization:", error);
+        throw error; // Re-throw to make it a worker error
+    }
 };
 // Helper to calculate combinations safely
 function calculateTotalCombinations(n, k) {
@@ -62334,282 +62356,323 @@ function calculateTotalCombinations(n, k) {
         return 0; // Indicate failure
     }
 }
-// --- Combinatorial Exact Tiling Function (DLX-based) ---
-async function runCombinatorialExactTiling(taskData) {
-    // console.log("[Worker runCombinatorialExactTiling] Received task to find exact tiling subset."); // Reduced
-    allShapeData = new Map(); // Reset precomputed data for this run
-    const { allPotentialsData, initialGridState = 0n, lockedTilesMask } = taskData;
-    const initialGridStateBigint = typeof initialGridState === 'string' ? BigInt(initialGridState) : initialGridState;
-    const lockedTilesMaskBigint = typeof lockedTilesMask === 'string' ? BigInt(lockedTilesMask) : lockedTilesMask;
-    const overallStartTime = Date.now();
-    let combinationCount = 0; // Initialize counter
-    // Define a helper for cancellation check
-    const isCancelled = () => {
-        try {
-            return workerpool__WEBPACK_IMPORTED_MODULE_0__.isCancelled && workerpool__WEBPACK_IMPORTED_MODULE_0__.isCancelled();
-        }
-        catch (e) {
-            console.warn("Error checking cancellation status:", e);
-            return false;
-        }
-    };
+// --- Internal Solver Logic (Adapted from previous exports) ---
+// Internal function for Exact Tiling (now processes combinations passed to it)
+// Note: This function itself is NOT parallel, the loop over combinations is removed
+const solveExactTilingCombination = (combination, // Array of shape IDs for *this specific* combination
+kValue, context) => {
+    // console.log(`[Worker solveExactTilingCombination] Solving for combination: ${combination.join(', ')}`);
     try {
-        // 1. Calculate available tiles and required shapes (k)
-        const availableTileMask = FULL_GRID_MASK & (~lockedTilesMaskBigint);
-        const availableTileCount = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(availableTileMask);
-        // console.log(`[Worker CET] Available tiles: ${availableTileCount}`); // Reduced // CET for Combinatorial Exact Tiling
-        if (availableTileCount === 0) {
-            console.log("[Worker CET] No available tiles. Exact tiling impossible.");
-            return { status: 'completed', combinationsChecked: 0 };
-        }
-        if (availableTileCount % 4 !== 0) {
-            console.log(`[Worker CET] Available tile count (${availableTileCount}) not divisible by 4. Exact tiling impossible.`);
-            return { status: 'completed', combinationsChecked: 0 };
-        }
-        const k = availableTileCount / 4;
-        // console.log(`[Worker CET] Required shapes (k): ${k}`); // Reduced
-        // 2. Check if enough shapes are provided
-        const numSelectedShapes = allPotentialsData.length;
-        // console.log(`[Worker CET] Selected shapes (N): ${numSelectedShapes}`); // Reduced
-        if (numSelectedShapes < k) {
-            console.log(`[Worker CET] Not enough selected shapes (${numSelectedShapes}) to form a ${k}-shape tiling. Exact tiling impossible.`);
-            return { status: 'completed', combinationsChecked: 0 };
-        }
-        // 3. Precompute data for ALL provided potential shapes
-        // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Running precomputation for all ${numSelectedShapes} selected shapes...`); // Reduced
-        const shapesForPrecompute = allPotentialsData.map(p => ({ id: p.uniqueId }));
-        allShapeData = precomputeAllShapeData(shapesForPrecompute, lockedTilesMaskBigint);
-        const precomputeEndTime = Date.now();
-        // console.log(`[Worker CET @ ${precomputeEndTime - overallStartTime}ms] Precomputation done. ${allShapeData.size} shapes have data.`); // Reduced
-        // Filter out shapes that had no valid placements after precomputation
-        const potentialsWithValidPlacements = allPotentialsData.filter(p => {
-            const data = allShapeData.get(p.uniqueId);
-            return data && data.validPlacements.size > 0;
-        });
-        const numValidPotentials = potentialsWithValidPlacements.length;
-        console.log(`[Worker CET] Potentials with valid placements (N for combinations): ${numValidPotentials}`);
-        if (numValidPotentials < k) {
-            console.log(`[Worker CET] Not enough shapes with valid placements (${numValidPotentials}) to form a ${k}-shape tiling.`);
-            return { status: 'completed', combinationsChecked: 0 };
-        }
-        // Calculate total combinations for progress reporting
-        // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Calculating total combinations C(${numValidPotentials}, ${k})...`); // Reduced
-        const totalCombinations = calculateTotalCombinations(numValidPotentials, k);
-        // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Total combinations to check: ${totalCombinations}`); // Reduced further
-        // Emit initial progress
-        workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({ event: 'progressUpdate', data: { progress: 0, currentCount: 0, totalCount: totalCombinations } });
-        // 4. Iterate through combinations of k shapes from the valid potentials
-        // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Starting combinations loop (k=${k}, N=${numValidPotentials})...`); // Reduced
-        // --- DEBUG: Log valid placements (removed for general case) ---
-        for (const shapeCombination of combinations(potentialsWithValidPlacements, k)) {
-            // --- Cancellation Check ---
-            if (isCancelled()) {
-                console.log(`[Worker CET] Cancellation requested after ${combinationCount} combinations.`);
-                throw new workerpool__WEBPACK_IMPORTED_MODULE_0__.Promise.CancellationError();
-            }
-            // -------------------------
-            combinationCount++;
-            const loopIterationStartTime = Date.now();
-            if (combinationCount <= 5 || combinationCount % 1000 === 0) { // Log first 5 and every 1000th
-                // console.log(`[Worker CET @ ${loopIterationStartTime - overallStartTime}ms] --- Iteration ${combinationCount} / ${totalCombinations} ---`); // Reduced
-                // Log the shapes in this specific combination
-                const shapesInThisCombo = shapeCombination.map(p => p.uniqueId.split('::')[1]); // Get just the mask part
-                // console.log(`[Worker CET]   Testing combination: [${shapesInThisCombo.join(', ')}]`); // Reduced
-            }
-            // --- Progress Update --- MODIFIED --- 
-            // Update every 1000 or on the last iteration
-            if (combinationCount % 1000 === 0 || combinationCount === totalCombinations) {
-                const percentComplete = totalCombinations > 0 ? (combinationCount / totalCombinations) * 100 : (combinationCount > 0 ? 100 : 0); // Handle totalCombinations=0
-                workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
-                    event: 'progressUpdate',
-                    data: { progress: Math.min(100, Math.round(percentComplete)), currentCount: combinationCount, totalCount: totalCombinations }
-                });
-            }
-            // -------------------------------------
-            // Map combination to ShapeInput[] for the DLX solver
-            const shapesToTileWith = shapeCombination.map(p => ({ id: p.uniqueId }));
-            // 5. Call the DLX solver for the current combination
-            if (combinationCount <= 5 || combinationCount % 1000 === 0) {
-                // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms]   Calling findExactKTilingSolutions...`); // Reduced
-            }
-            const solveStartTime = Date.now();
-            const result = (0,_solver_dlx__WEBPACK_IMPORTED_MODULE_3__.findExactKTilingSolutions)(k, allShapeData, [], shapesToTileWith, initialGridStateBigint, lockedTilesMaskBigint);
-            const solveEndTime = Date.now();
-            if (combinationCount <= 5 || combinationCount % 1000 === 0) {
-                // console.log(`[Worker CET @ ${solveEndTime - overallStartTime}ms]   findExactKTilingSolutions returned in ${solveEndTime - solveStartTime}ms. Error: ${result.error ?? 'None'}, Solutions found: ${result.solutions?.length ?? 0}`); // Reduced
-            }
-            if (result.error) {
-                if (combinationCount <= 5) { // Only log errors verbosely for first few
-                    console.warn(`[Worker CET] DLX solver error for combination ${combinationCount}: ${result.error}`);
+        const { shapeDataMap, initialGridState, lockedTilesMask } = context;
+        // The shapes to use are defined by the combination array
+        const shapesToUseInput = combination.map(id => ({ id }));
+        // Need to map the incoming shape IDs (like shapeA::110...) to their canonical forms
+        // to look up precomputed data in shapeDataMap.
+        const shapeDataMapForCombination = new Map();
+        const canonicalFormsInCombination = new Set();
+        for (const fullShapeId of combination) {
+            const parts = fullShapeId.split('::');
+            if (parts.length === 2) {
+                const canonicalForm = parts[0]; // Assuming ID format is canonical::uniqueifier or similar
+                // TODO: Adjust canonicalForm extraction if ID format differs
+                const precomputedData = shapeDataMap.get(canonicalForm);
+                if (precomputedData) {
+                    // We map the *instance ID* (fullShapeId) to the *precomputed canonical data*
+                    // This allows buildDancingLinksConstraints to use the correct data for each instance.
+                    shapeDataMapForCombination.set(fullShapeId, precomputedData);
+                    canonicalFormsInCombination.add(canonicalForm);
+                }
+                else {
+                    console.warn(`[Worker solveExactTilingCombination] Precomputed data not found for canonical form ${canonicalForm} (from ${fullShapeId})`);
                 }
             }
-            // 6. Check if a solution was found for this combination
-            if (result.solutions && result.solutions.length > 0) {
-                console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Solution found for combination ${combinationCount}. Emitting...`);
-                // Map ALL found solutions to the serializable format
-                const solutionsToSend = result.solutions.map(solution => ({
-                    ...solution,
-                    gridState: solution.gridState.toString(),
-                    placements: solution.placements.map(p => ({
-                        shapeId: p.shapeId,
-                        placementMask: p.placementMask.toString()
-                    }))
-                }));
-                try {
-                    // Emit the entire array of solutions under the key 'solutions'
-                    workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({ event: 'solutionUpdate', data: { solutions: solutionsToSend } });
-                }
-                catch (emitError) {
-                    console.error("[Worker CET] Error emitting solution update:", emitError);
-                }
-            }
-            // Log end of iteration for the first few
-            if (combinationCount <= 5) {
-                // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] --- Finished Iteration ${combinationCount} ---`); // Reduced
+            else {
+                console.warn(`[Worker solveExactTilingCombination] Invalid shape ID format for lookup: ${fullShapeId}`);
             }
         }
-        // 7. If loop completes
-        const overallEndTime = Date.now();
-        // --- ADD FINAL PROGRESS UPDATE --- 
-        console.log("[Worker CET] Emitting final 100% progress update.");
-        workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
-            event: 'progressUpdate',
-            data: { progress: 100, currentCount: combinationCount, totalCount: totalCombinations }
-        });
-        // ---------------------------------
-        await new Promise(resolve => setTimeout(resolve, 10));
-        // console.log(`[Worker CET] Finished testing ${combinationCount} combinations in ${overallEndTime - overallStartTime}ms.`); // Reduced
-        return { status: 'completed', combinationsChecked: combinationCount };
-    }
-    catch (error) {
-        const errorEndTime = Date.now();
-        // Check cancellation error type safely
-        const isCancellationError = (e) => {
-            return e instanceof workerpool__WEBPACK_IMPORTED_MODULE_0__.Promise.CancellationError || (typeof e === 'object' && e !== null && e.name === 'CancellationError');
-        };
-        if (isCancellationError(error)) {
-            console.log(`[Worker CET] Task cancelled after ${errorEndTime - overallStartTime}ms.`);
-            return { status: 'cancelled', combinationsChecked: combinationCount };
+        // Check if we actually found data for k unique canonical forms
+        // This check might be redundant if the combination generation ensures k shapes are passed.
+        // if (canonicalFormsInCombination.size !== kValue) {
+        //     console.warn(`[Worker solveExactTilingCombination] Combination provided ${combination.length} IDs, but only mapped to ${canonicalFormsInCombination.size} unique canonical forms with data. Expected ${kValue}.`);
+        // Potentially return null or handle error
+        // }
+        const result = (0,_solver_dlx__WEBPACK_IMPORTED_MODULE_3__.findExactKTilingSolutions)(kValue, shapeDataMapForCombination, // Pass the map keyed by INSTANCE ID
+        [], // initialConstraints - not used in current dlx impl
+        shapesToUseInput, // Array of { id: instanceId } for buildConstraints
+        initialGridState, lockedTilesMask);
+        if (result.solutions && result.solutions.length > 0) {
+            // console.log(`[Worker solveExactTilingCombination] Solution FOUND for combination: ${combination.join(', ')}`);
+            return result.solutions[0]; // Return the first solution found for this combo
+        }
+        else if (result.error) {
+            console.error(`[Worker solveExactTilingCombination] DLX error for combination ${combination.join(', ')}:`, result.error);
+            // Decide if this should throw or just return null
+            return null;
         }
         else {
-            console.error("[Worker CET] Error during execution:", error);
-            return {
-                status: 'error',
-                combinationsChecked: combinationCount,
-                error: `Exact Tiling Worker Error: ${error instanceof Error ? error.message : String(error)} (Took ${errorEndTime - overallStartTime}ms)`
-            };
+            // console.log(`[Worker solveExactTilingCombination] No solution for combination: ${combination.join(', ')}`);
+            return null;
         }
-    }
-}
-// --- Backtracking-Based Maximal Placement Function ---
-const runMaximalPlacementBacktracking = async (taskData) => {
-    // console.log("[Worker runMaximalPlacementBacktracking] Starting maximal placement using Backtracking..."); // Reduced
-    allShapeData = new Map(); // Reset precomputed data
-    const { shapesToPlace, initialGridState = 0n, lockedTilesMask } = taskData;
-    const initialGridStateBigint = typeof initialGridState === 'string' ? BigInt(initialGridState) : initialGridState;
-    const lockedTilesMaskBigint = typeof lockedTilesMask === 'string' ? BigInt(lockedTilesMask) : lockedTilesMask;
-    const startTime = Date.now();
-    try {
-        console.log("[Worker runMaximalPlacementBacktracking] Running precomputation...");
-        // 1. Precompute all valid placements
-        allShapeData = precomputeAllShapeData(shapesToPlace, lockedTilesMaskBigint);
-        // 2. Prepare data for backtracking: Flatten and Sort valid placements
-        const allValidPlacementsUnsorted = [];
-        const placementCountsPerShapeType = {};
-        allShapeData.forEach((shapeData, fullShapeId) => {
-            const baseShapeId = fullShapeId.split('::')[0];
-            if (!placementCountsPerShapeType[baseShapeId]) {
-                placementCountsPerShapeType[baseShapeId] = 0;
-            }
-            shapeData.validPlacements.forEach(mask => {
-                allValidPlacementsUnsorted.push({ shapeId: fullShapeId, placementMask: mask });
-                placementCountsPerShapeType[baseShapeId]++;
-            });
-        });
-        // Sort based on the heuristic (shape types with fewer placements first)
-        const allValidPlacements = allValidPlacementsUnsorted.sort((a, b) => {
-            const baseIdA = a.shapeId.split('::')[0];
-            const baseIdB = b.shapeId.split('::')[0];
-            const countA = placementCountsPerShapeType[baseIdA] ?? Infinity;
-            const countB = placementCountsPerShapeType[baseIdB] ?? Infinity;
-            // Primary sort: fewer placements first
-            if (countA !== countB) {
-                return countA - countB;
-            }
-            // Secondary sort: maybe by shapeId to ensure consistency (optional)
-            return a.shapeId.localeCompare(b.shapeId);
-        });
-        if (allValidPlacements.length === 0) {
-            // console.log("[Worker runMaximalPlacementBacktracking] No valid placements found after precomputation."); // Reduced
-            return { maxShapes: 0, solutions: [] };
-        }
-        // console.log(`[Worker runMaximalPlacementBacktracking] Precomputation done. Found ${allValidPlacements.length} total valid placements (Sorted).`); // Indicate sorted
-        // 3. Initialize backtracking state
-        let maxKFound = 0;
-        let finalBestSolutions = [];
-        const usedShapeTypes = new Set();
-        // 4. Define the recursive backtracking function
-        const backtrack = (currentIndex, currentGrid, currentPlacementList, currentShapeTypeSet) => {
-            const currentK = currentPlacementList.length;
-            if (currentK > maxKFound) {
-                maxKFound = currentK;
-                const newBestSolution = { gridState: currentGrid, placements: [...currentPlacementList] };
-                finalBestSolutions = [newBestSolution];
-                // Directly emit the solution (assuming precompute now guarantees 4 tiles)
-                // console.log(`[Worker Backtrack] New best k = ${maxKFound} found. Emitting solutionUpdate...`); // Reduced
-                try {
-                    workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
-                        event: 'solutionUpdate',
-                        data: { maxShapes: maxKFound, solution: newBestSolution }
-                    });
-                }
-                catch (emitError) {
-                    console.error("[Worker Backtrack] Error emitting solution update:", emitError);
-                }
-            }
-            // Pruning: If remaining placements can't possibly beat maxKFound, stop.
-            if (currentIndex >= allValidPlacements.length || (currentK + (allValidPlacements.length - currentIndex)) < maxKFound) {
-                return;
-            }
-            // Iterate through remaining placements (now sorted)
-            for (let i = currentIndex; i < allValidPlacements.length; i++) {
-                const placement = allValidPlacements[i];
-                // Extract base shape ID (part before '::') to check type usage
-                const baseShapeId = placement.shapeId.split('::')[0];
-                // Check for overlap AND if shape type already used
-                if ((currentGrid & placement.placementMask) === 0n && // No overlap with current grid
-                    !currentShapeTypeSet.has(baseShapeId) // Shape type not already used
-                ) {
-                    // Place the shape
-                    currentPlacementList.push(placement);
-                    currentShapeTypeSet.add(baseShapeId);
-                    // Recurse
-                    backtrack(i + 1, // Start next search from the next placement
-                    currentGrid | placement.placementMask, currentPlacementList, currentShapeTypeSet);
-                    // Backtrack: Remove the shape
-                    currentPlacementList.pop();
-                    currentShapeTypeSet.delete(baseShapeId);
-                }
-            }
-        };
-        // 5. Start the backtracking search (uses the sorted placements)
-        // console.log("[Worker runMaximalPlacementBacktracking] Starting backtracking search (with sorted placements)..."); // Reduced
-        backtrack(0, initialGridStateBigint, [], usedShapeTypes);
-        const endTime = Date.now();
-        // console.log(`[Worker runMaximalPlacementBacktracking] Backtracking finished in ${endTime - startTime}ms. Final max k = ${maxKFound}. Found ${finalBestSolutions.length} solution(s).`); // Reduced
-        return { maxShapes: maxKFound, solutions: finalBestSolutions };
     }
     catch (error) {
-        console.error('[Worker runMaximalPlacementBacktracking] Error during execution:', error);
-        return { maxShapes: 0, solutions: [], error: `Maximal Placement Backtracking Worker Error: ${error.message}` };
+        console.error(`[Worker solveExactTilingCombination] Unexpected error processing combination ${combination.join(', ')}:`, error);
+        // Decide how to handle unexpected errors - throw? log? return null?
+        return null;
     }
 };
-// --- Worker Entry Point ---
+// Internal function for Backtracking (structure remains, needs adaptation for parallel start)
+// This function will need significant changes to accept a starting point/
+// branch and return the best result *for that branch only*.
+const solveBacktrackingBranch = async (payload) => {
+    const { context } = payload;
+    const { shapeDataMap, initialGridState, lockedTilesMask, potentials } = context;
+    console.log(`[Worker solveBacktrackingBranch] Started with ${potentials.length} potentials.`);
+    // Backtracking state
+    let maxK = 0;
+    let bestSolutions = [];
+    let rawSolutionCountAtMaxK = 0; // Counter for solutions found at the current maxK
+    const RAW_SOLUTION_LIMIT = 30000; // Stop collecting raw solutions after this many
+    let iterations = 0; // Counter for progress/debugging
+    // Potential Refinement: Could sort placements once outside the recursive calls if beneficial,
+    // but the current logic accesses placements per-potential inside the loop.
+    // For Task 7, let's keep the structure but ensure clarity.
+    const backtrack = (potentialIndex, currentGridState, placedShapes) => {
+        iterations++;
+        // Periodically emit progress update
+        if (iterations % 50000 === 0) {
+            try {
+                // Use type assertion for workerEmit if necessary
+                workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
+                    type: 'BACKTRACKING_PROGRESS',
+                    payload: {
+                        iterations: iterations,
+                        currentMaxK: maxK
+                    }
+                });
+            }
+            catch (e) {
+                // Handle potential errors during emit, though unlikely
+                console.error("[Worker Backtrack] Error emitting progress:", e);
+            }
+        }
+        // --- Base Case ---
+        // Condition is clear: all potentials considered for this specific path.
+        if (potentialIndex >= potentials.length) {
+            const currentK = placedShapes.length;
+            // Logic for updating best solutions seems correct.
+            if (currentK > maxK) {
+                maxK = currentK;
+                const newBestSolution = {
+                    gridState: currentGridState,
+                    placements: [...placedShapes], // Copy placedShapes array for the solution record
+                    maxShapes: maxK
+                };
+                bestSolutions = [newBestSolution]; // Reset bestSolutions with the new single best
+                rawSolutionCountAtMaxK = 1; // Reset counter for the new maxK
+                // console.log(`[Worker Backtrack DBG] New max k! k=${maxK}. Resetting solutions. Added gridState: ${currentGridState.toString(16)}`);
+            }
+            else if (currentK === maxK && maxK > 0) {
+                // Store multiple solutions achieving the current maxK, up to a limit
+                if (rawSolutionCountAtMaxK < RAW_SOLUTION_LIMIT) {
+                    const tiedSolution = {
+                        gridState: currentGridState,
+                        placements: [...placedShapes], // Copy placedShapes array
+                        maxShapes: maxK
+                    };
+                    bestSolutions.push(tiedSolution);
+                    rawSolutionCountAtMaxK++;
+                    // console.log(`[Worker Backtrack DBG] Tied max k! k=${maxK}. Appending solution (${rawSolutionCountAtMaxK}/${RAW_SOLUTION_LIMIT}). Added gridState: ${currentGridState.toString(16)}. Total raw now: ${bestSolutions.length}`);
+                }
+                else if (rawSolutionCountAtMaxK === RAW_SOLUTION_LIMIT) {
+                    // Log only once when the limit is first hit for this maxK
+                    // console.log(`[Worker Backtrack DBG] Reached raw solution limit (${RAW_SOLUTION_LIMIT}) for k=${maxK}. Will stop collecting, but continue searching for potentially higher k.`);
+                    rawSolutionCountAtMaxK++; // Increment past limit to prevent re-logging
+                }
+                // If rawSolutionCountAtMaxK > RAW_SOLUTION_LIMIT, do nothing (don't add to bestSolutions)
+            }
+            return; // End this recursive path
+        }
+        // --- Recursive Step --- //
+        const currentPotential = potentials[potentialIndex];
+        // Defensive check for robustness, although shouldn't happen with correct logic.
+        if (!currentPotential) {
+            console.error(`[Worker Backtrack] Error: potentialIndex ${potentialIndex} out of bounds for potentials array (length ${potentials.length}). Stopping this path.`);
+            return;
+        }
+        // Look up precomputed valid placements for the shape's canonical form.
+        const canonicalData = shapeDataMap.get(currentPotential.canonicalForm);
+        // validPlacements were pre-filtered against locked tiles.
+        const validPlacements = canonicalData?.validPlacements ?? [];
+        // --- Option 1: Try placing the current potential ---
+        // Iterate through all valid placements for the current potential's canonical form.
+        for (const placementMask of validPlacements) {
+            // Check for overlap with the *current grid state* (already placed shapes).
+            if ((currentGridState & placementMask) === 0n) {
+                // If placement is valid, place it:
+                // Add the specific instance ID and its placement mask to the current path.
+                placedShapes.push({ shapeId: currentPotential.id, placementMask });
+                // Recurse for the *next* potential index. This ensures that each potential
+                // instance (from the input 'potentials' array) is considered at most once
+                // down any single path, satisfying the instance uniqueness constraint.
+                backtrack(potentialIndex + 1, currentGridState | placementMask, placedShapes);
+                // Backtrack: Remove the shape just placed to explore other possibilities
+                // (e.g., different placements of this potential, or skipping it entirely).
+                placedShapes.pop();
+            }
+        }
+        // --- Option 2: Skip the current potential ---
+        // Always explore the path where the current potential instance is *not* placed.
+        // This is crucial because skipping an earlier potential might allow for a
+        // better overall solution using later potentials.
+        // Recurse for the *next* potential index, keeping gridState and placedShapes unchanged.
+        backtrack(potentialIndex + 1, currentGridState, placedShapes);
+    };
+    // Start the backtracking search from the first potential (index 0)
+    // console.log(`[Worker Backtrack] Starting search for ${potentials.length} potentials.`);
+    // --- Heuristic: Sort potentials by fewest valid placements first --- 
+    const sortedPotentials = [...potentials].sort((a, b) => {
+        const placementsA = shapeDataMap.get(a.canonicalForm)?.validPlacements?.length ?? Infinity;
+        const placementsB = shapeDataMap.get(b.canonicalForm)?.validPlacements?.length ?? Infinity;
+        return placementsA - placementsB;
+    });
+    // console.log("[Worker Backtrack] Potentials sorted by placement count:", sortedPotentials.map(p => ({ id: p.id, count: shapeDataMap.get(p.canonicalForm)?.validPlacements?.length ?? 'N/A' })));
+    // Start the search using the sorted potentials
+    backtrack(0, initialGridState, []); // Start with potential index 0
+    // console.log(`[Worker Backtrack] Search finished. Max k found: ${maxK}. Found ${bestSolutions.length} raw solutions achieving max k.`); // Log finish
+    // ADDED LOG: Log the collected raw solutions before filtering
+    // Note: This might be very verbose if many solutions are found.
+    // Consider stringifying only gridStates if output is too large.
+    // console.log(`[Worker Backtrack] Raw bestSolutions (first few):`, bestSolutions.slice(0, 5).map(s => ({ gridState: s.gridState.toString(), k: s.maxShapes }))); 
+    // --- Filter for unique solutions and limit to 500 --- //
+    let filteredSolutions = [];
+    if (bestSolutions.length > 0) {
+        const uniqueGridStates = new Set();
+        for (const solution of bestSolutions) {
+            if (!uniqueGridStates.has(solution.gridState)) {
+                uniqueGridStates.add(solution.gridState);
+                filteredSolutions.push(solution);
+                if (filteredSolutions.length >= 500) {
+                    console.log(`[Worker Backtrack] Reached limit of 500 unique solutions.`);
+                    break; // Stop collecting more unique solutions
+                }
+            }
+        }
+        // console.log(`[Worker Backtrack] Filtered down to ${filteredSolutions.length} unique solutions.`);
+    }
+    // Return the array of unique, limited best solutions (or null if k=0)
+    const result = filteredSolutions.length > 0 ? filteredSolutions : null;
+    // console.log(`[Worker Backtrack] Returning ${filteredSolutions.length} unique solutions for k=${maxK}`);
+    return result;
+};
+// --- NEW Main Worker Entry Point for Parallel Tasks ---
+const processParallelTask = async (task) => {
+    const taskStartTime = Date.now();
+    const originatingSolverType = task.data.originatingSolverType; // Extract type
+    try {
+        switch (task.type) {
+            case 'DLX_BATCH':
+                const { combinations, kValue, context } = task.data;
+                const totalInBatch = combinations.length;
+                // console.log(`[Worker processParallelTask] Processing DLX_BATCH with ${totalInBatch} combinations.`);
+                // Emit initial progress for this batch
+                workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
+                    type: 'PARALLEL_PROGRESS',
+                    payload: { checked: 0, total: totalInBatch }
+                });
+                for (let i = 0; i < combinations.length; i++) {
+                    // Check for cancellation before processing each combination
+                    if (workerpool__WEBPACK_IMPORTED_MODULE_0__.isCancelled && workerpool__WEBPACK_IMPORTED_MODULE_0__.isCancelled()) {
+                        // console.log("[Worker processParallelTask] DLX_BATCH task cancelled.");
+                        return; // Exit if cancelled
+                    }
+                    const combination = combinations[i];
+                    const solution = solveExactTilingCombination(combination, kValue, context);
+                    // Emit progress update
+                    workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
+                        type: 'PARALLEL_PROGRESS',
+                        payload: { checked: i + 1, total: totalInBatch }
+                    });
+                    if (solution) {
+                        // Solution found! Emit result and stop processing this batch.
+                        const resultPayload = {
+                            ...solution,
+                            gridState: solution.gridState.toString(), // Serialize BigInt
+                            placements: solution.placements.map(p => ({
+                                ...p,
+                                placementMask: p.placementMask.toString() // Serialize BigInt
+                            }))
+                        };
+                        workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
+                            type: 'PARALLEL_RESULT',
+                            payload: resultPayload,
+                            originatingSolverType: originatingSolverType // Include type in result
+                        }); // Use type assertion to bypass strict check
+                        return; // Found solution, task done
+                    }
+                    // Optional: Yield control briefly to allow cancellation checks etc.
+                    // await new Promise(resolve => setTimeout(resolve, 0)); 
+                }
+                // If loop completes without finding a solution in this batch
+                // console.log("[Worker processParallelTask] DLX_BATCH finished processing all combinations, no solution found in this batch.");
+                workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
+                    type: 'PARALLEL_RESULT',
+                    payload: null,
+                    originatingSolverType: originatingSolverType // Include type in result
+                }); // Use type assertion
+                break;
+            case 'BACKTRACKING_BRANCH':
+                // console.log("[Worker processParallelTask] Processing BACKTRACKING_BRANCH...");
+                const branchSolutions = await solveBacktrackingBranch(task.data);
+                // console.log("[Worker processParallelTask] BACKTRACKING_BRANCH finished.");
+                // Serialize the entire array of solutions, or send null if no solutions found
+                const branchResultPayload = branchSolutions ? branchSolutions.map(solution => ({
+                    ...solution,
+                    gridState: solution.gridState.toString(), // Serialize BigInt for gridState
+                    placements: solution.placements.map(p => ({
+                        ...p,
+                        placementMask: p.placementMask.toString() // Serialize BigInt for placementMask
+                    }))
+                    // maxShapes is already a number, no need to serialize
+                })) : null;
+                workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
+                    type: 'PARALLEL_RESULT',
+                    payload: branchResultPayload, // Send the array (or null)
+                    originatingSolverType: originatingSolverType // Include type in result
+                }); // Use type assertion
+                break;
+            default:
+                console.error("[Worker processParallelTask] Unknown task type received:", task);
+                workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
+                    type: 'PARALLEL_ERROR',
+                    payload: { message: `Unknown task type: ${task.type}` }
+                });
+        }
+    }
+    catch (error) {
+        const isCancellation = error instanceof workerpool__WEBPACK_IMPORTED_MODULE_0__.Promise.CancellationError || error.name === 'CancellationError';
+        if (!isCancellation) {
+            console.error(`[Worker processParallelTask] Error processing task type ${task.type}:`, error);
+            workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
+                type: 'PARALLEL_ERROR',
+                payload: {
+                    message: `Error in task ${task.type}: ${error.message}`,
+                    originalTaskType: task.type
+                }
+            });
+        }
+        // Do not emit anything further if cancelled, let the main thread handle timeout/cleanup
+    }
+    finally {
+        const taskEndTime = Date.now();
+        // console.log(`[Worker processParallelTask] Finished task type ${task.type} in ${taskEndTime - taskStartTime}ms`);
+    }
+};
+// --- Worker Registration (Updated) ---
 workerpool__WEBPACK_IMPORTED_MODULE_0__.worker({
-    runCombinatorialExactTiling: runCombinatorialExactTiling,
-    runMaximalPlacementBacktracking: runMaximalPlacementBacktracking
+    initializeSolverContext: initializeSolverContext,
+    processParallelTask: processParallelTask
 });
-// console.log('[Solver Worker] Worker initialized and ready.'); // Reduced
+// console.log('[Solver Worker] Worker updated for parallel tasks and ready.');
 
 })();
 

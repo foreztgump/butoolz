@@ -16,8 +16,12 @@ export const TOTAL_TILES = CONFIG_TOTAL_TILES;
 
 // Helper map for quick lookup of tile ID by axial coordinates
 const coordToIdMap: Map<string, number> = new Map();
+// Helper map for quick lookup of coordinates by tile ID
+const idToCoordMap: Map<number, { q: number; r: number }> = new Map();
+
 HEX_GRID_COORDS.forEach((coord: { q: number; r: number; id: number }) => {
   coordToIdMap.set(`${coord.q},${coord.r}`, coord.id);
+  idToCoordMap.set(coord.id, { q: coord.q, r: coord.r });
 });
 
 /**
@@ -312,38 +316,45 @@ export const findLowestSetBitIndex = (mask: bigint): number => {
 };
 
 /**
- * Translates a shape bitmask based on a delta in axial coordinates.
+ * Translates a shape bitmask based on a delta in axial coordinates. (Optimized)
  *
  * @param shapeMask - The bitmask of the shape to translate.
  * @param deltaQ - The change in the q coordinate.
  * @param deltaR - The change in the r coordinate.
- * @returns The bitmask of the translated shape, or 0n if translation results in invalid coordinates.
+ * @returns The bitmask of the translated shape, or 0n if translation results in invalid coordinates or the input mask is 0n.
  */
 export const translateShapeBitmask = (
   shapeMask: bigint,
   deltaQ: number,
   deltaR: number
 ): bigint => {
+  if (shapeMask === 0n) return 0n;
+
   let translatedMask = 0n;
-  for (const coord of HEX_GRID_COORDS) {
-    const bitPosition = BigInt(coord.id - 1);
-    // Check if the current tile is part of the shape
-    if ((shapeMask & (1n << bitPosition)) !== 0n) {
-      // Calculate translated coordinates
-      const q_trans = coord.q + deltaQ;
-      const r_trans = coord.r + deltaR;
+  const originalTileIds = bitmaskToTileIds(shapeMask); // Get IDs of set bits
 
-      // Find the ID of the tile at the translated coordinates
-      const translatedId = coordToIdMap.get(`${q_trans},${r_trans}`);
-
-      // If the translated coordinate is valid and exists on the grid
-      if (translatedId !== undefined) {
-        const translatedBitPosition = BigInt(translatedId - 1);
-        translatedMask |= 1n << translatedBitPosition;
-      }
-      // If translated coordinate is off-grid, that part of the shape is lost
+  for (const originalId of originalTileIds) {
+    const originalCoord = idToCoordMap.get(originalId);
+    if (!originalCoord) {
+        console.warn(`[translateShapeBitmask] Could not find coordinates for original tile ID: ${originalId}`);
+        continue; // Skip if coordinate mapping fails (shouldn't happen)
     }
+
+    // Calculate translated coordinates
+    const q_trans = originalCoord.q + deltaQ;
+    const r_trans = originalCoord.r + deltaR;
+
+    // Find the ID of the tile at the translated coordinates
+    const translatedId = coordToIdMap.get(`${q_trans},${r_trans}`);
+
+    // If the translated coordinate is valid and exists on the grid
+    if (translatedId !== undefined) {
+      const translatedBitPosition = BigInt(translatedId - 1);
+      translatedMask |= 1n << translatedBitPosition;
+    }
+    // If translated coordinate is off-grid, that part of the shape is lost
   }
+
   return translatedMask;
 };
 

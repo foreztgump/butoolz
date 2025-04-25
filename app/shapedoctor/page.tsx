@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import {
   Puzzle,
   RefreshCw,
+  Ban,
 } from "lucide-react";
 import * as Config from './shapedoctor.config';
 import type { Point, HexCoord } from './types';
@@ -34,7 +35,14 @@ import {
     type SolverResultPayloadBacktracking, 
     type SolutionRecord,
     type ShapeData,
-    type PlacementRecord
+    type PlacementRecord,
+    type PotentialShape,
+    type ShapeDataMap,
+    type SolverTaskContext,
+    type DLXBatchPayload,
+    type BacktrackingBranchPayload,
+    type WorkerTaskPayload,
+    type WorkerParallelResponseMessage,
 } from './types';
 import { 
     bitmaskToTileIds, 
@@ -86,6 +94,66 @@ const countSetBitsFromString = (shapeString: string): number => {
     return count;
 };
 
+// --- Helper Functions (Move parallel execution logic here) ---
+
+// Combinatorial Helpers
+function calculateTotalCombinations(n: number, k: number): number {
+  if (k < 0 || k > n) {
+    return 0;
+  }
+  if (k === 0 || k === n) {
+    return 1;
+  }
+  if (k > n / 2) {
+    k = n - k; // Optimization
+  }
+  let result = 1;
+  for (let i = 1; i <= k; ++i) {
+    result = result * (n - i + 1) / i;
+  }
+  return Math.round(result); // Use Math.round for potential floating point inaccuracies
+}
+
+function* combinations<T>(elements: T[], k: number): Generator<T[]> {
+  if (k < 0 || k > elements.length) {
+    return; // Invalid input
+  }
+  if (k === 0) {
+    yield [];
+    return;
+  }
+  if (k === elements.length) {
+    yield [...elements];
+    return;
+  }
+
+  const n = elements.length;
+  const indices = Array.from({ length: k }, (_, i) => i);
+
+  while (true) {
+    yield indices.map(i => elements[i]);
+
+    // Find the rightmost index that can be incremented
+    let i = k - 1;
+    while (i >= 0 && indices[i] === i + n - k) {
+      i--;
+    }
+
+    if (i < 0) {
+      // All combinations generated
+      return;
+    }
+
+    // Increment this index
+    indices[i]++;
+
+    // Update subsequent indices
+    for (let j = i + 1; j < k; j++) {
+      indices[j] = indices[j - 1] + 1;
+    }
+  }
+}
+
 export default function ShapeDoctor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -96,10 +164,10 @@ export default function ShapeDoctor() {
   const hoveredHexIdRef = useRef<number | null>(null);
   const currentOffsetRef = useRef<Point>({ x: 0, y: 0 });
   const animationFrameIdRef = useRef<number | null>(null);
-  // Ref for workerpool instance - Use any temporarily
-  const workerPoolRef = useRef<any | null>(null); // Changed type to any
-  const currentTaskPromiseRef = useRef<workerpool.Promise<any> | null>(null); // Ref for cancellation
+  const workerPoolRef = useRef<any | null>(null);
   const anyExactSolutionFound = useRef<boolean>(false);
+  const shapeDataMapRef = useRef<ShapeDataMap | null>(null);
+  const activeWorkerPromisesRef = useRef<workerpool.Promise<any>[]>([]);
 
   const [selectedTiles, setSelectedTiles] = useState<Set<number>>(new Set());
   const [potentials, setPotentials] = useState<string[]>([]);
@@ -122,8 +190,12 @@ export default function ShapeDoctor() {
   const [solverError, setSolverError] = useState<string | null>(null);
   const [totalCombinations, setTotalCombinations] = useState<number | null>(null); // <--- MODIFIED TYPE
   const [combinationsChecked, setCombinationsChecked] = useState<number>(0); // For progress display
+  const [solverStatusMessage, setSolverStatusMessage] = useState<string | null>(null);
 
   const formattedProgress = `${Math.round(solveProgress)}%`;
+
+  // Calculate FULL_GRID_MASK directly
+  const FULL_GRID_MASK = (1n << BigInt(Config.TOTAL_TILES)) - 1n;
 
   // Initialize workerpool Pool
   useEffect(() => {
@@ -174,19 +246,33 @@ export default function ShapeDoctor() {
 
   // --- Helper Functions ---
   const updateGridStateFromSolution = useCallback((solution: SolutionRecord) => {
-    // console.log("[updateGridStateFromSolution] Called. Updating grid for solution:", solution); // Reduced
+    // console.log("[updateGridStateFromSolution] Input Solution:", JSON.stringify(solution, (key, value) => 
+    //     typeof value === 'bigint' ? value.toString() + 'n' : value, 2)
+    // ); 
     const newGrid = Array(Config.TOTAL_TILES + 1).fill(-1);
     const numColors = Config.HEX_COLORS.length;
 
     if (solution.placements) {
       solution.placements.forEach((placement, shapeIndex) => {
-        const mask = placement.placementMask;
-        const currentShapeTiles = typeof mask === 'bigint' ? bitmaskToTileIds(mask) : [];
+        // Explicitly convert mask back to BigInt
+        let mask: bigint;
+        try {
+          // Assume it might be string or number after transport
+          mask = BigInt(placement.placementMask);
+        } catch (e) {
+          console.error(`Error converting placementMask ${placement.placementMask} to BigInt for shape ${placement.shapeId}`, e);
+          return; // Skip this placement if conversion fails
+        }
 
-        if (currentShapeTiles.length === 0) return; // Skip empty shapes
+        // Now use the converted mask
+        const currentShapeTiles = bitmaskToTileIds(mask);
 
-        // Log details for EACH placement mask
-        // console.log(`  Processing Placement ${shapeIndex}: ShapeId=${placement.shapeId}, Mask=${mask?.toString()}, Tiles=[${currentShapeTiles.join(',')}] (Count: ${currentShapeTiles.length})`); // Reduced
+        if (currentShapeTiles.length === 0) {
+            // Add a log here to see if masks are resulting in zero tiles
+            console.warn(`Placement mask ${mask.toString()} for shape ${placement.shapeId} resulted in 0 tiles after bitmaskToTileIds`);
+            return; 
+        }
+
         if (currentShapeTiles.length !== 4 && currentShapeTiles.length > 0) {
           console.error(`    ERROR: Placement mask resulted in ${currentShapeTiles.length} tiles!`);
         }
@@ -222,7 +308,13 @@ export default function ShapeDoctor() {
     } else {
       console.warn("[updateGridStateFromSolution] Solution object missing placements array.");
     }
-    // console.log("[updateGridStateFromSolution] Final newGrid before setGridState:", newGrid); // Reduced
+    
+    // Comment out detailed logging BEFORE setting state
+    // console.log("[updateGridStateFromSolution] Final newGrid calculated:", JSON.stringify(newGrid));
+    // Log non -1 values for quick check
+    // const coloredTiles = newGrid.map((color, index) => color !== -1 ? `${index}:${color}` : null).filter(x => x);
+    // console.log("[updateGridStateFromSolution] Colored tiles (id:color):", coloredTiles.join(', '));
+
     setGridState(newGrid);
   }, [setGridState]);
 
@@ -393,295 +485,445 @@ export default function ShapeDoctor() {
     setSelectedTiles,
   ]);
 
-  // Function to run the Maximal Placement solver
-  const runMaximalPlacementSolver = async (potentialsToSolve: string[], currentLockedMask: bigint) => {
-    console.log("[runMaximalPlacementSolver] Initiating Maximal Placement (Backtracking)...");
-    setCurrentSolver('maximal');
-    setBestSolutions([]); // Clear previous maximal solutions
-    setCurrentSolutionIndex(-1);
-    
-    if (!workerPoolRef.current) {
-      toast.error("Worker pool not available for Maximal Placement.");
-      setIsSolving(false);
-      return;
-    }
+  // --- Helper Functions (Move parallel execution logic here) ---
 
-    // Prepare data for the backtracking worker
-    const shapesToPlaceInput = potentialsToSolve.map(p => { 
-        const originalString = p; // Use the potential string directly
-        // Construct the ID format the worker expects ('identifier::originalString')
-        // Using original string itself as the identifier part is fine as worker splits it.
-        return { id: `original::${originalString}` }; 
-    });
-    
-    const taskData: SolverExecDataBacktracking = {
-        shapesToPlace: shapesToPlaceInput,
-        lockedTilesMask: currentLockedMask.toString(), // Send as string
-        // initialGridState can be added if needed, defaults to 0n in worker
-    };
+  // Central handler for messages from any worker
+  const handleWorkerMessage = useCallback((message: WorkerParallelResponseMessage) => {
+    console.log(`[Main Thread] handleWorkerMessage triggered. Type: ${message.type}`);
+    // console.log(`[Main Thread] currentSolver state inside handleWorkerMessage: ${currentSolver}`); // No longer need component state here
 
-    try {
-        console.log("[runMaximalPlacementSolver] Executing worker...");
-        const result: SolverResultPayloadBacktracking = await workerPoolRef.current.exec(
-            'runMaximalPlacementBacktracking', 
-            [taskData],
-            {
-                on: (payload: any) => {
-                    console.log("[Maximal Placement] Received update from worker:", payload);
-                    
-                    if (payload && payload.event === 'solutionUpdate' && payload.data && payload.data.solution && typeof payload.data.maxShapes === 'number') {
-                        const data = payload.data;
-                         // Since updates might come frequently, only update if maxShapes improved or is the first one
-                         setBestSolutions(prevSolutions => {
-                             // Check if the new solution offers a better or equal maxK
-                             const currentMaxK = prevSolutions[0]?.placements.length ?? 0;
-                             if (data.maxShapes >= currentMaxK) {
-                                 // Replace existing solutions if the new one is strictly better,
-                                 // or add if it's the first or equal to the best
-                                 const newSolutions = data.maxShapes > currentMaxK ? [data.solution] : [...prevSolutions, data.solution];
-                                 // Deduplicate solutions based on gridState (optional, but good practice)
-                                 const uniqueSolutionsMap = new Map<string, SolutionRecord>();
-                                 newSolutions.forEach(sol => uniqueSolutionsMap.set(sol.gridState.toString(), sol));
-                                 const uniqueSolutions = Array.from(uniqueSolutionsMap.values());
-                                 
-                                 // Sort solutions (e.g., by gridState or keep worker order)
-                                 // For simplicity, let's just keep the unique ones for now.
-                                 setCurrentSolutionIndex(0); // Show the first best solution
-                                 return uniqueSolutions;
-                             }
-                             return prevSolutions; // Keep old solutions if new one isn't better
-                         });
-                     } else if (payload && payload.event === 'progressUpdate' && payload.data && typeof payload.data.progress === 'number') {
-                        // Optional: Handle progress updates if the worker sends them
-                        setSolveProgress(payload.data.progress);
+    switch (message.type) {
+      case 'PARALLEL_PROGRESS':
+        // Update progress based on batches checked
+        const checkedInBatch = message.payload.checked ?? 0; 
+        
+        // ONLY update the raw count here
+        setCombinationsChecked(prev => prev + checkedInBatch);
+        break;
+
+      case 'PARALLEL_RESULT':
+        // Handle solutions found by a worker
+        const resultPayload = message.payload; // Payload can be SolutionRecord | SolutionRecord[] | null
+        const solverType = message.originatingSolverType; // <-- Use type from message
+        console.log(`[Main Thread] Processing PARALLEL_RESULT from originating solver: ${solverType}`); // Log originating type
+        
+        if (resultPayload) {
+            if (solverType === 'exact') { // <-- Check message type
+                // Exact tiling sends single solutions (should not be an array)
+                if (!Array.isArray(resultPayload)) { 
+                    const solution = resultPayload as SolutionRecord; // Safe assertion now
+                    console.log(`[Main Thread] Exact Tiling SOLUTION FOUND by worker:`, solution);
+                    if (!anyExactSolutionFound.current) {
+                       anyExactSolutionFound.current = true;
+                       console.log("Setting anyExactSolutionFound to true");
+                       updateGridStateFromSolution(solution);
                     }
-                     else {
-                        // Add more detailed logging to see the actual data structure
-                        if (payload && payload.event === 'solutionUpdate') {
-                            console.warn(`[Maximal Placement] Received 'solutionUpdate' but format is wrong. Data:`, payload.data);
-                        } else if (payload && payload.event === 'progressUpdate') {
-                            console.warn(`[Maximal Placement] Received 'progressUpdate' but format is wrong. Data:`, payload.data);
-                        } else {
-                            console.warn("[Maximal Placement] Received completely unexpected payload format from worker:", payload);
-                        }
-                     }
+                    setExactTilingSolutions(prev => [...prev, solution]);
+                    if (exactTilingSolutions.length === 0) { 
+                       setCurrentExactTilingIndex(0); 
+                    }
+                    toast.success("Exact tiling solution found!");
+                } else {
+                    console.error("[Main Thread] Received ARRAY payload for Exact Tiling result. Expected single object.", resultPayload);
                 }
-            }
-        );
-        console.log("[runMaximalPlacementSolver] Worker finished.", result);
-
-        if (result.error) {
-            throw new Error(result.error);
-        }
-
-        // Final update with potentially more solutions found at the end
-        if (result.solutions && result.solutions.length > 0) {
-             // Deduplicate solutions based on gridState
-            const finalUniqueSolutionsMap = new Map<string, SolutionRecord>();
-            result.solutions.forEach((sol: SolutionRecord) => finalUniqueSolutionsMap.set(sol.gridState.toString(), sol)); // Add type to sol
-            const finalUniqueSolutions = Array.from(finalUniqueSolutionsMap.values());
-
-            setBestSolutions(finalUniqueSolutions);
-            setCurrentSolutionIndex(0); // Start viewing from the first solution
-            toast.success(`Maximal Placement found ${result.maxShapes} shape(s) in ${finalUniqueSolutions.length} configuration(s).`);
-            if(finalUniqueSolutions.length > 0){
-              updateGridStateFromSolution(finalUniqueSolutions[0]); // Show first solution
+            } else if (solverType === 'maximal') { // <-- Check message type
+                 // Backtracking sends an array of solutions (or null)
+                 if (Array.isArray(resultPayload)) { // Check if it's an array
+                     const solutions = resultPayload as SolutionRecord[]; // Safe assertion now
+                     console.log(`[Main Thread] Backtracking SOLUTIONS FOUND by worker (count: ${solutions.length})`);
+                     if (solutions.length > 0) {
+                        setBestSolutions(solutions);
+                        setCurrentSolutionIndex(0);
+                        toast.success(`Maximal placement found (${solutions[0].maxShapes} shapes)! Found ${solutions.length} layouts.`);
+                        updateGridStateFromSolution(solutions[0]); 
+                     }
+                 } else {
+                    console.error("[Main Thread] Received NON-ARRAY payload for Maximal Placement result. Expected array.", resultPayload);
+                 }
             }
         } else {
-            setBestSolutions([]);
-            setCurrentSolutionIndex(-1);
-            toast.info("Maximal Placement: No solution found.");
+           // Null payload handling (e.g., backtracking found k=0)
+           console.log(`[Main Thread] Received null result payload (solver: ${solverType}).`);
+           if (solverType === 'maximal') {
+               toast.info("Backtracking finished: No placements possible.");
+               setBestSolutions([]); // Clear previous solutions
+               setCurrentSolutionIndex(-1);
+           }
+           // Handle null for exact if needed, though current worker impl sends empty array
         }
+        break;
 
-    } catch (err: any) {
-        console.error("[runMaximalPlacementSolver] Error:", err);
-        setSolverError(`Maximal Placement Error: ${err.message}`);
-        toast.error(`Maximal Placement failed: ${err.message}`);
-        setBestSolutions([]);
-        setCurrentSolutionIndex(-1);
-    } finally {
-        setIsSolving(false);
+      case 'PARALLEL_ERROR':
+        const errorMsg = message.payload.message;
+        console.error("[Main Thread] Received error from worker:", errorMsg);
+        if (!solverError) { // Avoid overwriting earlier errors
+          setSolverError(`Worker Error: ${errorMsg}`);
+          toast.error(`Worker Error: ${errorMsg}`);
+        }
+        // Optionally terminate pool on worker error
+        // if (workerPoolRef.current) workerPoolRef.current.terminate(true);
+        break;
+
+      // Add case for PARALLEL_LOG
+      case 'PARALLEL_LOG':
+        const { level, message: logMessage } = message.payload;
+        const logPrefix = "[Worker Log]";
+        switch (level) {
+          case 'debug':
+            console.debug(`${logPrefix} ${logMessage}`);
+            break;
+          case 'info':
+            console.info(`${logPrefix} ${logMessage}`);
+            break;
+          case 'warn':
+            console.warn(`${logPrefix} ${logMessage}`);
+            break;
+          case 'error':
+            console.error(`${logPrefix} ${logMessage}`);
+            break;
+          default:
+            console.log(`${logPrefix} (Unknown level ${level}): ${logMessage}`);
+        }
+        break;
+
+      // Add case for BACKTRACKING_PROGRESS
+      case 'BACKTRACKING_PROGRESS':
+        const { iterations, currentMaxK } = message.payload;
+        // Update UI state for progress display (e.g., a status message)
+        setSolverStatusMessage(`Searching... Iteration: ${iterations.toLocaleString()}, Max K Found: ${currentMaxK}`);
+        break;
+
+      default:
+        // Type guard for exhaustive check (optional but good practice)
+        const _exhaustiveCheck: never = message;
+        console.warn("[Main Thread] Received unknown message type from worker:", _exhaustiveCheck);
     }
-  };
+  }, [
+      totalCombinations,
+      solverError,
+      anyExactSolutionFound,
+      setCombinationsChecked,
+      setExactTilingSolutions,
+      setCurrentExactTilingIndex,
+      setSolverError,
+      updateGridStateFromSolution,
+      setBestSolutions,
+      setCurrentSolutionIndex,
+      setSolverStatusMessage
+  ]);
 
-  // Updated Solver Logic
-  const handleUnifiedSolve = async () => {
-    console.log("[handleUnifiedSolve] Initiating solve...");
-    // Reset states before starting a new solve
-    setIsSolving(true);
-    setSolveProgress(0);
-    setSolverError(null);
-    setBestSolutions([]); // Clear previous maximal solutions
-    setCurrentSolutionIndex(-1);
-    setExactTilingSolutions([]); // Clear previous exact solutions
-    setCurrentExactTilingIndex(-1);
-    setCombinationsChecked(0);
-    setTotalCombinations(null);
-    anyExactSolutionFound.current = false; // Reset flag
-    setCurrentSolver(null); // Reset solver indicator
+  // Dynamic Batch Size Calculation
+  const determineDynamicBatchSize = useCallback((totalItems: number): number => {
+    const poolSize = navigator.hardwareConcurrency || 4;
+    if (totalItems <= 0) return 100;
+    const targetBatchesPerWorker = 4;
+    const totalTargetBatches = poolSize * targetBatchesPerWorker;
+    let batchSize = Math.ceil(totalItems / totalTargetBatches);
+    batchSize = Math.max(10, batchSize);
+    batchSize = Math.min(5000, batchSize);
+    return batchSize;
+  }, []); // Empty dependency array if it doesn't depend on component state
 
-    if (!workerPoolRef.current) {
-      toast.error("Worker pool not initialized.");
-      setIsSolving(false);
-      return;
-    }
-    
-    // Filter valid potentials (length and 4 tiles)
-    const validLengthPotentials = potentials.filter(p => typeof p === 'string' && p.length === Config.TOTAL_TILES);
-    const validFourTilePotentials = validLengthPotentials.filter(p => countSetBitsFromString(p) === 4);
-    const potentialsToSolve = validFourTilePotentials;
-    const lengthExcludedCount = potentials.length - validLengthPotentials.length;
-    const tileCountExcludedCount = validLengthPotentials.length - validFourTilePotentials.length;
-    if (lengthExcludedCount > 0) toast.warning(`Excluded ${lengthExcludedCount} potential(s) due to incorrect length.`);
-    if (tileCountExcludedCount > 0) toast.warning(`Excluded ${tileCountExcludedCount} potential(s) without exactly 4 tiles.`);
+  // Helper to dispatch a batch
+  const dispatchBatch = useCallback(( // Use useCallback
+      batchCombinations: string[][],
+      kValue: number,
+      context: SolverTaskContext, // Pass the actual context object
+      promisesArray: workerpool.Promise<any>[]
+  ) => {
+      if (!workerPoolRef.current || batchCombinations.length === 0) return;
 
-    if (potentialsToSolve.length === 0) {
-      toast.error("No valid 4-tile potential shapes to solve with.");
-        setIsSolving(false);
-        return;
-    }
-
-    // Calculate needed values
-    const currentLockedMask = lockedTilesMask;
-    const availableTileCount = Config.TOTAL_TILES - countSetBits(currentLockedMask);
-    const numSelectedShapes = potentialsToSolve.length;
-    const k = (availableTileCount > 0 && availableTileCount % 4 === 0) ? availableTileCount / 4 : 0;
-
-    console.log(`[handleUnifiedSolve] Available Tiles: ${availableTileCount}, Selected Shapes: ${numSelectedShapes}, Required for Exact (k): ${k}`);
-
-    // Determine if Exact Tiling should be attempted
-    const attemptExactTiling = k > 0 && numSelectedShapes >= k;
-
-    if (attemptExactTiling) {
-      console.log("[handleUnifiedSolve] Attempting Exact Tiling (Subset Search)...");
-      setCurrentSolver('exact');
-      
-      const potentialDataForWorker = potentialsToSolve.map(p => { 
-          const originalString = p; // Use the potential string directly
-          // Construct the ID format the worker expects ('identifier::originalString')
-          const uniqueId = `original::${originalString}`;
-          return { uniqueId: uniqueId, baseMaskString: originalString }; 
-      });
-
-      const taskData: SolverExecDataExactTiling = {
-          allPotentialsData: potentialDataForWorker,
-          lockedTilesMask: currentLockedMask.toString(),
-          // initialGridState optional
+      const batchPayload: DLXBatchPayload = {
+          combinations: batchCombinations,
+          kValue: kValue,
+          context: context, // Pass context directly
+          originatingSolverType: 'exact' // Add type
       };
 
       try {
-        if (currentTaskPromiseRef.current) { // Cancel any previous task
-            try { currentTaskPromiseRef.current.cancel(); } catch (e) { console.warn("Error cancelling previous task:", e); }
-            currentTaskPromiseRef.current = null;
-        }
-
-        currentTaskPromiseRef.current = workerPoolRef.current!.exec(
-            'runCombinatorialExactTiling', 
-            [taskData],
-            { 
-                on: (payload: any) => {
-                    // console.log("[Exact Tiling] Received update from worker:", payload); // Reduced
-                    // Accumulate ALL solutions found by the worker
-                    if (payload && payload.event === 'solutionUpdate' && payload.data && Array.isArray(payload.data.solutions)) {
-                        const newSolutions = payload.data.solutions as SolutionRecord[]; // Assuming worker sends array
-                        if (newSolutions.length > 0) {
-                           anyExactSolutionFound.current = true; // Mark that at least one was found
-                           // console.log(`[Exact Tiling] Received ${newSolutions.length} new solution(s) from worker.`); // Reduced
-                           // Validate structure of the first new solution for safety
-                           // console.log('[Exact Tiling] First new solution raw data:', newSolutions[0]); // Log raw data
-                           if (typeof newSolutions[0].gridState === 'string' && Array.isArray(newSolutions[0].placements)) {
-                               setExactTilingSolutions(prevSolutions => [
-                                   ...prevSolutions,
-                                   // Convert BigInt strings back for internal state (optional, depends if state uses BigInt)
-                                   ...newSolutions.map(sol => ({
-                                       ...sol,
-                                       gridState: BigInt(sol.gridState), // Assuming state uses BigInt
-                                       placements: sol.placements.map(p => ({...p, placementMask: BigInt(p.placementMask)}))
-                                   }))
-                               ]);
-                               // Optionally set index to the first of the newly added solutions
-                               if (currentExactTilingIndex === -1) {
-                                   setCurrentExactTilingIndex(0); // Show the first solution found overall
-                               }
-                           } else {
-                               console.error("[Exact Tiling] Received solutionUpdate has incorrect structure:", newSolutions[0]);
-                           }
-                       }
-                    } else if (payload && payload.event === 'progressUpdate' && payload.data) {
-                        // Ensure progress is between 0 and 100
-                        const progress = Math.max(0, Math.min(100, payload.data.progress ?? 0));
-                        setSolveProgress(progress);
-                        setCombinationsChecked(payload.data.currentCount ?? 0);
-                        // Handle potential null from worker if calculation failed
-                        setTotalCombinations(payload.data.totalCount ?? null);
-                    } else {
-                        // Add more detailed logging to see the actual data structure
-                        if (payload && payload.event === 'solutionUpdate') {
-                            console.warn(`[Exact Tiling] Received 'solutionUpdate' but format is wrong. Data:`, payload.data);
-                        } else if (payload && payload.event === 'progressUpdate') {
-                            console.warn(`[Exact Tiling] Received 'progressUpdate' but format is wrong. Data:`, payload.data);
-                        } else {
-                            console.warn("[Exact Tiling] Received completely unexpected payload format from worker:", payload);
-                        }
-                    }
-                }
-            }
-        );
-
-        const result = await currentTaskPromiseRef.current;
-        console.log("[handleUnifiedSolve] Exact Tiling task finished.", result);
-
-        if (anyExactSolutionFound.current) {
-          // Exact Tiling Success! Use the solutions stored in state.
-          // State already updated by the 'on' handler
-          // Ensure the index is valid if solutions exist
-          if (exactTilingSolutions.length > 0 && currentExactTilingIndex === -1) {
-             setCurrentExactTilingIndex(0);
+          const promise = workerPoolRef.current.exec('processParallelTask', [
+              { type: 'DLX_BATCH', data: batchPayload } as WorkerTaskPayload
+          ], {
+              on: handleWorkerMessage // Use the memoized handler directly
+          });
+          promisesArray.push(promise);
+      } catch (execError) {
+          console.error("Error dispatching worker batch:", execError);
+          if (!solverError) { // Check solverError state
+              setSolverError("Failed to dispatch solver task.");
+              toast.error("Failed to dispatch solver task.");
           }
-          setIsSolving(false);
-          setCurrentSolver('exact');
-          toast.success(`Exact Tiling found ${exactTilingSolutions.length} ${k}-shape solution(s)!`);
-          // updateGridStateFromSolution will be triggered by useEffect dependency on currentExactTilingIndex
-        } else if (result.status === 'completed') {
-            // Task completed, but no solution was emitted/captured
-            const checkedCount = result.combinationsChecked ?? combinationsChecked; // Use state as fallback
-            const totalCount = totalCombinations; // Use state value
-            const checkedInfo = totalCount !== null
-                ? `${checkedCount.toLocaleString()} / ${totalCount.toLocaleString()}`
-                : `${checkedCount.toLocaleString()}`;
-
-            console.log("[handleUnifiedSolve] Exact Tiling completed but found no subset solution. Falling back to Maximal Placement.");
-            toast.info(`Exact Tiling checked ${checkedInfo} combination(s) but found no perfect fit. Trying Maximal Placement...`);
-            await runMaximalPlacementSolver(potentialsToSolve, currentLockedMask); // Await the fallback
-        } else if (result.status === 'cancelled') {
-            console.log("[handleUnifiedSolve] Exact Tiling task was cancelled.");
-        } else { // Status must be 'error'
-            throw new Error(result.error || 'Unknown worker error during exact tiling.');
-        }
-
-        currentTaskPromiseRef.current = null; // Clear ref after completion/error/cancellation
-
-      } catch (err: any) { 
-        currentTaskPromiseRef.current = null; // Clear ref on error too
-        if (err instanceof workerpool.Promise.CancellationError || (err && err.name === 'CancellationError')) { // Check name too for safety
-            console.log("[handleUnifiedSolve] Exact Tiling task explicitly cancelled.");
-            setSolverError("Exact Tiling Cancelled by user."); // Set specific error
-            setIsSolving(false); // Ensure solving state is reset
-        } else {
-            console.error("[handleUnifiedSolve] Error during Exact Tiling execution:", err);
-            setSolverError(`Exact Tiling Error: ${err.message}. Trying Maximal Placement...`);
-            toast.error(`Exact Tiling failed: ${err.message}. Trying Maximal Placement...`);
-            // Fallback even on error
-            await runMaximalPlacementSolver(potentialsToSolve, currentLockedMask);
-        }
       }
+  }, [handleWorkerMessage, solverError]); // Add dependencies
 
-    } else {
-      // Conditions for Exact Tiling not met, go directly to Maximal Placement
-      console.log("[handleUnifiedSolve] Conditions not met for Exact Tiling. Running Maximal Placement directly.");
-      await runMaximalPlacementSolver(potentialsToSolve, currentLockedMask);
+  // Function to handle parallel exact tiling
+  const runParallelExactTiling = useCallback(async ( // Use useCallback
+      potentialsToUse: PotentialShape[],
+      kValue: number,
+      initialGridState: bigint,
+      lockedTilesMask: bigint,
+      shapeDataMap: ShapeDataMap
+  ) => {
+      if (!workerPoolRef.current) return;
+
+      const nValue = potentialsToUse.length;
+      let totalCombs = 0;
+      try {
+        totalCombs = calculateTotalCombinations(nValue, kValue);
+        console.log(`Total combinations C(${nValue}, ${kValue}) = ${totalCombs}`);
+         if (totalCombs > 10_000_000) { 
+             toast.error(`Too many combinations (${totalCombs}).`);
+             setSolverError(`Aborted: Too many combinations C(${nValue}, ${kValue})`);
+             setIsSolving(false);
+             return;
+         }
+        setTotalCombinations(totalCombs);
+      } catch (e) { /* ... error handling ... */ return; }
+      
+      anyExactSolutionFound.current = false;
+
+      const potentialIds = potentialsToUse.map(p => p.id);
+      const combinationGenerator = combinations(potentialIds, kValue);
+      const BATCH_SIZE = determineDynamicBatchSize(totalCombs || 0);
+      let batch: string[][] = [];
+      const allPromises: workerpool.Promise<any>[] = [];
+      let dispatchedCount = 0;
+
+      const context: SolverTaskContext = {
+          lockedTilesMask,
+          initialGridState,
+          shapeDataMap,
+          potentials: potentialsToUse
+      };
+
+      for (const combination of combinationGenerator) {
+          if (anyExactSolutionFound.current) break;
+          batch.push(combination);
+          if (batch.length >= BATCH_SIZE) {
+              dispatchedCount += batch.length;
+              dispatchBatch(batch, kValue, context, allPromises);
+              batch = [];
+              await new Promise(resolve => setTimeout(resolve, 0));
+          }
+      }
+      if (batch.length > 0) {
+          dispatchedCount += batch.length;
+          dispatchBatch(batch, kValue, context, allPromises);
+      }
+      console.log(`Dispatched ${dispatchedCount} combinations in ${allPromises.length} batches.`);
+      activeWorkerPromisesRef.current = allPromises;
+
+      try {
+          await Promise.allSettled(allPromises);
+          console.log("All DLX worker promises settled.");
+      } catch (error) { /* ... error handling ... */ }
+       finally {
+           activeWorkerPromisesRef.current = [];
+       }
+  }, [dispatchBatch, determineDynamicBatchSize, solverError]); // Add dependencies
+
+  // Function to handle parallel Maximal Placement (Backtracking) - Modified for Sequential Test
+  const runParallelMaximalPlacement = useCallback(async (
+    potentialsToUse: PotentialShape[],
+    initialGridState: bigint,
+    lockedTilesMask: bigint,
+    shapeDataMap: ShapeDataMap | null // Changed from Optional to Required for context
+  ) => {
+    if (!workerPoolRef.current || !shapeDataMap) {
+        toast.error("Worker pool or shape data not ready for backtracking.");
+        console.error("Worker pool or shape data map is missing for backtracking.");
+        setIsSolving(false); // Ensure solving state is reset
+        return;
     }
-  };
+
+    console.log("[runParallelMaximalPlacement] Dispatching SINGLE sequential backtracking task...");
+    setCurrentSolver('maximal'); // Ensure solver state is set
+
+    // Construct the context needed by the worker task
+    const context: SolverTaskContext = {
+        shapeDataMap: shapeDataMap, // Use the provided map
+        initialGridState: initialGridState,
+        lockedTilesMask: lockedTilesMask,
+        potentials: potentialsToUse // Pass the potentials directly
+    };
+
+    // Construct the payload for the single branch (representing the whole search space)
+    const branchPayload: BacktrackingBranchPayload = {
+        startPlacements: [], // Empty start placements for a full sequential run
+        context: context,
+        originatingSolverType: 'maximal' // Add type
+    };
+
+    // Create the task payload
+    const taskPayload: WorkerTaskPayload = {
+        type: 'BACKTRACKING_BRANCH',
+        data: branchPayload
+    };
+
+    // Clear previous promises and execute the single task
+    activeWorkerPromisesRef.current.forEach(p => p.cancel());
+    activeWorkerPromisesRef.current = [];
+
+    try {
+        const promise = workerPoolRef.current.exec('processParallelTask', [taskPayload], {
+            on: handleWorkerMessage // Use the same handler for results/errors/progress
+        });
+        activeWorkerPromisesRef.current.push(promise);
+
+        // Wait for this single promise to settle
+        await Promise.allSettled([promise]);
+        console.log("Backtracking worker promise settled.");
+
+    } catch (execError) {
+        console.error("Error dispatching worker task for backtracking:", execError);
+        if (!solverError) { // Access solverError state via its state variable
+            setSolverError("Failed to dispatch backtracking task.");
+            toast.error("Failed to dispatch backtracking task.");
+        }
+    } finally {
+        // Resetting isSolving is handled in handleUnifiedSolve's finally block
+        activeWorkerPromisesRef.current = []; // Clear promises here too
+    }
+
+  }, [handleWorkerMessage, solverError]); // Added handleWorkerMessage and solverError dependencies
+
+  // --- Unified Solve Handler --- 
+  const handleUnifiedSolve = async () => {
+    console.log("[handleUnifiedSolve] Initiating solve...");
+    if (!workerPoolRef.current) {
+        toast.error("Solver pool not ready.");
+        return;
+    }
+    if (isSolving) {
+        toast.warning("Solver is already running.");
+        return;
+    }
+
+    // --- Reset State --- // (Keep this section)
+    setIsSolving(true);
+    setSolverError(null);
+    setBestSolutions([]); 
+    setExactTilingSolutions([]);
+    setCurrentSolutionIndex(-1);
+    setCurrentExactTilingIndex(-1);
+    setSolveProgress(0);
+    setCombinationsChecked(0);
+    console.log("[handleUnifiedSolve] combinationsChecked state reset to 0");
+    setTotalCombinations(null);
+    shapeDataMapRef.current = null; 
+    anyExactSolutionFound.current = false;
+    activeWorkerPromisesRef.current.forEach(p => p.cancel());
+    activeWorkerPromisesRef.current = [];
+
+    // --- Prepare Data --- // (Keep this section)
+    const currentPotentials = mapPotentialsToObjects(potentials);
+    const numSelectedPotentials = currentPotentials.length;
+    const currentLockedMask = lockedTilesMask;
+    const initialGridState = 0n; // Define initialGridState here
+
+     if (numSelectedPotentials === 0) {
+         toast.info("Please select at least one potential shape to solve.");
+         setIsSolving(false);
+         return;
+     }
+
+    try {
+        // --- 1. Initialize Context (Precomputation) --- // (Keep this section)
+        toast.info("Initializing solver context (precomputing placements)...");
+        console.log("Calling initializeSolverContext in worker...");
+        const precomputePromise = workerPoolRef.current.exec('initializeSolverContext', [
+            currentPotentials,
+            currentLockedMask.toString()
+        ]);
+        activeWorkerPromisesRef.current.push(precomputePromise);
+        const shapeDataMapResult = await precomputePromise;
+        activeWorkerPromisesRef.current = [];
+        shapeDataMapRef.current = shapeDataMapResult as ShapeDataMap; // Store the map
+        console.log("Solver context initialized. ShapeDataMap stored.");
+        toast.success("Solver context ready.");
+
+        if (!shapeDataMapRef.current || shapeDataMapRef.current.size === 0) {
+             throw new Error("Precomputation failed or resulted in no valid shape data.");
+         }
+
+        // Filter potentials based on precomputation // (Keep this section)
+        const validPotentials = currentPotentials.filter(p => {
+            const data = shapeDataMapRef.current?.get(p.canonicalForm);
+            return data && data.validPlacements.length > 0;
+        });
+        const numValidPotentials = validPotentials.length;
+        console.log(`Filtered potentials: ${numValidPotentials} have valid placements.`);
+
+        if (numValidPotentials === 0) {
+            toast.info("None of the selected shapes have any valid placements on the available grid.");
+            setIsSolving(false);
+            return;
+        }
+
+        // --- 2. Determine Mode --- // (Keep this section)
+        const availableTileMask = FULL_GRID_MASK & (~currentLockedMask);
+        const availableTileCount = countSetBits(availableTileMask);
+
+        if (availableTileCount === 0) {
+            toast.info("No tiles available to place shapes on.");
+            setIsSolving(false);
+            return;
+        }
+
+        const k = availableTileCount / 4;
+        const attemptExactTiling = availableTileCount > 0 && availableTileCount % 4 === 0 && numValidPotentials >= k;
+        console.log(`Available Tiles: ${availableTileCount}, k=${k}, N(valid)=${numValidPotentials}, Attempt Exact Tiling: ${attemptExactTiling}`);
+
+        // --- 3. Execute Solver --- // (Modify calls within this section)
+        if (attemptExactTiling) {
+            setCurrentSolver('exact');
+            toast.info(`Attempting Exact Tiling with k=${k} shapes...`);
+            if (shapeDataMapRef.current) {
+                await runParallelExactTiling(validPotentials, k, initialGridState, currentLockedMask, shapeDataMapRef.current);
+            } else {
+                 throw new Error("Shape data map was not initialized correctly.");
+             }
+
+             if (!anyExactSolutionFound.current) {
+                 console.log("Exact Tiling finished, no solution found. Falling back to Maximal Placement.");
+                 toast.info("Exact tiling not found. Trying Maximal Placement...");
+                 setCurrentSolver('maximal');
+                 if (shapeDataMapRef.current) { 
+                    await runParallelMaximalPlacement(validPotentials, initialGridState, currentLockedMask, shapeDataMapRef.current);
+                 } else {
+                     throw new Error("Shape data map was not available for fallback.");
+                 }
+             } else {
+                 console.log("Exact Tiling finished, solution was found.");
+                 toast.success("Exact Tiling solution found!");
+             }
+
+        } else {
+            setCurrentSolver('maximal');
+            toast.info("Attempting Maximal Placement...");
+             if (shapeDataMapRef.current) { 
+                 await runParallelMaximalPlacement(validPotentials, initialGridState, currentLockedMask, shapeDataMapRef.current);
+             } else {
+                  throw new Error("Shape data map was not available for maximal placement.");
+             }
+        }
+
+    } catch (error: any) { // (Keep error handling) 
+        console.error("Error during unified solve process:", error);
+        const errorMsg = error.message || (typeof error === 'string' ? error : "An unknown error occurred");
+        setSolverError(errorMsg);
+        toast.error(`Solver Error: ${errorMsg}`);
+        if (workerPoolRef.current && typeof workerPoolRef.current.terminate === 'function') {
+             workerPoolRef.current.terminate(true); 
+             workerPoolRef.current = null; 
+             toast.error("Solver pool terminated due to error. Please reload.");
+        }
+    } finally { // (Keep finally block)
+        setIsSolving(false);
+        activeWorkerPromisesRef.current = [];
+        console.log("handleUnifiedSolve finished.");
+    }
+};
 
   // --- Rendering Logic ---
   useEffect(() => {
@@ -795,20 +1037,26 @@ export default function ShapeDoctor() {
     const rect = canvas.getBoundingClientRect();
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
-    
-    // Calculate hex under cursor using correct sequence
+
     let hex: HexCoord | null = null;
+    let hexId: number | null = null; // Store ID separately
+
     const worldPos = HexUtils.screenToWorld(screenX, screenY, canvas.width, canvas.height, currentOffsetRef.current, zoom);
     if (worldPos) {
         const axial = HexUtils.pixelToAxial(worldPos.x, worldPos.y);
         if (axial) {
             const rounded = HexUtils.hexRound(axial.q, axial.r);
             if (rounded) {
-                hex = HexUtils.findHexByCoords(rounded.q, rounded.r) || null;
+                 // Find the full coordinate object including ID from config
+                const foundCoord = Config.HEX_GRID_COORDS.find(coord => coord.q === rounded.q && coord.r === rounded.r);
+                if (foundCoord) {
+                    hex = rounded; // Keep the rounded q,r
+                    hexId = foundCoord.id; // Store the ID
+                }
             }
         }
     }
-    hoveredHexIdRef.current = hex ? hex.id : null;
+    hoveredHexIdRef.current = hexId; // Store the ID in the ref
 
     if (isDragging) {
       currentOffsetRef.current = {
@@ -829,40 +1077,46 @@ export default function ShapeDoctor() {
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    if (!canvas || isDragging) return; // Ignore clicks during drag
+    if (!canvas || isDragging) return;
 
     const rect = canvas.getBoundingClientRect();
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
 
-    // Calculate hex under cursor using correct sequence
     let hex: HexCoord | null = null;
+    let hexId: number | null = null; // Store ID separately
+
     const worldPos = HexUtils.screenToWorld(screenX, screenY, canvas.width, canvas.height, currentOffsetRef.current, zoom);
     if (worldPos) {
         const axial = HexUtils.pixelToAxial(worldPos.x, worldPos.y);
         if (axial) {
             const rounded = HexUtils.hexRound(axial.q, axial.r);
             if (rounded) {
-                hex = HexUtils.findHexByCoords(rounded.q, rounded.r) || null;
+                 // Find the full coordinate object including ID from config
+                const foundCoord = Config.HEX_GRID_COORDS.find(coord => coord.q === rounded.q && coord.r === rounded.r);
+                if (foundCoord) {
+                    hex = rounded; // Keep the rounded q,r
+                    hexId = foundCoord.id; // Store the ID
+                }
             }
         }
     }
 
-    if (hex && hex.id > 0 && hex.id <= Config.TOTAL_TILES) {
-        if (LOCKABLE_TILE_IDS.has(hex.id)) {
-            handleToggleTileLock(hex.id); // Use the dedicated handler (defined earlier)
+    if (hexId !== null && hexId > 0 && hexId <= Config.TOTAL_TILES) { // Use hexId now
+        if (LOCKABLE_TILE_IDS.has(hexId)) {
+            handleToggleTileLock(hexId); // Use the dedicated handler
         } else {
-            if (isTileLocked(lockedTilesMask, hex.id)) {
+            if (isTileLocked(lockedTilesMask, hexId)) {
                  toast.warning("Cannot select a locked tile.");
                  return;
              }
             setSelectedTiles((prev) => {
                 const newSelection = new Set(prev);
-                if (newSelection.has(hex.id)) {
-                    newSelection.delete(hex.id);
+                if (newSelection.has(hexId)) {
+                    newSelection.delete(hexId);
       } else {
                     if (newSelection.size < 4) { 
-                        newSelection.add(hex.id);
+                        newSelection.add(hexId);
                     } else {
                         toast.error("Maximum 4 tiles selected.");
                     }
@@ -875,7 +1129,7 @@ export default function ShapeDoctor() {
     isDragging, 
     zoom, 
     lockedTilesMask, 
-    handleToggleTileLock, // Dependency is now defined before usage 
+    handleToggleTileLock, 
     setSelectedTiles
   ]);
 
@@ -944,23 +1198,39 @@ export default function ShapeDoctor() {
 
   // --- Cancellation Handler ---
   const handleCancelSolve = useCallback(() => {
-    if (currentTaskPromiseRef.current) {
-      try {
-        currentTaskPromiseRef.current.cancel();
-        console.log("Solver task cancellation requested.");
-        toast.info("Solver task cancellation requested.");
-        // Note: Worker needs to handle cancellation internally to actually stop.
-        // State like isSolving will be reset when the promise rejects/resolves after cancellation.
-      } catch (e) {
-        console.error("Error trying to cancel task:", e);
-        toast.error("Error trying to cancel solver task.");
-      }
+    if (activeWorkerPromisesRef.current.length > 0) {
+      activeWorkerPromisesRef.current.forEach(p => p.cancel());
+      activeWorkerPromisesRef.current = [];
+      console.log("Solver task cancellation requested.");
+      toast.info("Solver task cancellation requested.");
+      // Note: Worker needs to handle cancellation internally to actually stop.
+      // State like isSolving will be reset when the promise rejects/resolves after cancellation.
     } else {
-      console.warn("Attempted to cancel, but no task promise found.");
+      console.warn("Attempted to cancel, but no active worker promises found.");
       // Maybe reset isSolving state here just in case?
       // setIsSolving(false);
     }
   }, []); // No dependencies needed if only interacting with ref
+
+  // Re-add helper function
+  const mapPotentialsToObjects = (potentialsStrings: string[]): PotentialShape[] => {
+      return potentialsStrings.map((pStr, index) => {
+          const parts = pStr.split('::');
+          const canonicalForm = parts[0]; // Assuming first part is canonical
+          const id = parts.length > 1 ? pStr : `${canonicalForm}::instance_${index}`; // Create unique ID if needed
+          try {
+              const bitmask = shapeStringToBitmask(canonicalForm); // Calculate bitmask
+              if (countSetBits(bitmask) !== 4) {
+                  console.warn(`Potential ${pStr} does not have 4 tiles. Filtering out.`);
+                  return null; // Filter out invalid shapes early
+              }
+              return { id, canonicalForm, bitmask };
+          } catch (e) {
+              console.error(`Error processing potential string: ${pStr}`, e);
+              return null; // Filter out on error
+          }
+      }).filter((p): p is PotentialShape => p !== null); // Filter out nulls and assert type
+  };
 
   // --- Rendering ---
   return (
@@ -969,28 +1239,46 @@ export default function ShapeDoctor() {
       <div className="flex flex-1 min-h-0 gap-4">
         {/* Center Panel: Canvas (Now Left) */}
         <div ref={containerRef} className="w-2/3 bg-gray-800/30 rounded-lg overflow-hidden border border-border/50 relative">
-          {/* Progress Overlay */} 
-          {isSolving && currentSolver === 'exact' && (
-              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10 text-white">
+          {/* Progress Overlay */}
+          {isSolving && (
+            <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10 text-white">
+              {currentSolver === 'exact' ? (
+                <>
                   <p className="text-xl font-semibold mb-2">Finding Exact Tilings...</p>
                   <div className="w-3/4 h-4 bg-gray-600 rounded-full overflow-hidden mb-1">
-                     <div 
-                         className="h-full bg-blue-500 transition-all duration-300 ease-out"
-                         style={{ width: `${solveProgress}%` }}
-                     ></div>
+                    <div
+                      className="h-full bg-blue-500 transition-all duration-300 ease-out"
+                      style={{ width: `${formattedProgress}` }} // Use formattedProgress state
+                    ></div>
                   </div>
                   <p className="text-sm">
-                      {solveProgress}% 
-                      ({combinationsChecked.toLocaleString()} / 
-                      {totalCombinations !== null && totalCombinations > 0 
-                          ? totalCombinations.toLocaleString() 
-                          : (isSolving ? 'calculating...' : '0')}
-                       combinations)
+                    {formattedProgress} {/* Use formattedProgress state */}
+                    ({combinationsChecked.toLocaleString()} /
+                    {totalCombinations !== null && totalCombinations > 0
+                      ? totalCombinations.toLocaleString()
+                      : (isSolving ? 'calculating...' : '0')}
+                    combinations)
                   </p>
-                  <Button variant="destructive" size="sm" onClick={handleCancelSolve} className="mt-4">
-                      Cancel Search
-                  </Button>
-              </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-xl font-semibold mb-2">Searching Maximal Placement...</p>
+                  {/* Display the status message from state if available, else generic text */}
+                  <p className="text-sm mb-2">
+                      {solverStatusMessage ?? 'Exploring possibilities...'}
+                  </p>
+                  {/* No progress bar for backtracking */}
+                </>
+              )}
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleCancelSolve}
+                className="mt-4 bg-red-600 hover:bg-red-700 text-white transition-colors shadow-md"
+              >
+                <Ban className="h-4 w-4 mr-1" /> Cancel Search
+              </Button>
+            </div>
           )}
           <canvas
             ref={canvasRef}
@@ -1043,6 +1331,7 @@ export default function ShapeDoctor() {
             combinationsChecked={combinationsChecked}
             isExactTilingMode={currentSolver === 'exact'}
             potentialsCount={potentials.length}
+            solverStatusMessage={solverStatusMessage}
           />
           {/* Shapes Tabs (Moved from bottom) */}
           <div className="flex-grow min-h-[200px]"> {/* Ensure it takes remaining space */}
