@@ -33,7 +33,8 @@ import {
     type SolverExecDataExactTiling,
     type SolverResultPayloadBacktracking, 
     type SolutionRecord,
-    type ShapeData
+    type ShapeData,
+    type PlacementRecord
 } from './types';
 import { 
     bitmaskToTileIds, 
@@ -44,7 +45,7 @@ import {
     clearTileLock,
     toggleTileLock,
     isTileLocked,
-    getCanonicalShape
+    getCanonicalShape,
 } from './bitmaskUtils';
 
 // Import QOper8 and define types
@@ -98,6 +99,7 @@ export default function ShapeDoctor() {
   // Ref for workerpool instance - Use any temporarily
   const workerPoolRef = useRef<any | null>(null); // Changed type to any
   const currentTaskPromiseRef = useRef<workerpool.Promise<any> | null>(null); // Ref for cancellation
+  const foundExactSolutionRef = useRef<SolutionRecord | null>(null); // <--- ADDED REF
 
   const [selectedTiles, setSelectedTiles] = useState<Set<number>>(new Set());
   const [potentials, setPotentials] = useState<string[]>([]);
@@ -118,7 +120,7 @@ export default function ShapeDoctor() {
   const [currentExactTilingIndex, setCurrentExactTilingIndex] = useState<number>(-1);
   const [currentSolver, setCurrentSolver] = useState<'exact' | 'maximal' | null>(null);
   const [solverError, setSolverError] = useState<string | null>(null);
-  const [totalCombinations, setTotalCombinations] = useState<number>(0); // For progress display
+  const [totalCombinations, setTotalCombinations] = useState<number | null>(null); // <--- MODIFIED TYPE
   const [combinationsChecked, setCombinationsChecked] = useState<number>(0); // For progress display
 
   const formattedProgress = `${Math.round(solveProgress)}%`;
@@ -505,15 +507,18 @@ export default function ShapeDoctor() {
   const handleUnifiedSolve = async () => {
     console.log("[handleUnifiedSolve] Initiating solve...");
     // Reset states
-    setSolverError(null); 
-    setIsSolving(true); 
-    setCurrentSolver(null); 
-    setBestSolutions([]); 
+    setSolverError(null);
+    setIsSolving(true);
+    setCurrentSolver(null);
+    setBestSolutions([]);
     setCurrentSolutionIndex(-1);
     setExactTilingSolutions([]);
     setCurrentExactTilingIndex(-1);
-    setGridState(Array(Config.TOTAL_TILES + 1).fill(-1)); 
+    setGridState(Array(Config.TOTAL_TILES + 1).fill(-1));
     setSolveProgress(0); // Reset progress
+    foundExactSolutionRef.current = null; // <--- RESET REF
+    setCombinationsChecked(0); // Reset counters
+    setTotalCombinations(null); // <--- RESET STATE TO NULL
 
     if (!workerPoolRef.current) {
       toast.error("Worker pool not initialized.");
@@ -549,7 +554,7 @@ export default function ShapeDoctor() {
 
     if (attemptExactTiling) {
       console.log("[handleUnifiedSolve] Attempting Exact Tiling (Subset Search)...");
-        setCurrentSolver('exact'); 
+      setCurrentSolver('exact');
       
       const potentialDataForWorker = potentialsToSolve.map(p => { 
           const originalString = p; // Use the potential string directly
@@ -570,21 +575,31 @@ export default function ShapeDoctor() {
             currentTaskPromiseRef.current = null;
         }
 
-        currentTaskPromiseRef.current = workerPoolRef.current.exec(
+        currentTaskPromiseRef.current = workerPoolRef.current!.exec(
             'runCombinatorialExactTiling', 
             [taskData],
             { 
                 on: (payload: any) => {
                     console.log("[Exact Tiling] Received update from worker:", payload);
                      if (payload && payload.event === 'solutionUpdate' && payload.data && payload.data.solution) {
-                         // Maybe add a toast notification?
-                         // toast.info(`Found an Exact Tiling solution! (${exactTilingSolutions.length + 1} total)`);
+                         // Capture the first solution found
+                         if (!foundExactSolutionRef.current) {
+                             // Store the solution (masks are already strings from worker)
+                             // Basic validation: check if it looks like a SolutionRecord
+                             if (typeof payload.data.solution.gridState === 'string' && Array.isArray(payload.data.solution.placements)) {
+                                 foundExactSolutionRef.current = payload.data.solution as SolutionRecord; // Cast after check
+                                 console.log("[Exact Tiling] Captured first solution:", foundExactSolutionRef.current);
+                             } else {
+                                 console.error("[Exact Tiling] Received solutionUpdate has incorrect structure:", payload.data.solution);
+                             }
+                         }
                      } else if (payload && payload.event === 'progressUpdate' && payload.data) {
                          // Ensure progress is between 0 and 100
                          const progress = Math.max(0, Math.min(100, payload.data.progress ?? 0));
                          setSolveProgress(progress);
                          setCombinationsChecked(payload.data.currentCount ?? 0);
-                         setTotalCombinations(payload.data.totalCount ?? 0);
+                         // Handle potential null from worker if calculation failed
+                         setTotalCombinations(payload.data.totalCount ?? null);
                      } else {
                          // Add more detailed logging to see the actual data structure
                          if (payload && payload.event === 'solutionUpdate') {
@@ -599,46 +614,55 @@ export default function ShapeDoctor() {
             }
         );
 
-        // Wait for the promise to resolve or reject
-        const result = await currentTaskPromiseRef.current; 
+        const result = await currentTaskPromiseRef.current;
         console.log("[handleUnifiedSolve] Exact Tiling task finished.", result);
 
-        if (result.status === 'completed') {
-            if (result.solutions && result.solutions.length > 0) {
-                // Exact Tiling Success!
-                const uniqueSolutionsMap = new Map<string, SolutionRecord>();
-                result.solutions.forEach((sol: SolutionRecord) => uniqueSolutionsMap.set(sol.gridState.toString(), sol)); // Add type to sol
-                const uniqueSolutions = Array.from(uniqueSolutionsMap.values());
+        if (foundExactSolutionRef.current) {
+          // Exact Tiling Success! Use the captured solution.
+          // Explicitly assign the type here after the non-null check
+          const theSolution: SolutionRecord = foundExactSolutionRef.current;
 
-                setExactTilingSolutions(uniqueSolutions);
-                setCurrentExactTilingIndex(0);
-                setIsSolving(false);
-                setCurrentSolver('exact'); // Confirm solver mode
-                toast.success(`Exact Tiling found ${k} shape(s) in ${uniqueSolutions.length} configuration(s).`);
-                 if(uniqueSolutions.length > 0){
-                   updateGridStateFromSolution(uniqueSolutions[0]); // Show first solution
-                 }
-            } else {
-                // Exact Tiling found no solution, proceed to fallback
-                console.log("[handleUnifiedSolve] Exact Tiling found no subset solution. Falling back to Maximal Placement.");
-                toast.info("Exact Tiling did not find a perfect fit. Trying Maximal Placement...");
-                await runMaximalPlacementSolver(potentialsToSolve, currentLockedMask); // Await the fallback
-            }
+          // Now use the correctly typed variable without assertions
+          const solutionToStore: SolutionRecord = {
+            gridState: BigInt(theSolution.gridState),
+            placements: theSolution.placements.map((p: PlacementRecord) => ({
+              shapeId: p.shapeId,
+              placementMask: BigInt(p.placementMask)
+            }))
+          };
+
+          setExactTilingSolutions([solutionToStore]);
+          setCurrentExactTilingIndex(0);
+          setIsSolving(false);
+          setCurrentSolver('exact');
+          toast.success(`Exact Tiling found a ${k}-shape solution!`);
+          updateGridStateFromSolution(solutionToStore);
+
+        } else if (result.status === 'completed') {
+            // Task completed, but no solution was emitted/captured
+            const checkedCount = result.combinationsChecked ?? combinationsChecked; // Use state as fallback
+            const totalCount = totalCombinations; // Use state value
+            const checkedInfo = totalCount !== null
+                ? `${checkedCount.toLocaleString()} / ${totalCount.toLocaleString()}`
+                : `${checkedCount.toLocaleString()}`;
+
+            console.log("[handleUnifiedSolve] Exact Tiling completed but found no subset solution. Falling back to Maximal Placement.");
+            toast.info(`Exact Tiling checked ${checkedInfo} combination(s) but found no perfect fit. Trying Maximal Placement...`);
+            await runMaximalPlacementSolver(potentialsToSolve, currentLockedMask); // Await the fallback
         } else if (result.status === 'cancelled') {
-            console.log("[handleUnifiedSolve] Exact Tiling task explicitly cancelled.");
-            toast.info("Exact Tiling Cancelled.");
-            setSolverError("Exact Tiling Cancelled.");
-        } else {
+            console.log("[handleUnifiedSolve] Exact Tiling task was cancelled.");
+        } else { // Status must be 'error'
             throw new Error(result.error || 'Unknown worker error during exact tiling.');
         }
+
         currentTaskPromiseRef.current = null; // Clear ref after completion/error/cancellation
 
       } catch (err: any) { 
         currentTaskPromiseRef.current = null; // Clear ref on error too
-        if (err instanceof workerpool.Promise.CancellationError) {
+        if (err instanceof workerpool.Promise.CancellationError || (err && err.name === 'CancellationError')) { // Check name too for safety
             console.log("[handleUnifiedSolve] Exact Tiling task explicitly cancelled.");
-            toast.info("Exact Tiling Cancelled.");
-            setSolverError("Exact Tiling Cancelled.");
+            setSolverError("Exact Tiling Cancelled by user."); // Set specific error
+            setIsSolving(false); // Ensure solving state is reset
         } else {
             console.error("[handleUnifiedSolve] Error during Exact Tiling execution:", err);
             setSolverError(`Exact Tiling Error: ${err.message}. Trying Maximal Placement...`);
@@ -648,7 +672,7 @@ export default function ShapeDoctor() {
         }
       }
 
-                    } else {
+    } else {
       // Conditions for Exact Tiling not met, go directly to Maximal Placement
       console.log("[handleUnifiedSolve] Conditions not met for Exact Tiling. Running Maximal Placement directly.");
       await runMaximalPlacementSolver(potentialsToSolve, currentLockedMask);
@@ -945,8 +969,15 @@ export default function ShapeDoctor() {
                          style={{ width: `${solveProgress}%` }}
                      ></div>
                   </div>
-                  <p className="text-sm">{solveProgress}% ({combinationsChecked.toLocaleString()} / {totalCombinations > 0 ? totalCombinations.toLocaleString() : 'calculating...'} combinations)</p>
-                  <Button variant="destructive" size="sm" onClick={handleUnifiedSolve} className="mt-4">
+                  <p className="text-sm">
+                      {solveProgress}% 
+                      ({combinationsChecked.toLocaleString()} / 
+                      {totalCombinations !== null && totalCombinations > 0 
+                          ? totalCombinations.toLocaleString() 
+                          : (isSolving ? 'calculating...' : '0')}
+                       combinations)
+                  </p>
+                  <Button variant="destructive" size="sm" onClick={handleCancelSolve} className="mt-4">
                       Cancel Search
                   </Button>
               </div>
@@ -998,7 +1029,7 @@ export default function ShapeDoctor() {
             currentSolver={currentSolver}
             solverError={solverError}
             solveProgress={solveProgress}
-            totalCombinations={totalCombinations}
+            totalCombinations={totalCombinations ?? 0}
             combinationsChecked={combinationsChecked}
             isExactTilingMode={currentSolver === 'exact'}
             potentialsCount={potentials.length}
