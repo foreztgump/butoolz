@@ -78,7 +78,7 @@ const precomputeAllShapeData = (
   shapesToPlace: ShapeInput[],
   lockedTilesMask: bigint | string
 ): Map<string, ShapeData> => {
-    console.log("[Worker Precompute] Starting precomputation (Single Orientation, All Translations)..."); 
+    // console.log("[Worker Precompute] Starting precomputation (Single Orientation, All Translations)..."); // Reduced
   const computationStartTime = Date.now();
     const computedData: Map<string, ShapeData> = new Map();
   
@@ -164,7 +164,7 @@ const precomputeAllShapeData = (
   });
 
   const computationEndTime = Date.now();
-    console.log(`[Worker Precompute] Precomputation finished in ${computationEndTime - computationStartTime}ms. Computed data for ${computedData.size} shapes (Single Orientation, All Translations).`); 
+    // console.log(`[Worker Precompute] Precomputation finished in ${computationEndTime - computationStartTime}ms. Computed data for ${computedData.size} shapes (Single Orientation, All Translations).`); // Reduced
   return computedData;
 };
 
@@ -199,7 +199,7 @@ function calculateTotalCombinations(n: number, k: number): number {
 async function runCombinatorialExactTiling(
   taskData: SolverExecDataExactTiling
 ): Promise<{ status: 'completed' | 'cancelled' | 'error', combinationsChecked: number, error?: string }> {
-    console.log("[Worker runCombinatorialExactTiling] Received task to find exact tiling subset.");
+    // console.log("[Worker runCombinatorialExactTiling] Received task to find exact tiling subset."); // Reduced
     allShapeData = new Map(); // Reset precomputed data for this run
     const { 
         allPotentialsData,
@@ -226,7 +226,7 @@ async function runCombinatorialExactTiling(
         // 1. Calculate available tiles and required shapes (k)
         const availableTileMask = FULL_GRID_MASK & (~lockedTilesMaskBigint);
         const availableTileCount = countSetBits(availableTileMask);
-        console.log(`[Worker CET] Available tiles: ${availableTileCount}`); // CET for Combinatorial Exact Tiling
+        // console.log(`[Worker CET] Available tiles: ${availableTileCount}`); // Reduced // CET for Combinatorial Exact Tiling
 
         if (availableTileCount === 0) {
             console.log("[Worker CET] No available tiles. Exact tiling impossible.");
@@ -239,22 +239,22 @@ async function runCombinatorialExactTiling(
         }
 
         const k = availableTileCount / 4;
-        console.log(`[Worker CET] Required shapes (k): ${k}`);
+        // console.log(`[Worker CET] Required shapes (k): ${k}`); // Reduced
 
         // 2. Check if enough shapes are provided
         const numSelectedShapes = allPotentialsData.length;
-        console.log(`[Worker CET] Selected shapes (N): ${numSelectedShapes}`);
+        // console.log(`[Worker CET] Selected shapes (N): ${numSelectedShapes}`); // Reduced
         if (numSelectedShapes < k) {
             console.log(`[Worker CET] Not enough selected shapes (${numSelectedShapes}) to form a ${k}-shape tiling. Exact tiling impossible.`);
             return { status: 'completed', combinationsChecked: 0 };
         }
 
         // 3. Precompute data for ALL provided potential shapes
-        console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Running precomputation for all ${numSelectedShapes} selected shapes...`);
+        // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Running precomputation for all ${numSelectedShapes} selected shapes...`); // Reduced
         const shapesForPrecompute = allPotentialsData.map(p => ({ id: p.uniqueId }));
         allShapeData = precomputeAllShapeData(shapesForPrecompute, lockedTilesMaskBigint);
         const precomputeEndTime = Date.now();
-        console.log(`[Worker CET @ ${precomputeEndTime - overallStartTime}ms] Precomputation done. ${allShapeData.size} shapes have data.`);
+        // console.log(`[Worker CET @ ${precomputeEndTime - overallStartTime}ms] Precomputation done. ${allShapeData.size} shapes have data.`); // Reduced
         
         // Filter out shapes that had no valid placements after precomputation
         const potentialsWithValidPlacements = allPotentialsData.filter(p => {
@@ -270,15 +270,15 @@ async function runCombinatorialExactTiling(
         }
 
         // Calculate total combinations for progress reporting
-        console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Calculating total combinations C(${numValidPotentials}, ${k})...`);
+        // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Calculating total combinations C(${numValidPotentials}, ${k})...`); // Reduced
         const totalCombinations = calculateTotalCombinations(numValidPotentials, k);
-        console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Total combinations to check: ${totalCombinations}`);
+        // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Total combinations to check: ${totalCombinations}`); // Reduced further
 
         // Emit initial progress
         workerpool.workerEmit({ event: 'progressUpdate', data: { progress: 0, currentCount: 0, totalCount: totalCombinations } });
 
         // 4. Iterate through combinations of k shapes from the valid potentials
-        console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Starting combinations loop (k=${k}, N=${numValidPotentials})...`);
+        // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Starting combinations loop (k=${k}, N=${numValidPotentials})...`); // Reduced
 
         // --- DEBUG: Log valid placements (removed for general case) ---
 
@@ -293,10 +293,10 @@ async function runCombinatorialExactTiling(
             combinationCount++;
             const loopIterationStartTime = Date.now();
             if (combinationCount <= 5 || combinationCount % 1000 === 0) { // Log first 5 and every 1000th
-                console.log(`[Worker CET @ ${loopIterationStartTime - overallStartTime}ms] --- Iteration ${combinationCount} / ${totalCombinations} ---`);
+                // console.log(`[Worker CET @ ${loopIterationStartTime - overallStartTime}ms] --- Iteration ${combinationCount} / ${totalCombinations} ---`); // Reduced
                 // Log the shapes in this specific combination
                 const shapesInThisCombo = shapeCombination.map(p => p.uniqueId.split('::')[1]); // Get just the mask part
-                console.log(`[Worker CET]   Testing combination: [${shapesInThisCombo.join(', ')}]`);
+                // console.log(`[Worker CET]   Testing combination: [${shapesInThisCombo.join(', ')}]`); // Reduced
             }
             
              // --- Progress Update --- MODIFIED --- 
@@ -315,7 +315,7 @@ async function runCombinatorialExactTiling(
             
             // 5. Call the DLX solver for the current combination
             if (combinationCount <= 5 || combinationCount % 1000 === 0) {
-                console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms]   Calling findExactKTilingSolutions...`);
+                // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms]   Calling findExactKTilingSolutions...`); // Reduced
             }
             const solveStartTime = Date.now();
             const result = findExactKTilingSolutions(
@@ -328,7 +328,7 @@ async function runCombinatorialExactTiling(
             );
             const solveEndTime = Date.now();
             if (combinationCount <= 5 || combinationCount % 1000 === 0) {
-                 console.log(`[Worker CET @ ${solveEndTime - overallStartTime}ms]   findExactKTilingSolutions returned in ${solveEndTime - solveStartTime}ms. Error: ${result.error ?? 'None'}, Solutions found: ${result.solutions?.length ?? 0}`);
+                // console.log(`[Worker CET @ ${solveEndTime - overallStartTime}ms]   findExactKTilingSolutions returned in ${solveEndTime - solveStartTime}ms. Error: ${result.error ?? 'None'}, Solutions found: ${result.solutions?.length ?? 0}`); // Reduced
             }
 
             if (result.error) {
@@ -339,24 +339,26 @@ async function runCombinatorialExactTiling(
 
             // 6. Check if a solution was found for this combination
             if (result.solutions && result.solutions.length > 0) {
-                console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Solution found for combination ${combinationCount}. Emitting...`);
-                const solutionToSend = {
-                    ...result.solutions[0],
-                    gridState: result.solutions[0].gridState.toString(),
-                    placements: result.solutions[0].placements.map(p => ({
-                        shapeId: p.shapeId,
-                        placementMask: p.placementMask.toString()
-                    }))
-                };
+                // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Solution found for combination ${combinationCount}. Emitting...`); // Reduced further
+                // Map ALL found solutions to the serializable format
+                const solutionsToSend = result.solutions.map(solution => ({
+                   ...solution,
+                   gridState: solution.gridState.toString(),
+                   placements: solution.placements.map(p => ({
+                       shapeId: p.shapeId,
+                       placementMask: p.placementMask.toString()
+                   }))
+                }));
                 try {
-                    workerpool.workerEmit({ event: 'solutionUpdate', data: { maxShapes: k, solution: solutionToSend } });
+                    // Emit the entire array of solutions under the key 'solutions'
+                    workerpool.workerEmit({ event: 'solutionUpdate', data: { solutions: solutionsToSend } });
                 } catch (emitError) {
                     console.error("[Worker CET] Error emitting solution update:", emitError);
                 }
             }
             // Log end of iteration for the first few
             if (combinationCount <= 5) {
-                console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] --- Finished Iteration ${combinationCount} ---`);
+                // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] --- Finished Iteration ${combinationCount} ---`); // Reduced
             }
         }
         
@@ -372,7 +374,7 @@ async function runCombinatorialExactTiling(
         // ---------------------------------
 
         await new Promise(resolve => setTimeout(resolve, 10)); 
-        console.log(`[Worker CET] Finished testing ${combinationCount} combinations in ${overallEndTime - overallStartTime}ms.`);
+        // console.log(`[Worker CET] Finished testing ${combinationCount} combinations in ${overallEndTime - overallStartTime}ms.`); // Reduced
         return { status: 'completed', combinationsChecked: combinationCount }; 
 
     } catch (error: any) {
@@ -400,7 +402,7 @@ async function runCombinatorialExactTiling(
 const runMaximalPlacementBacktracking = async (
   taskData: SolverExecDataBacktracking
 ): Promise<{ maxShapes: number; solutions: SolutionRecord[], error?: string }> => {
-  console.log("[Worker runMaximalPlacementBacktracking] Starting maximal placement using Backtracking...");
+  // console.log("[Worker runMaximalPlacementBacktracking] Starting maximal placement using Backtracking..."); // Reduced
   allShapeData = new Map(); // Reset precomputed data
   const { shapesToPlace, initialGridState = 0n, lockedTilesMask } = taskData;
   const initialGridStateBigint = typeof initialGridState === 'string' ? BigInt(initialGridState) : initialGridState;
@@ -442,10 +444,10 @@ const runMaximalPlacementBacktracking = async (
     });
 
     if (allValidPlacements.length === 0) {
-      console.log("[Worker runMaximalPlacementBacktracking] No valid placements found after precomputation.");
+      // console.log("[Worker runMaximalPlacementBacktracking] No valid placements found after precomputation."); // Reduced
       return { maxShapes: 0, solutions: [] };
     }
-    console.log(`[Worker runMaximalPlacementBacktracking] Precomputation done. Found ${allValidPlacements.length} total valid placements (Sorted).`); // Indicate sorted
+    // console.log(`[Worker runMaximalPlacementBacktracking] Precomputation done. Found ${allValidPlacements.length} total valid placements (Sorted).`); // Indicate sorted
 
     // 3. Initialize backtracking state
     let maxKFound = 0;
@@ -467,7 +469,7 @@ const runMaximalPlacementBacktracking = async (
         finalBestSolutions = [newBestSolution];
 
         // Directly emit the solution (assuming precompute now guarantees 4 tiles)
-         console.log(`[Worker Backtrack] New best k = ${maxKFound} found. Emitting solutionUpdate...`);
+        // console.log(`[Worker Backtrack] New best k = ${maxKFound} found. Emitting solutionUpdate...`); // Reduced
          try {
              workerpool.workerEmit({
                  event: 'solutionUpdate',
@@ -514,11 +516,11 @@ const runMaximalPlacementBacktracking = async (
     };
 
     // 5. Start the backtracking search (uses the sorted placements)
-    console.log("[Worker runMaximalPlacementBacktracking] Starting backtracking search (with sorted placements)...");
+    // console.log("[Worker runMaximalPlacementBacktracking] Starting backtracking search (with sorted placements)..."); // Reduced
     backtrack(0, initialGridStateBigint, [], usedShapeTypes);
 
     const endTime = Date.now();
-    console.log(`[Worker runMaximalPlacementBacktracking] Backtracking finished in ${endTime - startTime}ms. Final max k = ${maxKFound}. Found ${finalBestSolutions.length} solution(s).`);
+    // console.log(`[Worker runMaximalPlacementBacktracking] Backtracking finished in ${endTime - startTime}ms. Final max k = ${maxKFound}. Found ${finalBestSolutions.length} solution(s).`); // Reduced
     return { maxShapes: maxKFound, solutions: finalBestSolutions };
     
   } catch (error: any) {
@@ -533,4 +535,4 @@ workerpool.worker({
   runMaximalPlacementBacktracking: runMaximalPlacementBacktracking
 });
 
-console.log('[Solver Worker] Worker initialized and ready.');
+// console.log('[Solver Worker] Worker initialized and ready.'); // Reduced

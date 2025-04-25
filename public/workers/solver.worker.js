@@ -635,6 +635,8 @@ __webpack_require__.r(__webpack_exports__);
 
  // REMOVE .js
  // REMOVE .js
+// --- Debug Logging Flag ---
+const ENABLE_DLX_DEBUG_LOGGING = false; // Set to true to enable verbose DLX logs
 ;
 // --- Matrix Generation for dancing-links ---
 // Ensure return type matches SimpleConstraint<PlacementRecord>[]
@@ -643,8 +645,10 @@ shapesToTileWith, // Use local type
 initialGridState, lockedTilesMask) => {
     // console.log("[DLX] Starting buildDancingLinksConstraints..."); // Reduced logging
     // console.log(`[DLX Build Constraints] shapesToTileWith: ${shapesToTileWith.map(s=>s.id).join(', ')}`); // Reduced logging
-    // console.log(`[DLX Build Constraints] initialGridState: ${initialGridState.toString(16)}`); // Verbose
-    // console.log(`[DLX Build Constraints] lockedTilesMask: ${lockedTilesMask.toString(16)}`); // Verbose
+    if (ENABLE_DLX_DEBUG_LOGGING) {
+        console.log(`[DLX Build Constraints Debug] initialGridState: ${initialGridState.toString(16)}`);
+        console.log(`[DLX Build Constraints Debug] lockedTilesMask: ${lockedTilesMask.toString(16)}`);
+    }
     // Calculate available tiles
     const availableTiles = new Set();
     for (let i = 1; i <= _shapedoctor_config__WEBPACK_IMPORTED_MODULE_2__.TOTAL_TILES; i++) {
@@ -711,9 +715,11 @@ initialGridState, lockedTilesMask) => {
             const isKnownSolutionPlacement = knownSolutionMasksHex.has(placementMaskHex);
             const logPrefix = isKnownSolutionPlacement ? "*** KNOWN SOL PLACEMENT ***" : "   ";
             // Log which instance we are building constraints for
-            // console.log(`${logPrefix} [Build Constraints] Checking shape ${shapeId} (Instance ${instanceIndex}), placement ${placementMaskHex}`); // Verbose
+            if (ENABLE_DLX_DEBUG_LOGGING)
+                console.log(`${logPrefix} [DLX Build Constraints Debug] Checking shape ${shapeId} (Instance ${instanceIndex}), placement ${placementMaskHex}`);
             if ((initialGridState & placementMask) === 0n) {
-                // console.log(`${logPrefix}   -> Initial state check PASSED.`); // Verbose
+                if (ENABLE_DLX_DEBUG_LOGGING)
+                    console.log(`${logPrefix}   -> Initial state check PASSED.`);
                 const coveredTileIds = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.bitmaskToTileIds)(placementMask);
                 let allCoveredTilesAvailable = true;
                 let reasonSkipped = ""; // For logging
@@ -722,12 +728,14 @@ initialGridState, lockedTilesMask) => {
                     if (!columnIndexMap.has(tileColName)) {
                         allCoveredTilesAvailable = false;
                         reasonSkipped = `Tile ${tileId} not available (not in column map - likely locked)`;
-                        // console.log(`${logPrefix}     -> Tile check FAILED: ${reasonSkipped}`); // Verbose
+                        if (ENABLE_DLX_DEBUG_LOGGING)
+                            console.log(`${logPrefix}     -> Tile check FAILED: ${reasonSkipped}`);
                         break;
                     }
                 }
                 if (allCoveredTilesAvailable) {
-                    // console.log(`${logPrefix}   -> Available tiles check PASSED.`); // Verbose
+                    if (ENABLE_DLX_DEBUG_LOGGING)
+                        console.log(`${logPrefix}   -> Available tiles check PASSED.`);
                     const row = new Array(numColumns).fill(0);
                     // 1. Set the shape *instance* column
                     row[shapeInstanceColIndex] = 1;
@@ -737,7 +745,8 @@ initialGridState, lockedTilesMask) => {
                         const tileColIndex = columnIndexMap.get(tileColName);
                         row[tileColIndex] = 1;
                     }
-                    // console.log(`${logPrefix}     --> ADDING CONSTRAINT row for shape instance ${instanceIndex} (${shapeId}), placement ${placementMaskHex}`); // Verbose
+                    if (ENABLE_DLX_DEBUG_LOGGING)
+                        console.log(`${logPrefix}     --> ADDING CONSTRAINT row for shape instance ${instanceIndex} (${shapeId}), placement ${placementMaskHex}`);
                     constraints.push({
                         data: { shapeId: shapeId, placementMask }, // Store original shape ID
                         row: row // Assign the correctly typed row
@@ -748,7 +757,8 @@ initialGridState, lockedTilesMask) => {
                 }
             }
             else {
-                // console.log(`${logPrefix}   -> Initial state check FAILED (overlaps). Skipping.`); // Verbose
+                if (ENABLE_DLX_DEBUG_LOGGING)
+                    console.log(`${logPrefix}   -> Initial state check FAILED (overlaps). Skipping.`);
             }
         }
     }); // End forEach loop over shape instances
@@ -759,6 +769,7 @@ initialGridState, lockedTilesMask) => {
 // --- Function: findMaximalPlacement ---
 const findMaximalPlacement = (shapeDataMap, initialGridStateBigint, allShapes) => {
     try {
+        const enableMaximalDebug = false; // Separate flag if needed, or use ENABLE_DLX_DEBUG_LOGGING
         // 1. Define Columns (Items)
         const tileColumns = []; // Names of available tile columns (Primary)
         const shapeColumns = []; // Names of shape columns (Secondary)
@@ -776,7 +787,8 @@ const findMaximalPlacement = (shapeDataMap, initialGridStateBigint, allShapes) =
         }
         const numPrimaryColumns = tileColumns.length;
         if (numPrimaryColumns === 0) {
-            // console.log("[findMaximalPlacement] No available tiles based on initialGridState. Returning empty solution."); // Reduced further
+            if (enableMaximalDebug)
+                console.log("[findMaximalPlacement Debug] No available tiles based on initialGridState. Returning empty solution.");
             return { maxShapes: 0, solutions: [] };
         }
         // Add Shape Columns (Secondary)
@@ -786,7 +798,8 @@ const findMaximalPlacement = (shapeDataMap, initialGridStateBigint, allShapes) =
             shapeNameToSecondaryIndex.set(shapeName, secondaryIndexCounter++);
         });
         const numSecondaryColumns = shapeColumns.length;
-        // console.log(`[findMaximalPlacement] Columns defined: ${numPrimaryColumns} Primary (Tiles), ${numSecondaryColumns} Secondary (Shapes)`); // Reduced further
+        if (enableMaximalDebug)
+            console.log(`[findMaximalPlacement Debug] Columns defined: ${numPrimaryColumns} Primary (Tiles), ${numSecondaryColumns} Secondary (Shapes)`);
         // 2. Define Options (Rows for the DLX matrix)
         const dlxOptions = [];
         for (const [shapeId, data] of shapeDataMap.entries()) {
@@ -835,7 +848,8 @@ const findMaximalPlacement = (shapeDataMap, initialGridStateBigint, allShapes) =
         }
         // console.log(`[findMaximalPlacement] Built ${dlxOptions.length} options (constraints)`); // Reduced further
         if (dlxOptions.length === 0) {
-            // console.log("[findMaximalPlacement] No valid options generated. Returning empty solution."); // Reduced further
+            if (enableMaximalDebug)
+                console.log("[findMaximalPlacement Debug] No valid options generated. Returning empty solution.");
             return { maxShapes: 0, solutions: [] };
         }
         // 3. Run the DLX solver
@@ -859,11 +873,13 @@ const findMaximalPlacement = (shapeDataMap, initialGridStateBigint, allShapes) =
                     placements: placements
                 });
             });
-            // console.log(`[findMaximalPlacement] Found ${finalSolutions.length} maximal solutions placing ${maxPlaced} shapes.`); // Reduced further
+            if (enableMaximalDebug)
+                console.log(`[findMaximalPlacement Debug] Found ${finalSolutions.length} maximal solutions placing ${maxPlaced} shapes.`);
             return { maxShapes: maxPlaced, solutions: finalSolutions };
         }
         else {
-            // console.log("[findMaximalPlacement] DLX solver returned no solutions."); // Reduced further
+            if (enableMaximalDebug)
+                console.log("[findMaximalPlacement Debug] DLX solver returned no solutions.");
             return { maxShapes: 0, solutions: [] };
         }
     }
@@ -879,10 +895,12 @@ shapeDataMap, // Precomputed placements for ALL potential shapes
 _initialConstraints, // Marked unused
 shapesToUse, // List of shapes TO USE for tiling (should have length k)
 initialGridState = 0n, lockedTilesMask = 0n) {
-    // console.log(`[DLX findExactKTilingSolutions] Starting for k=${k}...`); // Reduced logging
-    // console.log(`[DLX findExactKTilingSolutions] shapesToUse: ${shapesToUse.map(s=>s.id).join(', ')}`); // Reduced logging
-    // console.log(`[DLX findExactKTilingSolutions] initialGridState: ${initialGridState.toString(16)}`); // Verbose
-    // console.log(`[DLX findExactKTilingSolutions] lockedTilesMask: ${lockedTilesMask.toString(16)}`); // Verbose
+    if (ENABLE_DLX_DEBUG_LOGGING) {
+        console.log(`[DLX Debug] Starting findExactKTilingSolutions for k=${k}...`);
+        console.log(`[DLX Debug] shapesToUse: ${shapesToUse.map(s => s.id).join(', ')}`);
+        console.log(`[DLX Debug] initialGridState: ${initialGridState.toString(16)}`);
+        console.log(`[DLX Debug] lockedTilesMask: ${lockedTilesMask.toString(16)}`);
+    }
     if (k !== shapesToUse.length) {
         console.error(`[DLX findExactKTilingSolutions] Mismatch: k is ${k} but shapesToUse has ${shapesToUse.length} items!`);
         return { solutions: [], error: `Input mismatch: k=${k}, number of shapes provided=${shapesToUse.length}` };
@@ -891,29 +909,38 @@ initialGridState = 0n, lockedTilesMask = 0n) {
     try {
         // Build constraints using only the shapesToUse and available tiles
         // console.log("[DLX findExactKTilingSolutions] Building constraints..."); // Reduced logging
+        if (ENABLE_DLX_DEBUG_LOGGING)
+            console.log("[DLX Debug] Building constraints...");
         const { constraints, columnCount } = buildDancingLinksConstraints(shapeDataMap, shapesToUse, initialGridState, lockedTilesMask);
         if (constraints.length === 0 || columnCount === 0) {
-            // console.log("[DLX findExactKTilingSolutions] No constraints built, returning empty."); // Reduced further
+            if (ENABLE_DLX_DEBUG_LOGGING)
+                console.log("[DLX Debug] No constraints built, returning empty.");
             return { solutions: [] };
         }
-        // console.log(`[DLX findExactKTilingSolutions] Constraints built (${constraints.length} rows, ${columnCount} cols). Calling findOne...`); // Reduced logging
-        let dlxSolutions = [];
+        // console.log(`[DLX findExactKTilingSolutions] Constraints built (${constraints.length} rows, ${columnCount} cols). Calling findAll...`); // Reduced logging
+        if (ENABLE_DLX_DEBUG_LOGGING)
+            console.log(`[DLX Debug] Constraints built (${constraints.length} rows, ${columnCount} cols). Calling findAll...`);
+        let dlxSolutions = []; // Will hold multiple solutions now
         try {
-            dlxSolutions = dancing_links__WEBPACK_IMPORTED_MODULE_0__.findOne(constraints); // Reverted back to findOne
+            // Find ALL solutions instead of just one
+            dlxSolutions = dancing_links__WEBPACK_IMPORTED_MODULE_0__.findAll(constraints);
         }
         catch (dlxError) {
-            console.error("[DLX findExactKTilingSolutions] Error calling findOne:", dlxError);
+            console.error("[DLX findExactKTilingSolutions] Error calling findAll:", dlxError); // Corrected message
             return { solutions: [], error: `DLX Solver Error: ${dlxError instanceof Error ? dlxError.message : String(dlxError)}` };
         }
         const endTime = Date.now();
-        // console.log(`[DLX findExactKTilingSolutions] findOne completed in ${endTime - startTime}ms. Found ${dlxSolutions.length} raw solution(s).`); // Reduced logging
+        // console.log(`[DLX findExactKTilingSolutions] findAll completed in ${endTime - startTime}ms. Found ${dlxSolutions.length} raw solution(s).`); // Reduced further
+        if (ENABLE_DLX_DEBUG_LOGGING)
+            console.log(`[DLX Debug] findAll completed in ${endTime - startTime}ms. Found ${dlxSolutions.length} raw solution(s).`);
         // Safely log raw solutions, converting BigInts to strings
         try {
             const solutionsString = JSON.stringify(dlxSolutions, (key, value) => typeof value === 'bigint'
                 ? value.toString() // Convert BigInt to string
                 : value, // return everything else unchanged
             2);
-            // console.log('[DLX findExactKTilingSolutions] Raw Solutions (BigInts as Strings):', solutionsString); // Very Verbose
+            if (ENABLE_DLX_DEBUG_LOGGING)
+                console.log('[DLX Debug] Raw Solutions (BigInts as Strings):', solutionsString);
         }
         catch (logError) {
             console.error("[DLX findExactKTilingSolutions] Error stringifying raw solutions for logging:", logError);
@@ -921,19 +948,31 @@ initialGridState = 0n, lockedTilesMask = 0n) {
         }
         // Convert the single dlx solution (if found) to SolutionRecord format
         const formattedSolutions = [];
-        if (dlxSolutions && dlxSolutions.length > 0) {
-            const solutionItems = dlxSolutions[0]; // Get the single solution's items
+        // Iterate through ALL solutions found by findAll
+        for (const solutionItems of dlxSolutions) {
             const placements = solutionItems.map(item => item.data);
             if (placements.length === k) {
                 const finalGridState = placements.reduce((acc, p) => acc | p.placementMask, 0n);
                 formattedSolutions.push({ gridState: finalGridState, placements });
             }
             else {
-                console.warn(`[DLX findExactKTilingSolutions] Solution found by findOne has ${placements.length} items, expected ${k}. Discarding.`);
+                console.warn(`[DLX findExactKTilingSolutions] Solution found by findAll has ${placements.length} items, expected ${k}. Discarding.`); // Corrected message
             }
         }
+        // Deduplicate solutions based on the final grid state
+        const uniqueSolutionsMap = new Map();
+        formattedSolutions.forEach(sol => {
+            // Use gridState converted to string as the key for uniqueness
+            uniqueSolutionsMap.set(sol.gridState.toString(), sol);
+        });
+        const uniqueFormattedSolutions = Array.from(uniqueSolutionsMap.values());
         // console.log("[DLX findExactKTilingSolutions] Finished processing solution."); // Reduced logging
-        return { solutions: formattedSolutions }; // Return array containing 0 or 1 solution
+        // console.log(`[DLX findExactKTilingSolutions] Found ${formattedSolutions.length} raw solutions, returning ${uniqueFormattedSolutions.length} unique formatted solution(s).`); // Reduced further - Commented out
+        if (ENABLE_DLX_DEBUG_LOGGING) {
+            console.log("[DLX Debug] Finished processing solution.");
+            console.log(`[DLX Debug] Found ${formattedSolutions.length} raw solutions, returning ${uniqueFormattedSolutions.length} unique formatted solution(s).`);
+        }
+        return { solutions: uniqueFormattedSolutions }; // Return unique solutions
     }
     catch (error) {
         const errorEndTime = Date.now();
@@ -62188,7 +62227,7 @@ const FULL_GRID_MASK = (1n << BigInt(_shapedoctor_config__WEBPACK_IMPORTED_MODUL
 let allShapeData = new Map();
 // --- Precomputation Function ---
 const precomputeAllShapeData = (shapesToPlace, lockedTilesMask) => {
-    console.log("[Worker Precompute] Starting precomputation (Single Orientation, All Translations)...");
+    // console.log("[Worker Precompute] Starting precomputation (Single Orientation, All Translations)..."); // Reduced
     const computationStartTime = Date.now();
     const computedData = new Map();
     const lockedTilesMaskBigint = typeof lockedTilesMask === 'string' ? BigInt(lockedTilesMask) : lockedTilesMask;
@@ -62265,7 +62304,7 @@ const precomputeAllShapeData = (shapesToPlace, lockedTilesMask) => {
         }
     });
     const computationEndTime = Date.now();
-    console.log(`[Worker Precompute] Precomputation finished in ${computationEndTime - computationStartTime}ms. Computed data for ${computedData.size} shapes (Single Orientation, All Translations).`);
+    // console.log(`[Worker Precompute] Precomputation finished in ${computationEndTime - computationStartTime}ms. Computed data for ${computedData.size} shapes (Single Orientation, All Translations).`); // Reduced
     return computedData;
 };
 // Helper to calculate combinations safely
@@ -62297,7 +62336,7 @@ function calculateTotalCombinations(n, k) {
 }
 // --- Combinatorial Exact Tiling Function (DLX-based) ---
 async function runCombinatorialExactTiling(taskData) {
-    console.log("[Worker runCombinatorialExactTiling] Received task to find exact tiling subset.");
+    // console.log("[Worker runCombinatorialExactTiling] Received task to find exact tiling subset."); // Reduced
     allShapeData = new Map(); // Reset precomputed data for this run
     const { allPotentialsData, initialGridState = 0n, lockedTilesMask } = taskData;
     const initialGridStateBigint = typeof initialGridState === 'string' ? BigInt(initialGridState) : initialGridState;
@@ -62318,7 +62357,7 @@ async function runCombinatorialExactTiling(taskData) {
         // 1. Calculate available tiles and required shapes (k)
         const availableTileMask = FULL_GRID_MASK & (~lockedTilesMaskBigint);
         const availableTileCount = (0,_bitmaskUtils__WEBPACK_IMPORTED_MODULE_1__.countSetBits)(availableTileMask);
-        console.log(`[Worker CET] Available tiles: ${availableTileCount}`); // CET for Combinatorial Exact Tiling
+        // console.log(`[Worker CET] Available tiles: ${availableTileCount}`); // Reduced // CET for Combinatorial Exact Tiling
         if (availableTileCount === 0) {
             console.log("[Worker CET] No available tiles. Exact tiling impossible.");
             return { status: 'completed', combinationsChecked: 0 };
@@ -62328,20 +62367,20 @@ async function runCombinatorialExactTiling(taskData) {
             return { status: 'completed', combinationsChecked: 0 };
         }
         const k = availableTileCount / 4;
-        console.log(`[Worker CET] Required shapes (k): ${k}`);
+        // console.log(`[Worker CET] Required shapes (k): ${k}`); // Reduced
         // 2. Check if enough shapes are provided
         const numSelectedShapes = allPotentialsData.length;
-        console.log(`[Worker CET] Selected shapes (N): ${numSelectedShapes}`);
+        // console.log(`[Worker CET] Selected shapes (N): ${numSelectedShapes}`); // Reduced
         if (numSelectedShapes < k) {
             console.log(`[Worker CET] Not enough selected shapes (${numSelectedShapes}) to form a ${k}-shape tiling. Exact tiling impossible.`);
             return { status: 'completed', combinationsChecked: 0 };
         }
         // 3. Precompute data for ALL provided potential shapes
-        console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Running precomputation for all ${numSelectedShapes} selected shapes...`);
+        // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Running precomputation for all ${numSelectedShapes} selected shapes...`); // Reduced
         const shapesForPrecompute = allPotentialsData.map(p => ({ id: p.uniqueId }));
         allShapeData = precomputeAllShapeData(shapesForPrecompute, lockedTilesMaskBigint);
         const precomputeEndTime = Date.now();
-        console.log(`[Worker CET @ ${precomputeEndTime - overallStartTime}ms] Precomputation done. ${allShapeData.size} shapes have data.`);
+        // console.log(`[Worker CET @ ${precomputeEndTime - overallStartTime}ms] Precomputation done. ${allShapeData.size} shapes have data.`); // Reduced
         // Filter out shapes that had no valid placements after precomputation
         const potentialsWithValidPlacements = allPotentialsData.filter(p => {
             const data = allShapeData.get(p.uniqueId);
@@ -62354,13 +62393,13 @@ async function runCombinatorialExactTiling(taskData) {
             return { status: 'completed', combinationsChecked: 0 };
         }
         // Calculate total combinations for progress reporting
-        console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Calculating total combinations C(${numValidPotentials}, ${k})...`);
+        // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Calculating total combinations C(${numValidPotentials}, ${k})...`); // Reduced
         const totalCombinations = calculateTotalCombinations(numValidPotentials, k);
-        console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Total combinations to check: ${totalCombinations}`);
+        // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Total combinations to check: ${totalCombinations}`); // Reduced further
         // Emit initial progress
         workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({ event: 'progressUpdate', data: { progress: 0, currentCount: 0, totalCount: totalCombinations } });
         // 4. Iterate through combinations of k shapes from the valid potentials
-        console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Starting combinations loop (k=${k}, N=${numValidPotentials})...`);
+        // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Starting combinations loop (k=${k}, N=${numValidPotentials})...`); // Reduced
         // --- DEBUG: Log valid placements (removed for general case) ---
         for (const shapeCombination of combinations(potentialsWithValidPlacements, k)) {
             // --- Cancellation Check ---
@@ -62372,10 +62411,10 @@ async function runCombinatorialExactTiling(taskData) {
             combinationCount++;
             const loopIterationStartTime = Date.now();
             if (combinationCount <= 5 || combinationCount % 1000 === 0) { // Log first 5 and every 1000th
-                console.log(`[Worker CET @ ${loopIterationStartTime - overallStartTime}ms] --- Iteration ${combinationCount} / ${totalCombinations} ---`);
+                // console.log(`[Worker CET @ ${loopIterationStartTime - overallStartTime}ms] --- Iteration ${combinationCount} / ${totalCombinations} ---`); // Reduced
                 // Log the shapes in this specific combination
                 const shapesInThisCombo = shapeCombination.map(p => p.uniqueId.split('::')[1]); // Get just the mask part
-                console.log(`[Worker CET]   Testing combination: [${shapesInThisCombo.join(', ')}]`);
+                // console.log(`[Worker CET]   Testing combination: [${shapesInThisCombo.join(', ')}]`); // Reduced
             }
             // --- Progress Update --- MODIFIED --- 
             // Update every 1000 or on the last iteration
@@ -62391,13 +62430,13 @@ async function runCombinatorialExactTiling(taskData) {
             const shapesToTileWith = shapeCombination.map(p => ({ id: p.uniqueId }));
             // 5. Call the DLX solver for the current combination
             if (combinationCount <= 5 || combinationCount % 1000 === 0) {
-                console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms]   Calling findExactKTilingSolutions...`);
+                // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms]   Calling findExactKTilingSolutions...`); // Reduced
             }
             const solveStartTime = Date.now();
             const result = (0,_solver_dlx__WEBPACK_IMPORTED_MODULE_3__.findExactKTilingSolutions)(k, allShapeData, [], shapesToTileWith, initialGridStateBigint, lockedTilesMaskBigint);
             const solveEndTime = Date.now();
             if (combinationCount <= 5 || combinationCount % 1000 === 0) {
-                console.log(`[Worker CET @ ${solveEndTime - overallStartTime}ms]   findExactKTilingSolutions returned in ${solveEndTime - solveStartTime}ms. Error: ${result.error ?? 'None'}, Solutions found: ${result.solutions?.length ?? 0}`);
+                // console.log(`[Worker CET @ ${solveEndTime - overallStartTime}ms]   findExactKTilingSolutions returned in ${solveEndTime - solveStartTime}ms. Error: ${result.error ?? 'None'}, Solutions found: ${result.solutions?.length ?? 0}`); // Reduced
             }
             if (result.error) {
                 if (combinationCount <= 5) { // Only log errors verbosely for first few
@@ -62407,16 +62446,18 @@ async function runCombinatorialExactTiling(taskData) {
             // 6. Check if a solution was found for this combination
             if (result.solutions && result.solutions.length > 0) {
                 console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] Solution found for combination ${combinationCount}. Emitting...`);
-                const solutionToSend = {
-                    ...result.solutions[0],
-                    gridState: result.solutions[0].gridState.toString(),
-                    placements: result.solutions[0].placements.map(p => ({
+                // Map ALL found solutions to the serializable format
+                const solutionsToSend = result.solutions.map(solution => ({
+                    ...solution,
+                    gridState: solution.gridState.toString(),
+                    placements: solution.placements.map(p => ({
                         shapeId: p.shapeId,
                         placementMask: p.placementMask.toString()
                     }))
-                };
+                }));
                 try {
-                    workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({ event: 'solutionUpdate', data: { maxShapes: k, solution: solutionToSend } });
+                    // Emit the entire array of solutions under the key 'solutions'
+                    workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({ event: 'solutionUpdate', data: { solutions: solutionsToSend } });
                 }
                 catch (emitError) {
                     console.error("[Worker CET] Error emitting solution update:", emitError);
@@ -62424,7 +62465,7 @@ async function runCombinatorialExactTiling(taskData) {
             }
             // Log end of iteration for the first few
             if (combinationCount <= 5) {
-                console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] --- Finished Iteration ${combinationCount} ---`);
+                // console.log(`[Worker CET @ ${Date.now() - overallStartTime}ms] --- Finished Iteration ${combinationCount} ---`); // Reduced
             }
         }
         // 7. If loop completes
@@ -62437,7 +62478,7 @@ async function runCombinatorialExactTiling(taskData) {
         });
         // ---------------------------------
         await new Promise(resolve => setTimeout(resolve, 10));
-        console.log(`[Worker CET] Finished testing ${combinationCount} combinations in ${overallEndTime - overallStartTime}ms.`);
+        // console.log(`[Worker CET] Finished testing ${combinationCount} combinations in ${overallEndTime - overallStartTime}ms.`); // Reduced
         return { status: 'completed', combinationsChecked: combinationCount };
     }
     catch (error) {
@@ -62462,7 +62503,7 @@ async function runCombinatorialExactTiling(taskData) {
 }
 // --- Backtracking-Based Maximal Placement Function ---
 const runMaximalPlacementBacktracking = async (taskData) => {
-    console.log("[Worker runMaximalPlacementBacktracking] Starting maximal placement using Backtracking...");
+    // console.log("[Worker runMaximalPlacementBacktracking] Starting maximal placement using Backtracking..."); // Reduced
     allShapeData = new Map(); // Reset precomputed data
     const { shapesToPlace, initialGridState = 0n, lockedTilesMask } = taskData;
     const initialGridStateBigint = typeof initialGridState === 'string' ? BigInt(initialGridState) : initialGridState;
@@ -62499,10 +62540,10 @@ const runMaximalPlacementBacktracking = async (taskData) => {
             return a.shapeId.localeCompare(b.shapeId);
         });
         if (allValidPlacements.length === 0) {
-            console.log("[Worker runMaximalPlacementBacktracking] No valid placements found after precomputation.");
+            // console.log("[Worker runMaximalPlacementBacktracking] No valid placements found after precomputation."); // Reduced
             return { maxShapes: 0, solutions: [] };
         }
-        console.log(`[Worker runMaximalPlacementBacktracking] Precomputation done. Found ${allValidPlacements.length} total valid placements (Sorted).`); // Indicate sorted
+        // console.log(`[Worker runMaximalPlacementBacktracking] Precomputation done. Found ${allValidPlacements.length} total valid placements (Sorted).`); // Indicate sorted
         // 3. Initialize backtracking state
         let maxKFound = 0;
         let finalBestSolutions = [];
@@ -62515,7 +62556,7 @@ const runMaximalPlacementBacktracking = async (taskData) => {
                 const newBestSolution = { gridState: currentGrid, placements: [...currentPlacementList] };
                 finalBestSolutions = [newBestSolution];
                 // Directly emit the solution (assuming precompute now guarantees 4 tiles)
-                console.log(`[Worker Backtrack] New best k = ${maxKFound} found. Emitting solutionUpdate...`);
+                // console.log(`[Worker Backtrack] New best k = ${maxKFound} found. Emitting solutionUpdate...`); // Reduced
                 try {
                     workerpool__WEBPACK_IMPORTED_MODULE_0__.workerEmit({
                         event: 'solutionUpdate',
@@ -62552,10 +62593,10 @@ const runMaximalPlacementBacktracking = async (taskData) => {
             }
         };
         // 5. Start the backtracking search (uses the sorted placements)
-        console.log("[Worker runMaximalPlacementBacktracking] Starting backtracking search (with sorted placements)...");
+        // console.log("[Worker runMaximalPlacementBacktracking] Starting backtracking search (with sorted placements)..."); // Reduced
         backtrack(0, initialGridStateBigint, [], usedShapeTypes);
         const endTime = Date.now();
-        console.log(`[Worker runMaximalPlacementBacktracking] Backtracking finished in ${endTime - startTime}ms. Final max k = ${maxKFound}. Found ${finalBestSolutions.length} solution(s).`);
+        // console.log(`[Worker runMaximalPlacementBacktracking] Backtracking finished in ${endTime - startTime}ms. Final max k = ${maxKFound}. Found ${finalBestSolutions.length} solution(s).`); // Reduced
         return { maxShapes: maxKFound, solutions: finalBestSolutions };
     }
     catch (error) {
@@ -62568,7 +62609,7 @@ workerpool__WEBPACK_IMPORTED_MODULE_0__.worker({
     runCombinatorialExactTiling: runCombinatorialExactTiling,
     runMaximalPlacementBacktracking: runMaximalPlacementBacktracking
 });
-console.log('[Solver Worker] Worker initialized and ready.');
+// console.log('[Solver Worker] Worker initialized and ready.'); // Reduced
 
 })();
 

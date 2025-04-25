@@ -16,6 +16,9 @@ import {
 } from './bitmaskUtils'; // REMOVE .js
 import { TOTAL_TILES } from './shapedoctor.config'; // REMOVE .js
 
+// --- Debug Logging Flag ---
+const ENABLE_DLX_DEBUG_LOGGING = false; // Set to true to enable verbose DLX logs
+
 // KEEP local ShapeInput definition
 interface ShapeInput { id: string };
 type ShapeDataMap = Map<string, ShapeData>; // Keep local definition
@@ -31,8 +34,10 @@ const buildDancingLinksConstraints = (
     // console.log("[DLX] Starting buildDancingLinksConstraints..."); // Reduced logging
     
     // console.log(`[DLX Build Constraints] shapesToTileWith: ${shapesToTileWith.map(s=>s.id).join(', ')}`); // Reduced logging
-    // console.log(`[DLX Build Constraints] initialGridState: ${initialGridState.toString(16)}`); // Verbose
-    // console.log(`[DLX Build Constraints] lockedTilesMask: ${lockedTilesMask.toString(16)}`); // Verbose
+    if (ENABLE_DLX_DEBUG_LOGGING) {
+        console.log(`[DLX Build Constraints Debug] initialGridState: ${initialGridState.toString(16)}`);
+        console.log(`[DLX Build Constraints Debug] lockedTilesMask: ${lockedTilesMask.toString(16)}`);
+    }
     
     // Calculate available tiles
     const availableTiles = new Set<number>();
@@ -109,10 +114,10 @@ const buildDancingLinksConstraints = (
             const logPrefix = isKnownSolutionPlacement ? "*** KNOWN SOL PLACEMENT ***" : "   ";
 
             // Log which instance we are building constraints for
-            // console.log(`${logPrefix} [Build Constraints] Checking shape ${shapeId} (Instance ${instanceIndex}), placement ${placementMaskHex}`); // Verbose
+            if (ENABLE_DLX_DEBUG_LOGGING) console.log(`${logPrefix} [DLX Build Constraints Debug] Checking shape ${shapeId} (Instance ${instanceIndex}), placement ${placementMaskHex}`);
 
             if ((initialGridState & placementMask) === 0n) {
-                // console.log(`${logPrefix}   -> Initial state check PASSED.`); // Verbose
+                if (ENABLE_DLX_DEBUG_LOGGING) console.log(`${logPrefix}   -> Initial state check PASSED.`);
                 const coveredTileIds = bitmaskToTileIds(placementMask);
                 let allCoveredTilesAvailable = true;
                 let reasonSkipped = ""; // For logging
@@ -121,13 +126,13 @@ const buildDancingLinksConstraints = (
                     if (!columnIndexMap.has(tileColName)) {
                         allCoveredTilesAvailable = false;
                         reasonSkipped = `Tile ${tileId} not available (not in column map - likely locked)`;
-                        // console.log(`${logPrefix}     -> Tile check FAILED: ${reasonSkipped}`); // Verbose
+                        if (ENABLE_DLX_DEBUG_LOGGING) console.log(`${logPrefix}     -> Tile check FAILED: ${reasonSkipped}`);
                         break;
                     }
                 }
 
                 if (allCoveredTilesAvailable) {
-                    // console.log(`${logPrefix}   -> Available tiles check PASSED.`); // Verbose
+                    if (ENABLE_DLX_DEBUG_LOGGING) console.log(`${logPrefix}   -> Available tiles check PASSED.`);
                     const row = new Array(numColumns).fill(0) as (0 | 1)[]; 
                     
                     // 1. Set the shape *instance* column
@@ -140,7 +145,7 @@ const buildDancingLinksConstraints = (
                         row[tileColIndex] = 1;
                     }
 
-                    // console.log(`${logPrefix}     --> ADDING CONSTRAINT row for shape instance ${instanceIndex} (${shapeId}), placement ${placementMaskHex}`); // Verbose
+                    if (ENABLE_DLX_DEBUG_LOGGING) console.log(`${logPrefix}     --> ADDING CONSTRAINT row for shape instance ${instanceIndex} (${shapeId}), placement ${placementMaskHex}`);
                     constraints.push({
                         data: { shapeId: shapeId, placementMask }, // Store original shape ID
                         row: row // Assign the correctly typed row
@@ -149,7 +154,7 @@ const buildDancingLinksConstraints = (
                     // Logging moved inside the loop where failure occurs
                 }
             } else {
-                // console.log(`${logPrefix}   -> Initial state check FAILED (overlaps). Skipping.`); // Verbose
+                if (ENABLE_DLX_DEBUG_LOGGING) console.log(`${logPrefix}   -> Initial state check FAILED (overlaps). Skipping.`);
             }
         }
     }); // End forEach loop over shape instances
@@ -167,6 +172,7 @@ export const findMaximalPlacement = (
     allShapes: ShapeInput[],
 ): { maxShapes: number; solutions: SolutionRecord[], error?: string } => {
     try {
+        const enableMaximalDebug = false; // Separate flag if needed, or use ENABLE_DLX_DEBUG_LOGGING
         // 1. Define Columns (Items)
         const tileColumns: string[] = [];       // Names of available tile columns (Primary)
         const shapeColumns: string[] = [];      // Names of shape columns (Secondary)
@@ -185,7 +191,7 @@ export const findMaximalPlacement = (
         }
         const numPrimaryColumns = tileColumns.length;
         if (numPrimaryColumns === 0) {
-             // console.log("[findMaximalPlacement] No available tiles based on initialGridState. Returning empty solution."); // Reduced further
+             if(enableMaximalDebug) console.log("[findMaximalPlacement Debug] No available tiles based on initialGridState. Returning empty solution.");
              return { maxShapes: 0, solutions: [] };
          }
 
@@ -196,7 +202,7 @@ export const findMaximalPlacement = (
             shapeNameToSecondaryIndex.set(shapeName, secondaryIndexCounter++);
         });
         const numSecondaryColumns = shapeColumns.length;
-        // console.log(`[findMaximalPlacement] Columns defined: ${numPrimaryColumns} Primary (Tiles), ${numSecondaryColumns} Secondary (Shapes)`); // Reduced further
+        if(enableMaximalDebug) console.log(`[findMaximalPlacement Debug] Columns defined: ${numPrimaryColumns} Primary (Tiles), ${numSecondaryColumns} Secondary (Shapes)`);
 
         // 2. Define Options (Rows for the DLX matrix)
         const dlxOptions: Constraint<PlacementRecord>[] = [];
@@ -254,7 +260,7 @@ export const findMaximalPlacement = (
 
         // console.log(`[findMaximalPlacement] Built ${dlxOptions.length} options (constraints)`); // Reduced further
         if (dlxOptions.length === 0) {
-             // console.log("[findMaximalPlacement] No valid options generated. Returning empty solution."); // Reduced further
+             if(enableMaximalDebug) console.log("[findMaximalPlacement Debug] No valid options generated. Returning empty solution.");
              return { maxShapes: 0, solutions: [] };
          }
 
@@ -281,10 +287,10 @@ export const findMaximalPlacement = (
                     placements: placements
                 });
             });
-             // console.log(`[findMaximalPlacement] Found ${finalSolutions.length} maximal solutions placing ${maxPlaced} shapes.`); // Reduced further
+             if(enableMaximalDebug) console.log(`[findMaximalPlacement Debug] Found ${finalSolutions.length} maximal solutions placing ${maxPlaced} shapes.`);
             return { maxShapes: maxPlaced, solutions: finalSolutions };
         } else {
-             // console.log("[findMaximalPlacement] DLX solver returned no solutions."); // Reduced further
+             if(enableMaximalDebug) console.log("[findMaximalPlacement Debug] DLX solver returned no solutions.");
             return { maxShapes: 0, solutions: [] };
         }
 
@@ -304,10 +310,12 @@ export function findExactKTilingSolutions(
     initialGridState: bigint = 0n, 
     lockedTilesMask: bigint = 0n   
 ): { solutions: SolutionRecord[], error?: string } { 
-    // console.log(`[DLX findExactKTilingSolutions] Starting for k=${k}...`); // Reduced logging
-    // console.log(`[DLX findExactKTilingSolutions] shapesToUse: ${shapesToUse.map(s=>s.id).join(', ')}`); // Reduced logging
-    // console.log(`[DLX findExactKTilingSolutions] initialGridState: ${initialGridState.toString(16)}`); // Verbose
-    // console.log(`[DLX findExactKTilingSolutions] lockedTilesMask: ${lockedTilesMask.toString(16)}`); // Verbose
+    if (ENABLE_DLX_DEBUG_LOGGING) {
+        console.log(`[DLX Debug] Starting findExactKTilingSolutions for k=${k}...`);
+        console.log(`[DLX Debug] shapesToUse: ${shapesToUse.map(s=>s.id).join(', ')}`);
+        console.log(`[DLX Debug] initialGridState: ${initialGridState.toString(16)}`);
+        console.log(`[DLX Debug] lockedTilesMask: ${lockedTilesMask.toString(16)}`);
+    }
     if (k !== shapesToUse.length) {
         console.error(`[DLX findExactKTilingSolutions] Mismatch: k is ${k} but shapesToUse has ${shapesToUse.length} items!`);
         return { solutions: [], error: `Input mismatch: k=${k}, number of shapes provided=${shapesToUse.length}` };
@@ -316,6 +324,7 @@ export function findExactKTilingSolutions(
     try {
         // Build constraints using only the shapesToUse and available tiles
         // console.log("[DLX findExactKTilingSolutions] Building constraints..."); // Reduced logging
+        if (ENABLE_DLX_DEBUG_LOGGING) console.log("[DLX Debug] Building constraints...");
         const { constraints, columnCount } = buildDancingLinksConstraints(
             shapeDataMap,
             shapesToUse,
@@ -324,21 +333,24 @@ export function findExactKTilingSolutions(
         );
 
         if (constraints.length === 0 || columnCount === 0) {
-             // console.log("[DLX findExactKTilingSolutions] No constraints built, returning empty."); // Reduced further
+             if (ENABLE_DLX_DEBUG_LOGGING) console.log("[DLX Debug] No constraints built, returning empty.");
              return { solutions: [] };
          }
          
-        // console.log(`[DLX findExactKTilingSolutions] Constraints built (${constraints.length} rows, ${columnCount} cols). Calling findOne...`); // Reduced logging
-        let dlxSolutions: Result<PlacementRecord>[][] = []; 
+        // console.log(`[DLX findExactKTilingSolutions] Constraints built (${constraints.length} rows, ${columnCount} cols). Calling findAll...`); // Reduced logging
+        if (ENABLE_DLX_DEBUG_LOGGING) console.log(`[DLX Debug] Constraints built (${constraints.length} rows, ${columnCount} cols). Calling findAll...`);
+        let dlxSolutions: Result<PlacementRecord>[][] = []; // Will hold multiple solutions now
         try {
-            dlxSolutions = dlx.findOne(constraints); // Reverted back to findOne
+            // Find ALL solutions instead of just one
+            dlxSolutions = dlx.findAll(constraints); 
         } catch(dlxError) {
-            console.error("[DLX findExactKTilingSolutions] Error calling findOne:", dlxError);
+            console.error("[DLX findExactKTilingSolutions] Error calling findAll:", dlxError); // Corrected message
             return { solutions: [], error: `DLX Solver Error: ${dlxError instanceof Error ? dlxError.message : String(dlxError)}` };
         }
         
         const endTime = Date.now();
-        // console.log(`[DLX findExactKTilingSolutions] findOne completed in ${endTime - startTime}ms. Found ${dlxSolutions.length} raw solution(s).`); // Reduced logging
+        // console.log(`[DLX findExactKTilingSolutions] findAll completed in ${endTime - startTime}ms. Found ${dlxSolutions.length} raw solution(s).`); // Reduced further
+        if (ENABLE_DLX_DEBUG_LOGGING) console.log(`[DLX Debug] findAll completed in ${endTime - startTime}ms. Found ${dlxSolutions.length} raw solution(s).`);
         // Safely log raw solutions, converting BigInts to strings
         try {
             const solutionsString = JSON.stringify(dlxSolutions, (key, value) =>
@@ -347,7 +359,7 @@ export function findExactKTilingSolutions(
                     : value, // return everything else unchanged
                 2
             );
-            // console.log('[DLX findExactKTilingSolutions] Raw Solutions (BigInts as Strings):', solutionsString); // Very Verbose
+            if (ENABLE_DLX_DEBUG_LOGGING) console.log('[DLX Debug] Raw Solutions (BigInts as Strings):', solutionsString);
         } catch (logError) {
             console.error("[DLX findExactKTilingSolutions] Error stringifying raw solutions for logging:", logError);
             console.log("[DLX findExactKTilingSolutions] Raw Solutions (logging failed):", dlxSolutions); // Log raw object as fallback
@@ -355,20 +367,33 @@ export function findExactKTilingSolutions(
 
         // Convert the single dlx solution (if found) to SolutionRecord format
         const formattedSolutions: SolutionRecord[] = [];
-        if (dlxSolutions && dlxSolutions.length > 0) { 
-            const solutionItems = dlxSolutions[0]; // Get the single solution's items
+        // Iterate through ALL solutions found by findAll
+        for (const solutionItems of dlxSolutions) {
             const placements: PlacementRecord[] = solutionItems.map(item => item.data);
 
             if (placements.length === k) {
                 const finalGridState = placements.reduce((acc, p) => acc | p.placementMask, 0n);
                 formattedSolutions.push({ gridState: finalGridState, placements });
             } else {
-                console.warn(`[DLX findExactKTilingSolutions] Solution found by findOne has ${placements.length} items, expected ${k}. Discarding.`);
+                console.warn(`[DLX findExactKTilingSolutions] Solution found by findAll has ${placements.length} items, expected ${k}. Discarding.`); // Corrected message
             }
         }
 
+        // Deduplicate solutions based on the final grid state
+        const uniqueSolutionsMap = new Map<string, SolutionRecord>();
+        formattedSolutions.forEach(sol => {
+            // Use gridState converted to string as the key for uniqueness
+            uniqueSolutionsMap.set(sol.gridState.toString(), sol);
+        });
+        const uniqueFormattedSolutions = Array.from(uniqueSolutionsMap.values());
+
         // console.log("[DLX findExactKTilingSolutions] Finished processing solution."); // Reduced logging
-        return { solutions: formattedSolutions }; // Return array containing 0 or 1 solution
+        // console.log(`[DLX findExactKTilingSolutions] Found ${formattedSolutions.length} raw solutions, returning ${uniqueFormattedSolutions.length} unique formatted solution(s).`); // Reduced further - Commented out
+        if (ENABLE_DLX_DEBUG_LOGGING) {
+            console.log("[DLX Debug] Finished processing solution.");
+            console.log(`[DLX Debug] Found ${formattedSolutions.length} raw solutions, returning ${uniqueFormattedSolutions.length} unique formatted solution(s).`);
+        }
+        return { solutions: uniqueFormattedSolutions }; // Return unique solutions
 
     } catch (error) {
         const errorEndTime = Date.now();

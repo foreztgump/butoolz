@@ -99,7 +99,7 @@ export default function ShapeDoctor() {
   // Ref for workerpool instance - Use any temporarily
   const workerPoolRef = useRef<any | null>(null); // Changed type to any
   const currentTaskPromiseRef = useRef<workerpool.Promise<any> | null>(null); // Ref for cancellation
-  const foundExactSolutionRef = useRef<SolutionRecord | null>(null); // <--- ADDED REF
+  const anyExactSolutionFound = useRef<boolean>(false);
 
   const [selectedTiles, setSelectedTiles] = useState<Set<number>>(new Set());
   const [potentials, setPotentials] = useState<string[]>([]);
@@ -174,7 +174,7 @@ export default function ShapeDoctor() {
 
   // --- Helper Functions ---
   const updateGridStateFromSolution = useCallback((solution: SolutionRecord) => {
-    console.log("[updateGridStateFromSolution] Updating grid for solution:", solution);
+    // console.log("[updateGridStateFromSolution] Called. Updating grid for solution:", solution); // Reduced
     const newGrid = Array(Config.TOTAL_TILES + 1).fill(-1);
     const numColors = Config.HEX_COLORS.length;
 
@@ -186,7 +186,7 @@ export default function ShapeDoctor() {
         if (currentShapeTiles.length === 0) return; // Skip empty shapes
 
         // Log details for EACH placement mask
-        console.log(`  Processing Placement ${shapeIndex}: ShapeId=${placement.shapeId}, Mask=${mask?.toString()}, Tiles=[${currentShapeTiles.join(',')}] (Count: ${currentShapeTiles.length})`);
+        // console.log(`  Processing Placement ${shapeIndex}: ShapeId=${placement.shapeId}, Mask=${mask?.toString()}, Tiles=[${currentShapeTiles.join(',')}] (Count: ${currentShapeTiles.length})`); // Reduced
         if (currentShapeTiles.length !== 4 && currentShapeTiles.length > 0) {
           console.error(`    ERROR: Placement mask resulted in ${currentShapeTiles.length} tiles!`);
         }
@@ -222,6 +222,7 @@ export default function ShapeDoctor() {
     } else {
       console.warn("[updateGridStateFromSolution] Solution object missing placements array.");
     }
+    // console.log("[updateGridStateFromSolution] Final newGrid before setGridState:", newGrid); // Reduced
     setGridState(newGrid);
   }, [setGridState]);
 
@@ -506,19 +507,18 @@ export default function ShapeDoctor() {
   // Updated Solver Logic
   const handleUnifiedSolve = async () => {
     console.log("[handleUnifiedSolve] Initiating solve...");
-    // Reset states
-    setSolverError(null);
+    // Reset states before starting a new solve
     setIsSolving(true);
-    setCurrentSolver(null);
-    setBestSolutions([]);
+    setSolveProgress(0);
+    setSolverError(null);
+    setBestSolutions([]); // Clear previous maximal solutions
     setCurrentSolutionIndex(-1);
-    setExactTilingSolutions([]);
+    setExactTilingSolutions([]); // Clear previous exact solutions
     setCurrentExactTilingIndex(-1);
-    setGridState(Array(Config.TOTAL_TILES + 1).fill(-1));
-    setSolveProgress(0); // Reset progress
-    foundExactSolutionRef.current = null; // <--- RESET REF
-    setCombinationsChecked(0); // Reset counters
-    setTotalCombinations(null); // <--- RESET STATE TO NULL
+    setCombinationsChecked(0);
+    setTotalCombinations(null);
+    anyExactSolutionFound.current = false; // Reset flag
+    setCurrentSolver(null); // Reset solver indicator
 
     if (!workerPoolRef.current) {
       toast.error("Worker pool not initialized.");
@@ -580,36 +580,50 @@ export default function ShapeDoctor() {
             [taskData],
             { 
                 on: (payload: any) => {
-                    console.log("[Exact Tiling] Received update from worker:", payload);
-                     if (payload && payload.event === 'solutionUpdate' && payload.data && payload.data.solution) {
-                         // Capture the first solution found
-                         if (!foundExactSolutionRef.current) {
-                             // Store the solution (masks are already strings from worker)
-                             // Basic validation: check if it looks like a SolutionRecord
-                             if (typeof payload.data.solution.gridState === 'string' && Array.isArray(payload.data.solution.placements)) {
-                                 foundExactSolutionRef.current = payload.data.solution as SolutionRecord; // Cast after check
-                                 console.log("[Exact Tiling] Captured first solution:", foundExactSolutionRef.current);
-                             } else {
-                                 console.error("[Exact Tiling] Received solutionUpdate has incorrect structure:", payload.data.solution);
-                             }
-                         }
-                     } else if (payload && payload.event === 'progressUpdate' && payload.data) {
-                         // Ensure progress is between 0 and 100
-                         const progress = Math.max(0, Math.min(100, payload.data.progress ?? 0));
-                         setSolveProgress(progress);
-                         setCombinationsChecked(payload.data.currentCount ?? 0);
-                         // Handle potential null from worker if calculation failed
-                         setTotalCombinations(payload.data.totalCount ?? null);
-                     } else {
-                         // Add more detailed logging to see the actual data structure
-                         if (payload && payload.event === 'solutionUpdate') {
-                             console.warn(`[Exact Tiling] Received 'solutionUpdate' but format is wrong. Data:`, payload.data);
-                         } else if (payload && payload.event === 'progressUpdate') {
-                             console.warn(`[Exact Tiling] Received 'progressUpdate' but format is wrong. Data:`, payload.data);
-                         } else {
-                             console.warn("[Exact Tiling] Received completely unexpected payload format from worker:", payload);
-                         }
-                     }
+                    // console.log("[Exact Tiling] Received update from worker:", payload); // Reduced
+                    // Accumulate ALL solutions found by the worker
+                    if (payload && payload.event === 'solutionUpdate' && payload.data && Array.isArray(payload.data.solutions)) {
+                        const newSolutions = payload.data.solutions as SolutionRecord[]; // Assuming worker sends array
+                        if (newSolutions.length > 0) {
+                           anyExactSolutionFound.current = true; // Mark that at least one was found
+                           // console.log(`[Exact Tiling] Received ${newSolutions.length} new solution(s) from worker.`); // Reduced
+                           // Validate structure of the first new solution for safety
+                           // console.log('[Exact Tiling] First new solution raw data:', newSolutions[0]); // Log raw data
+                           if (typeof newSolutions[0].gridState === 'string' && Array.isArray(newSolutions[0].placements)) {
+                               setExactTilingSolutions(prevSolutions => [
+                                   ...prevSolutions,
+                                   // Convert BigInt strings back for internal state (optional, depends if state uses BigInt)
+                                   ...newSolutions.map(sol => ({
+                                       ...sol,
+                                       gridState: BigInt(sol.gridState), // Assuming state uses BigInt
+                                       placements: sol.placements.map(p => ({...p, placementMask: BigInt(p.placementMask)}))
+                                   }))
+                               ]);
+                               // Optionally set index to the first of the newly added solutions
+                               if (currentExactTilingIndex === -1) {
+                                   setCurrentExactTilingIndex(0); // Show the first solution found overall
+                               }
+                           } else {
+                               console.error("[Exact Tiling] Received solutionUpdate has incorrect structure:", newSolutions[0]);
+                           }
+                       }
+                    } else if (payload && payload.event === 'progressUpdate' && payload.data) {
+                        // Ensure progress is between 0 and 100
+                        const progress = Math.max(0, Math.min(100, payload.data.progress ?? 0));
+                        setSolveProgress(progress);
+                        setCombinationsChecked(payload.data.currentCount ?? 0);
+                        // Handle potential null from worker if calculation failed
+                        setTotalCombinations(payload.data.totalCount ?? null);
+                    } else {
+                        // Add more detailed logging to see the actual data structure
+                        if (payload && payload.event === 'solutionUpdate') {
+                            console.warn(`[Exact Tiling] Received 'solutionUpdate' but format is wrong. Data:`, payload.data);
+                        } else if (payload && payload.event === 'progressUpdate') {
+                            console.warn(`[Exact Tiling] Received 'progressUpdate' but format is wrong. Data:`, payload.data);
+                        } else {
+                            console.warn("[Exact Tiling] Received completely unexpected payload format from worker:", payload);
+                        }
+                    }
                 }
             }
         );
@@ -617,27 +631,17 @@ export default function ShapeDoctor() {
         const result = await currentTaskPromiseRef.current;
         console.log("[handleUnifiedSolve] Exact Tiling task finished.", result);
 
-        if (foundExactSolutionRef.current) {
-          // Exact Tiling Success! Use the captured solution.
-          // Explicitly assign the type here after the non-null check
-          const theSolution: SolutionRecord = foundExactSolutionRef.current;
-
-          // Now use the correctly typed variable without assertions
-          const solutionToStore: SolutionRecord = {
-            gridState: BigInt(theSolution.gridState),
-            placements: theSolution.placements.map((p: PlacementRecord) => ({
-              shapeId: p.shapeId,
-              placementMask: BigInt(p.placementMask)
-            }))
-          };
-
-          setExactTilingSolutions([solutionToStore]);
-          setCurrentExactTilingIndex(0);
+        if (anyExactSolutionFound.current) {
+          // Exact Tiling Success! Use the solutions stored in state.
+          // State already updated by the 'on' handler
+          // Ensure the index is valid if solutions exist
+          if (exactTilingSolutions.length > 0 && currentExactTilingIndex === -1) {
+             setCurrentExactTilingIndex(0);
+          }
           setIsSolving(false);
           setCurrentSolver('exact');
-          toast.success(`Exact Tiling found a ${k}-shape solution!`);
-          updateGridStateFromSolution(solutionToStore);
-
+          toast.success(`Exact Tiling found ${exactTilingSolutions.length} ${k}-shape solution(s)!`);
+          // updateGridStateFromSolution will be triggered by useEffect dependency on currentExactTilingIndex
         } else if (result.status === 'completed') {
             // Task completed, but no solution was emitted/captured
             const checkedCount = result.combinationsChecked ?? combinationsChecked; // Use state as fallback
@@ -697,14 +701,20 @@ export default function ShapeDoctor() {
   // Handle grid update when solution index changes
   useEffect(() => {
     if (currentSolutionIndex >= 0 && bestSolutions[currentSolutionIndex]) {
+      // console.log(`[Debug useEffect] Updating grid from Maximal solution index: ${currentSolutionIndex}`); // Reduced
       updateGridStateFromSolution(bestSolutions[currentSolutionIndex]);
     } else if (currentExactTilingIndex >= 0 && exactTilingSolutions[currentExactTilingIndex]) {
+      // console.log(`[Debug useEffect] Updating grid from Exact Tiling solution index: ${currentExactTilingIndex}`); // Reduced
+      // console.log(`[Debug useEffect] currentSolver: ${currentSolver}, exactTilingSolutions length: ${exactTilingSolutions.length}`); // Add this log
       updateGridStateFromSolution(exactTilingSolutions[currentExactTilingIndex]);
     } else if (!isSolving) {
       // Reset grid if no solution is selected and not solving
       // setGridState(Array(Config.TOTAL_TILES + 1).fill(-1)); // Avoid resetting if user is interacting
     }
   }, [currentSolutionIndex, bestSolutions, currentExactTilingIndex, exactTilingSolutions, isSolving]); // Removed updateGridStateFromSolution dependency
+
+  // Debug: Log exactTilingSolutions when it changes
+  // console.log("[Debug] exactTilingSolutions state updated:", exactTilingSolutions); // Reduced
 
   // --- Predefined Shapes --- 
   const handleAddPredefinedPotential = useCallback(
