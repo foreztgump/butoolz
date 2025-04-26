@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -10,12 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
 import {
   Sword,
   Shield,
   HardHatIcon as Helmet,
-  Calculator,
   Award,
   Shirt as Chest,
   RectangleHorizontal as Pants,
@@ -130,8 +127,8 @@ export default function GearScoreCalculator() {
     }))
   }
 
-  // Calculate gear scores
-  const calculateGearScores = () => {
+  // Calculate gear scores (wrapped in useCallback)
+  const calculateGearScores = useCallback(() => {
     // Calculate weapon gear score
     let w_gear_score = 0
     if (Number.parseInt(gearValues.w_gear_rank) === 1) {
@@ -301,12 +298,12 @@ export default function GearScoreCalculator() {
       belt_gear_score,
       total_score,
     })
-  }
+  }, [gearValues]) // Dependency is gearValues state
 
-  // Add useEffect to calculate scores whenever gearValues changes
+  // Recalculate scores when gear values change
   useEffect(() => {
     calculateGearScores()
-  }, [gearValues])
+  }, [gearValues, calculateGearScores]) // Add calculateGearScores to dependencies
 
   // Add gear slots configuration
   const gearSlots = [

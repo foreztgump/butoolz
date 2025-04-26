@@ -141,6 +141,34 @@ const generateInitialRuneValues = (): RuneValues => {
   return initialValues;
 };
 
+// Memoized RuneSelector Component
+const RuneSelector = React.memo(({ field, value, onChange }: {
+    field: string;
+    value: SelectableRuneValue;
+    onChange: (field: string, value: SelectableRuneValue) => void;
+}) => (
+    <Select value={value} onValueChange={(v) => onChange(field, v as SelectableRuneValue)}>
+        <SelectTrigger className="h-8 w-full py-1 px-2 text-xs focus:ring-1 focus:ring-violet-500">
+            <SelectValue placeholder="-" />
+        </SelectTrigger>
+        <SelectContent className="z-[100] border border-[hsl(240_3.7%_15.9%)] bg-[hsl(240_10%_4%)] max-h-60 overflow-y-auto">
+            {RUNE_OPTIONS.map((option) => (
+                <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    className="hover:bg-[hsl(240_3.7%_15.9%)] text-xs px-2 py-1.5"
+                >
+                    <div className="flex items-center space-x-1.5">
+                        <span className={`inline-block w-3 h-3 rounded-sm ${option.color}`} />
+                        <span>{option.label}</span>
+                    </div>
+                </SelectItem>
+            ))}
+        </SelectContent>
+    </Select>
+));
+RuneSelector.displayName = 'RuneSelector'; // Add display name
+
 export default function RunesDreaming() {
   const [runeValues, setRuneValues] = useState<RuneValues>(generateInitialRuneValues);
 
@@ -283,35 +311,6 @@ export default function RunesDreaming() {
     return RUNE_COLOR_MAP[runeValue] || RUNE_COLOR_MAP["-"];
   }, []);
 
-  // Memoized RuneSelector component
-  const MemoizedRuneSelector = useMemo(() => React.memo(
-    ({ id, value, onChange }: { id: string; value: SelectableRuneValue; onChange: (id: string, value: SelectableRuneValue) => void }) => (
-      <div className="w-full">
-        <Select value={value} onValueChange={(val) => onChange(id, val as SelectableRuneValue)}>
-          <SelectTrigger id={id} className="h-9 w-full">
-            <SelectValue>
-              <div className="flex items-center gap-2">
-                <div className={`w-4 h-4 rounded-full ${getRuneColorClass(value)}`}></div>
-                <span>{RUNE_OPTIONS.find((r) => r.value === value)?.label || "Select rune"}</span>
-              </div>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent className="z-[999] border border-[hsl(240_3.7%_15.9%)] bg-[hsl(240_10%_6%)]">
-            {RUNE_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value} className="cursor-pointer hover:bg-neutral-800 transition-colors duration-150">
-                <div className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded-full ${option.color}`}></div>
-                  {option.label}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    )
-  ), [getRuneColorClass]); // Depends on getRuneColorClass
-
-
   // Derived value for the most common rune (using useMemo)
   const mostCommonRune = useMemo(() => {
      const counts = RUNE_TYPES.map(type => ({ type, count: results[type] }))
@@ -394,8 +393,8 @@ export default function RunesDreaming() {
                           </TableCell>{/* Generate cells based on actual piece slots */}
                           {[...Array(piece.slots)].map((_, index) => (
                             <TableCell key={index}>
-                              <MemoizedRuneSelector
-                                id={`${piece.id}_rune_${index + 1}`}
+                              <RuneSelector
+                                field={`${piece.id}_rune_${index + 1}`}
                                 value={runeValues[`${piece.id}_rune_${index + 1}`]}
                                 onChange={handleRuneChange}
                               />

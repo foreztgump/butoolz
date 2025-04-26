@@ -1,17 +1,13 @@
 "use client";
 
 import React from "react";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { HelpCircle, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import * as Config from '../shapedoctor.config'; // Adjust import path
 import { SolutionRecord } from '../types';
 
 interface StatusPanelProps {

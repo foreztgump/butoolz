@@ -123,7 +123,7 @@ const ResultsTabs: React.FC<ResultsTabsProps> = ({
           </div>
         ) : (
           <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-            No potentials saved yet. Select tiles or add from "Predefined".
+            No potentials saved yet. Select tiles or add from &quot;Predefined&quot;.
           </div>
         )}
       </TabsContent>

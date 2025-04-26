@@ -6,21 +6,15 @@ import { CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ZoomIn, ZoomOut, Move } from "lucide-react";
 import * as Config from '../shapedoctor.config'; // Adjust import path
-import * as HexUtils from '../hexUtils'; // Adjust import path
 
 interface ShapeCanvasProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   isClient: boolean;
   isSolving: boolean;
-  solveProgress: number;
   formattedProgress: string;
-  zoom: number;
   setZoom: (updateFn: (currentZoom: number) => number) => void;
   handleReset: () => void; // Assuming handleReset resets zoom/pan
-  lockedTilesMask: bigint;
-  onTileClick: (tileId: number) => void;
-  lockableTiles: ReadonlySet<number>;
 }
 
 const ShapeCanvas: React.FC<ShapeCanvasProps> = ({
@@ -28,14 +22,9 @@ const ShapeCanvas: React.FC<ShapeCanvasProps> = ({
   canvasRef,
   isClient,
   isSolving,
-  solveProgress,
   formattedProgress,
-  zoom,
   setZoom,
   handleReset,
-  lockedTilesMask,
-  onTileClick,
-  lockableTiles,
 }) => {
   return (
     <CardContent className="flex-grow p-0 overflow-hidden relative">

@@ -105,25 +105,25 @@ export default function DonatePage() {
               Why Donate?
             </CardTitle>
             <CardDescription>
-              Let's be real here. Running this site costs actual money:
+              Let&apos;s be real here. Running this site costs actual money:
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             {" "}
             {/* Consistent text size */}
             <ul className="list-disc list-inside mb-4 space-y-1">
-              <li>Server costs (those electrons don't feed themselves)</li>
+              <li>Server costs (those electrons don&apos;t feed themselves)</li>
               <li>
-                Domain name (yes, I have to pay yearly just to use "butools")
+                Domain name (yes, I have to pay yearly just to use &quot;butools&quot;)
               </li>
-              <li><span className="line-through">Coffee</span> Beer (coding fuel isn't free)</li>
+              <li><span className="line-through">Coffee</span> Beer (coding fuel isn&apos;t free)</li>
               <li>My sanity (priceless, but donations help)</li>
             </ul>
             <div className="p-4 bg-primary/5 rounded-lg border border-primary/10 text-sm">
               {" "}
               {/* Lighter border */}
               <p className="font-medium">
-                I'm not getting rich here, just trying not to go broke helping
+                I&apos;m not getting rich here, just trying not to go broke helping
                 fellow gamers.
               </p>
               <p className="text-muted-foreground mt-1">

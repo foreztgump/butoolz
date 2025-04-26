@@ -11,11 +11,6 @@ import {
   ArrowLeft,
   ArrowRight,
   RotateCcw,
-  Trash2,
-  SearchCode,
-  Snowflake,
-  Sparkles,
-  Puzzle,
   Ban,
 } from "lucide-react";
 import { SolutionRecord } from "../types";
@@ -35,8 +30,8 @@ interface ControlPanelProps {
   handleBackToEdit: () => void;
   selectedTilesCount: number;
   handleCancelSolve: () => void;
-  solveProgress: number;
   currentSolver: string | null;
+  solveProgress: number;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -54,7 +49,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   handleBackToEdit,
   selectedTilesCount,
   handleCancelSolve,
-  solveProgress,
   currentSolver,
 }) => {
   const isViewingAnySolution = currentSolutionIndex !== -1 && solutionsList.length > 0;
