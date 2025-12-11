@@ -1,0 +1,100 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2025-12-11T18:00:00Z",
+    "last_updated": "2025-12-11T18:30:00Z",
+    "completed": "2025-12-11T18:30:00Z"
+  },
+  "mode": "initial_scan",
+  "scan_level": "exhaustive",
+  "status": "completed",
+  "project_root": "/home/cownose/projects/butoolz",
+  "output_folder": "/home/cownose/projects/butoolz/docs",
+  "completed_steps": [
+    {
+      "step": "step_1",
+      "status": "completed",
+      "timestamp": "2025-12-11T18:05:00Z",
+      "summary": "Classified as monolith with 1 part - Next.js 15 web app for Bless Unleashed gaming tools"
+    },
+    {
+      "step": "step_2",
+      "status": "completed",
+      "timestamp": "2025-12-11T18:08:00Z",
+      "summary": "Found 2 docs (README.md, README-task-master.md) - minimal project-specific documentation"
+    },
+    {
+      "step": "step_3",
+      "status": "completed",
+      "timestamp": "2025-12-11T18:12:00Z",
+      "summary": "Tech stack: Next.js 15, React 19, TypeScript, Tailwind 4, Zustand, SQLite, Leaflet, Docker+PM2"
+    },
+    {
+      "step": "step_4",
+      "status": "completed",
+      "timestamp": "2025-12-11T18:20:00Z",
+      "summary": "Exhaustive analysis: 8 routes, 7 features, 1 API, 22 map marker files, SQLite data model"
+    },
+    {
+      "step": "step_5-6",
+      "status": "completed",
+      "timestamp": "2025-12-11T18:25:00Z",
+      "summary": "Source tree analysis: 105 files, ~9000 LoC TypeScript"
+    },
+    {
+      "step": "step_7-10",
+      "status": "completed",
+      "timestamp": "2025-12-11T18:30:00Z",
+      "summary": "Generated architecture.md and index.md documentation"
+    }
+  ],
+  "current_step": "completed",
+  "project_types": [
+    {
+      "part_id": "main",
+      "project_type_id": "web",
+      "display_name": "Web Application"
+    }
+  ],
+  "findings": {
+    "project_classification": {
+      "repository_type": "monolith",
+      "parts_count": 1,
+      "primary_tech": "Next.js 15 + TypeScript + React 19",
+      "purpose": "Gaming utility tools for Bless Unleashed"
+    },
+    "technology_stack": {
+      "framework": "Next.js 15.3.0 (App Router)",
+      "language": "TypeScript 5",
+      "ui": "React 19 + Radix UI + shadcn/ui",
+      "styling": "Tailwind CSS 4",
+      "state": "Zustand 5",
+      "database": "SQLite (better-sqlite3)",
+      "maps": "Leaflet + react-leaflet",
+      "deployment": "Docker + PM2 (port 4001)",
+      "integrations": ["Buy Me a Coffee API", "Google Analytics 4"]
+    },
+    "code_metrics": {
+      "source_files": 105,
+      "typescript_lines": 8992,
+      "routes": 8,
+      "api_endpoints": 1,
+      "map_marker_categories": 22
+    },
+    "features": [
+      "Interactive Map (BlessMap)",
+      "Multi-Timer System",
+      "GearScore Calculator",
+      "Base Attack Calculator",
+      "Runes Dreaming",
+      "Shape Doctor (Hex Puzzle Solver)",
+      "Donation Page"
+    ]
+  },
+  "outputs_generated": [
+    "project-scan-report.json",
+    "architecture.md",
+    "index.md"
+  ],
+  "resume_instructions": "Workflow completed. All documentation generated."
+}
