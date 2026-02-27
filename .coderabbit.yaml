@@ -1,0 +1,59 @@
+language: en-US
+reviews:
+  profile: assertive
+  request_changes_workflow: true
+  auto_review:
+    enabled: true
+  path_instructions:
+    - path: "**/*.ts"
+      instructions: |
+        Review against CODE_PRINCIPLES.md. Focus on:
+        - SRP: does each function/class have a single responsibility?
+        - Deep modules: are interfaces simple while hiding complexity?
+        - Error handling: are all async operations and external boundaries handled?
+        - Naming: do names reveal intent using camelCase for functions, PascalCase for types?
+        - No magic values: are all literals named constants?
+    - path: "**/*.tsx"
+      instructions: |
+        Review against CODE_PRINCIPLES.md. Focus on:
+        - SRP: does each component have a single responsibility?
+        - Deep modules: are component interfaces (props) simple?
+        - Error handling: are all async operations and external boundaries handled?
+        - Naming: PascalCase for components, camelCase for functions/variables?
+        - No magic values: are all literals named constants?
+        - Minimal component props: prefer composition over extensive prop lists.
+    - path: "app/features/**/*"
+      instructions: |
+        Feature modules should be self-contained with components/, store/, data/, types.ts.
+        Feature-specific code should NOT leak into shared components/ or lib/.
+    - path: "components/ui/**/*"
+      instructions: |
+        These are shadcn/ui components. Only modify if adding new shadcn components.
+        Don't add business logic here.
+  tools:
+    eslint:
+      enabled: true
+  custom_checks:
+    - name: "Code Quality Hard Rules"
+      mode: "warning"
+      instructions: |
+        Check changed files for these violations and report with specific file:line references:
+        1. Functions longer than 40 lines — suggest decomposition
+        2. Magic numbers/strings not defined as named constants (ignore 0, 1, true, false, '')
+        3. Functions with more than 3 parameters — suggest parameter object
+        4. Nesting deeper than 3 levels — suggest early returns or extraction
+        5. Async operations without error handling (try/catch for awaits, .catch for promises)
+        6. Duplicated logic blocks (>5 similar lines in multiple locations)
+        7. Generic names (data, info, item, temp, result) in scopes longer than 3 lines
+        8. Speculative abstractions — code that handles cases not required by the current task (YAGNI)
+        9. Method chains reaching through 2+ objects (Law of Demeter violations)
+        Pass if no violations found. Warn with specific file:line references for each violation.
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "CODE_PRINCIPLES.md"
+  learnings:
+    scope: auto
+chat:
+  auto_reply: true

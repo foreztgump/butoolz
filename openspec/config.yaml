@@ -1,0 +1,50 @@
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then format
+  design:
+    - Include sequence diagrams for complex flows
+    - Explicitly evaluate module depth — prefer deep modules (simple interface, complex implementation)
+    - Address information hiding — what design decisions does each module encapsulate?
+    - Consider at least two design approaches before committing (design it twice)
+    - Document dependency direction — high-level modules depend on abstractions
+  tasks:
+    - Each task < 2 hours
+    - Include acceptance criteria
+    - Specify test files to create/update
+    - Include applicable code quality constraints from CODE_PRINCIPLES.md
+    - Specify error handling strategy for the task's scope
+  code:
+    - Functions do one thing — if a function needs "and" in its description, split it
+    - No magic values — all literals that aren't self-evident must be named constants
+    - Prefer deep modules — simple interface, complex implementation hidden behind it
+    - Error handling is mandatory for all async operations and external boundaries
+    - Names reveal intent — no abbreviations, no generic names (data, info, item, temp)
+    - Maximum 3 levels of nesting — use early returns, extraction, or guard clauses
+    - Comments explain WHY, not WHAT — code should be self-documenting for the what
+    - No duplicated logic — extract shared behavior into functions or modules
+    - KISS — pick the simplest solution that works; no unnecessary patterns or indirection
+    - YAGNI — only build what the task requires; no speculative abstractions
+    - Law of Demeter — talk to direct collaborators only; no chaining through objects
+    - Composition over inheritance — combine objects, don't extend class hierarchies
+
+context:
+  project: |
+    BuTools — a gaming utility web app for Bless Unleashed PC players.
+    Provides calculators, interactive maps, timers, and optimization tools.
+    Monolith architecture: Next.js 15 App Router + React 19 + TypeScript.
+    Dark-mode only. Deployed via Docker + PM2 on port 4001.
+  architecture: |
+    Feature modules live in app/features/<name>/ with components/, store/, data/, types.ts.
+    Shared components in components/ (shadcn/ui in components/ui/).
+    State management via Zustand stores (one per feature).
+    Single API endpoint: GET /api/supporters (SQLite backend).
+    Background scheduler: PM2 runs scripts/scheduler.mjs every 30min to sync Buy Me a Coffee supporters.
+    Map tiles served from public/BlessMap/, marker data from data/map-markers/*.json.
+  conventions: |
+    PascalCase for React components, camelCase for functions/variables.
+    Route directories use snake_case (runes_dreaming, gearscore_cal).
+    Conventional commits: type(scope): description.
+    Branches: feat/<description>, fix/<description>.
+    No test framework in place yet — plan to add vitest.
