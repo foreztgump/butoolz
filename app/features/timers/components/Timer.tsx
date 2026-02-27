@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { ResizableBox, ResizeCallbackData } from 'react-resizable';
 import 'react-resizable/css/styles.css'; // Import default resizable styles
 import {
@@ -594,13 +594,13 @@ const Timer: React.FC<TimerProps> = React.memo(({
 
 
   // --- Animation Variants & Dynamic Classes ---
-  const textBackgroundVariants = {
+  const textBackgroundVariants: Variants = {
     default: { backgroundColor: 'rgba(0, 0, 0, 0)', transition: { duration: 0.3 } },
     yellow: { backgroundColor: ['rgba(250, 204, 21, 0.6)', 'rgba(250, 204, 21, 0.2)', 'rgba(250, 204, 21, 0.6)'], transition: { duration: 1.5, repeat: Infinity, ease: "easeInOut" } },
     red: { backgroundColor: ['rgba(239, 68, 68, 0.7)', 'rgba(239, 68, 68, 0.3)', 'rgba(239, 68, 68, 0.7)'], transition: { duration: 1.0, repeat: Infinity, ease: "easeInOut" } }
   };
 
-  const boxPulseVariants = {
+  const boxPulseVariants: Variants = {
     default: { scale: 1, transition: { duration: 0.3 } },
     red: { scale: [1, 1.02, 1], transition: { duration: 1.0, ease: "easeInOut", repeat: Infinity } }
   };
