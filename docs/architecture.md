@@ -34,7 +34,7 @@ BuTools is a gaming utility web application for **Bless Unleashed** players. It 
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | **Zustand** | 5.0.3 | Client-side state management |
-| **better-sqlite3** | 11.9.1 | SQLite database access |
+| **better-sqlite3** | 12.6.2 | SQLite database access |
 
 ### Maps & Visualization
 | Technology | Version | Purpose |
