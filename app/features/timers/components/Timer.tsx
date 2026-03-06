@@ -29,6 +29,8 @@ const CRITICAL_PULSE_DURATION = 1.0;
 const DEFAULT_TRANSITION_DURATION = 0.3;
 const BOX_PULSE_SCALE = 1.02;
 const PULSE_EASE = "easeInOut" as const;
+const TRANSPARENT_BG = 'rgba(0, 0, 0, 0)';
+const INFINITE_REPEAT = Infinity;
 const WARNING_BG_COLORS = [
   'rgba(250, 204, 21, 0.6)',
   'rgba(250, 204, 21, 0.2)',
@@ -614,14 +616,14 @@ const Timer: React.FC<TimerProps> = React.memo(({
 
   // --- Animation Variants & Dynamic Classes ---
   const textBackgroundVariants = {
-    default: { backgroundColor: 'rgba(0, 0, 0, 0)', transition: { duration: DEFAULT_TRANSITION_DURATION } },
-    yellow: { backgroundColor: WARNING_BG_COLORS, transition: { duration: WARNING_PULSE_DURATION, repeat: Infinity, ease: PULSE_EASE } },
-    red: { backgroundColor: CRITICAL_BG_COLORS, transition: { duration: CRITICAL_PULSE_DURATION, repeat: Infinity, ease: PULSE_EASE } }
+    default: { backgroundColor: TRANSPARENT_BG, transition: { duration: DEFAULT_TRANSITION_DURATION } },
+    yellow: { backgroundColor: WARNING_BG_COLORS, transition: { duration: WARNING_PULSE_DURATION, repeat: INFINITE_REPEAT, ease: PULSE_EASE } },
+    red: { backgroundColor: CRITICAL_BG_COLORS, transition: { duration: CRITICAL_PULSE_DURATION, repeat: INFINITE_REPEAT, ease: PULSE_EASE } }
   };
 
   const boxPulseVariants = {
     default: { scale: 1, transition: { duration: DEFAULT_TRANSITION_DURATION } },
-    red: { scale: [1, BOX_PULSE_SCALE, 1], transition: { duration: CRITICAL_PULSE_DURATION, ease: PULSE_EASE, repeat: Infinity } }
+    red: { scale: [1, BOX_PULSE_SCALE, 1], transition: { duration: CRITICAL_PULSE_DURATION, ease: PULSE_EASE, repeat: INFINITE_REPEAT } }
   };
 
   // --- DEFINE NEW innerBoxClasses --- Includes styles previously on ResizableBox

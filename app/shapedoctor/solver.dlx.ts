@@ -356,7 +356,7 @@ export function findExactKTilingSolutions(
             const placements: PlacementRecord[] = solutionItems.map(item => item.data);
 
             if (placements.length === k) {
-                const finalGridState = placements.reduce((acc, p) => acc | p.placementMask, 0n);
+                const finalGridState = placements.reduce((acc, p) => acc | p.placementMask, initialGridState);
                 formattedSolutions.push({ gridState: finalGridState, placements });
             } else {
                 console.warn(`[DLX findExactKTilingSolutions] Solution found by findAll has ${placements.length} items, expected ${k}. Discarding.`); // Corrected message
