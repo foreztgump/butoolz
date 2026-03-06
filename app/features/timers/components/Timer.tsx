@@ -23,6 +23,23 @@ const DEFAULT_YELLOW_THRESHOLD = 10;
 const DEFAULT_RED_THRESHOLD = 5;
 const INTERVAL_MS = 50; // Timer update frequency
 
+// Animation constants
+const WARNING_PULSE_DURATION = 1.5;
+const CRITICAL_PULSE_DURATION = 1.0;
+const DEFAULT_TRANSITION_DURATION = 0.3;
+const BOX_PULSE_SCALE = 1.02;
+const PULSE_EASE = "easeInOut" as const;
+const WARNING_BG_COLORS = [
+  'rgba(250, 204, 21, 0.6)',
+  'rgba(250, 204, 21, 0.2)',
+  'rgba(250, 204, 21, 0.6)',
+];
+const CRITICAL_BG_COLORS = [
+  'rgba(239, 68, 68, 0.7)',
+  'rgba(239, 68, 68, 0.3)',
+  'rgba(239, 68, 68, 0.7)',
+];
+
 // --- Web Audio Hook ---
 const useAudio = (audioFiles: Record<string, string>, initialVolume: number) => {
     const audioContextRef = useRef<AudioContext | null>(null);
@@ -32,13 +49,12 @@ const useAudio = (audioFiles: Record<string, string>, initialVolume: number) => 
 
     // Adjust volume (Moved before useEffect that uses it)
     const setVolume = useCallback((vol: number) => {
-        if (gainNodeRef.current && audioContextRef.current && isReady) {
-            const clampedVol = Math.max(0, Math.min(1, vol)); // Ensure volume is between 0 and 1
-            // Use linearRampToValueAtTime for smoother volume changes (optional)
-             gainNodeRef.current.gain.setValueAtTime(clampedVol, audioContextRef.current.currentTime);
-            // gainNodeRef.current.gain.linearRampToValueAtTime(clampedVol, audioContextRef.current.currentTime + 0.05); // 50ms ramp
-        }
-    }, [isReady]);
+        const ctx = audioContextRef.current;
+        const gain = gainNodeRef.current;
+        if (!ctx || !gain) return;
+        const clampedVol = Math.max(0, Math.min(1, vol));
+        gain.gain.setValueAtTime(clampedVol, ctx.currentTime);
+    }, []);
 
     // Initialize AudioContext and GainNode
     useEffect(() => {
@@ -598,14 +614,14 @@ const Timer: React.FC<TimerProps> = React.memo(({
 
   // --- Animation Variants & Dynamic Classes ---
   const textBackgroundVariants = {
-    default: { backgroundColor: 'rgba(0, 0, 0, 0)', transition: { duration: 0.3 } },
-    yellow: { backgroundColor: ['rgba(250, 204, 21, 0.6)', 'rgba(250, 204, 21, 0.2)', 'rgba(250, 204, 21, 0.6)'], transition: { duration: 1.5, repeat: Infinity, ease: "easeInOut" as const } },
-    red: { backgroundColor: ['rgba(239, 68, 68, 0.7)', 'rgba(239, 68, 68, 0.3)', 'rgba(239, 68, 68, 0.7)'], transition: { duration: 1.0, repeat: Infinity, ease: "easeInOut" as const } }
+    default: { backgroundColor: 'rgba(0, 0, 0, 0)', transition: { duration: DEFAULT_TRANSITION_DURATION } },
+    yellow: { backgroundColor: WARNING_BG_COLORS, transition: { duration: WARNING_PULSE_DURATION, repeat: Infinity, ease: PULSE_EASE } },
+    red: { backgroundColor: CRITICAL_BG_COLORS, transition: { duration: CRITICAL_PULSE_DURATION, repeat: Infinity, ease: PULSE_EASE } }
   };
 
   const boxPulseVariants = {
-    default: { scale: 1, transition: { duration: 0.3 } },
-    red: { scale: [1, 1.02, 1], transition: { duration: 1.0, ease: "easeInOut" as const, repeat: Infinity } }
+    default: { scale: 1, transition: { duration: DEFAULT_TRANSITION_DURATION } },
+    red: { scale: [1, BOX_PULSE_SCALE, 1], transition: { duration: CRITICAL_PULSE_DURATION, ease: PULSE_EASE, repeat: Infinity } }
   };
 
   // --- DEFINE NEW innerBoxClasses --- Includes styles previously on ResizableBox
