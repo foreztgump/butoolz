@@ -338,18 +338,15 @@ export function findExactKTilingSolutions(
         const endTime = Date.now();
         // console.log(`[DLX findExactKTilingSolutions] findAll completed in ${endTime - startTime}ms. Found ${dlxSolutions.length} raw solution(s).`); // Reduced further
         if (ENABLE_DLX_DEBUG_LOGGING) console.log(`[DLX Debug] findAll completed in ${endTime - startTime}ms. Found ${dlxSolutions.length} raw solution(s).`);
-        // Safely log raw solutions, converting BigInts to strings
-        try {
-            const solutionsString = JSON.stringify(dlxSolutions, (key, value) =>
-                typeof value === 'bigint'
-                    ? value.toString() // Convert BigInt to string
-                    : value, // return everything else unchanged
-                2
-            );
-            if (ENABLE_DLX_DEBUG_LOGGING) console.log('[DLX Debug] Raw Solutions (BigInts as Strings):', solutionsString);
-        } catch (logError) {
-            console.error("[DLX findExactKTilingSolutions] Error stringifying raw solutions for logging:", logError);
-            console.log("[DLX findExactKTilingSolutions] Raw Solutions (logging failed):", dlxSolutions); // Log raw object as fallback
+        if (ENABLE_DLX_DEBUG_LOGGING) {
+            try {
+                const solutionsString = JSON.stringify(dlxSolutions, (key, value) =>
+                    typeof value === 'bigint' ? value.toString() : value, 2
+                );
+                console.log('[DLX Debug] Raw Solutions (BigInts as Strings):', solutionsString);
+            } catch (logError) {
+                console.error("[DLX Debug] Error stringifying raw solutions:", logError);
+            }
         }
 
         // Convert the single dlx solution (if found) to SolutionRecord format
