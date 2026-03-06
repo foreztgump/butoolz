@@ -1,0 +1,390 @@
+// app/shapedoctor/solver.dlx.ts
+// Dedicated solver for finding EXACT K-shape tilings using dancing-links.
+
+// import * as dlxlib from 'dlxlib'; // Old library
+// import * as dlx from 'dlx'; // Previous library
+import * as dlx from 'dancing-links'; // Use the new library
+import { findAll, type SimpleConstraint, type Constraint, type Result } from 'dancing-links'; 
+import { 
+    ShapeData, 
+    PlacementRecord, 
+    SolutionRecord // ADD SolutionRecord back
+} from './types'; // REMOVE .js
+import { 
+    bitmaskToTileIds, 
+    countSetBits 
+} from './bitmaskUtils'; // REMOVE .js
+import { TOTAL_TILES } from './shapedoctor.config'; // REMOVE .js
+
+// --- Debug Logging Flag ---
+const ENABLE_DLX_DEBUG_LOGGING = false; // Set to true to enable verbose DLX logs
+
+// KEEP local ShapeInput definition
+interface ShapeInput { id: string };
+type ShapeDataMap = Map<string, ShapeData>; // Keep local definition
+
+// --- Matrix Generation for dancing-links ---
+// Ensure return type matches SimpleConstraint<PlacementRecord>[]
+const buildDancingLinksConstraints = (
+    allShapeData: ShapeDataMap, // Use local type
+    shapesToTileWith: ShapeInput[], // Use local type
+    initialGridState: bigint, 
+    lockedTilesMask: bigint
+): { constraints: SimpleConstraint<PlacementRecord>[], columnCount: number } => {
+    // console.log("[DLX] Starting buildDancingLinksConstraints..."); // Reduced logging
+    
+    // console.log(`[DLX Build Constraints] shapesToTileWith: ${shapesToTileWith.map(s=>s.id).join(', ')}`); // Reduced logging
+    if (ENABLE_DLX_DEBUG_LOGGING) {
+        console.log(`[DLX Build Constraints Debug] initialGridState: ${initialGridState.toString(16)}`);
+        console.log(`[DLX Build Constraints Debug] lockedTilesMask: ${lockedTilesMask.toString(16)}`);
+    }
+    
+    // Calculate available tiles
+    const availableTiles = new Set<number>();
+    for (let i = 1; i <= TOTAL_TILES; i++) {
+        if (!((lockedTilesMask >> BigInt(i - 1)) & 1n)) { // Check if the bit for tile i is NOT set in lockedTilesMask
+            availableTiles.add(i);
+        }
+    }
+    const availableTileCount = availableTiles.size;
+    if (availableTileCount === 0) {
+        // console.log("[DLX] No available tiles for constraints."); // Reduced further
+        return { constraints: [], columnCount: 0 };
+    }
+
+    const constraints: SimpleConstraint<PlacementRecord>[] = []; 
+    const columnIndexMap: Map<string, number> = new Map();
+    let currentColumnIndex = 0;
+
+    // --- Define Column Indices --- 
+    // 1. The K Shape *INSTANCES* (Primary Items)
+    const shapeInstanceIndexToData = new Map<number, { shapeId: string, instanceIndex: number }>();
+    // 1. The K Shapes (Primary Items)
+    shapesToTileWith.forEach((shape, index) => {
+        const colName = `shape_instance_${index}`; // Unique column for each instance
+        columnIndexMap.set(colName, currentColumnIndex);
+        shapeInstanceIndexToData.set(currentColumnIndex, { shapeId: shape.id, instanceIndex: index });
+        currentColumnIndex++;
+    });
+    const shapeColumnCount = shapesToTileWith.length; // Should be k
+    
+    // 2. The Available Tiles (Primary Items)
+    for (const tileId of availableTiles) {
+        // Check if the available tile is already occupied initially
+        if (((initialGridState >> BigInt(tileId - 1)) & 1n)) {
+             throw new Error(`Cannot find exact tiling: Available Tile ${tileId} is initially occupied.`);
+        }
+        const colName = `tile_${tileId}`;
+        columnIndexMap.set(colName, currentColumnIndex++);
+    }
+    
+    const numColumns = currentColumnIndex; // Total number of primary items
+
+    // --- Define Rows (Constraints) ---
+    // Iterate through each shape *instance* provided
+    shapesToTileWith.forEach((shapeInstance, instanceIndex) => {
+        const shapeId = shapeInstance.id;
+        const shapeData = allShapeData.get(shapeId); // Get data using the ID
+        if (!shapeData || !shapeData.validPlacements) {
+            console.warn(`[Build Constraints] No shape data or valid placements found for shape ID: ${shapeId} (instance ${instanceIndex}). Skipping.`);
+            return; // continue the forEach loop
+        }
+
+        // Get the column index specific to this *instance*
+        const shapeInstanceColName = `shape_instance_${instanceIndex}`;
+        const shapeInstanceColIndex = columnIndexMap.get(shapeInstanceColName);
+        if (shapeInstanceColIndex === undefined) {
+            console.error(`[Build Constraints] CRITICAL: Could not find column index for ${shapeInstanceColName}. This should not happen.`);
+            return; // continue the forEach loop
+        }
+
+        for (const placementMask of shapeData.validPlacements) {
+            const placementMaskHex = placementMask.toString(16);
+
+            if (ENABLE_DLX_DEBUG_LOGGING) console.log(`[DLX Build Constraints Debug] Checking shape ${shapeId} (Instance ${instanceIndex}), placement ${placementMaskHex}`);
+
+            if ((initialGridState & placementMask) === 0n) {
+                if (ENABLE_DLX_DEBUG_LOGGING) console.log(`  -> Initial state check PASSED.`);
+                const coveredTileIds = bitmaskToTileIds(placementMask);
+                let allCoveredTilesAvailable = true;
+                let reasonSkipped = ""; // For logging
+                for(const tileId of coveredTileIds) {
+                    const tileColName = `tile_${tileId}`;
+                    if (!columnIndexMap.has(tileColName)) {
+                        allCoveredTilesAvailable = false;
+                        reasonSkipped = `Tile ${tileId} not available (not in column map - likely locked)`;
+                        if (ENABLE_DLX_DEBUG_LOGGING) console.log(`     -> Tile check FAILED: ${reasonSkipped}`);
+                        break;
+                    }
+                }
+
+                if (allCoveredTilesAvailable) {
+                    if (ENABLE_DLX_DEBUG_LOGGING) console.log(`   -> Available tiles check PASSED.`);
+                    const row = new Array(numColumns).fill(0) as (0 | 1)[]; 
+                    
+                    // 1. Set the shape *instance* column
+                    row[shapeInstanceColIndex] = 1;
+
+                    // 2. Set the covered tile columns
+                    for(const tileId of coveredTileIds) {
+                        const tileColName = `tile_${tileId}`;
+                        const tileColIndex = columnIndexMap.get(tileColName)!;
+                        row[tileColIndex] = 1;
+                    }
+
+                    if (ENABLE_DLX_DEBUG_LOGGING) console.log(`     --> ADDING CONSTRAINT row for shape instance ${instanceIndex} (${shapeId}), placement ${placementMaskHex}`);
+                    constraints.push({
+                        data: { shapeId: shapeId, placementMask }, // Store original shape ID
+                        row: row // Assign the correctly typed row
+                    });
+                } else {
+                    // Logging moved inside the loop where failure occurs
+                }
+            } else {
+                if (ENABLE_DLX_DEBUG_LOGGING) console.log(`   -> Initial state check FAILED (overlaps). Skipping.`);
+            }
+        }
+    }); // End forEach loop over shape instances
+    
+    // console.log(`[Dancing Links] Built ${constraints.length} constraints for ${numColumns} items (${shapeColumnCount} shape instances, ${availableTileCount} available tiles).`); // Reduced logging
+    // console.log("[DLX] Finished buildDancingLinksConstraints."); // Reduced logging
+    return { constraints, columnCount: numColumns }; 
+};
+
+
+// --- Function: findMaximalPlacement ---
+export const findMaximalPlacement = (
+    shapeDataMap: ShapeDataMap,
+    initialGridStateBigint: bigint,
+    allShapes: ShapeInput[],
+): { maxShapes: number; solutions: SolutionRecord[], error?: string } => {
+    try {
+        const enableMaximalDebug = false; // Separate flag if needed, or use ENABLE_DLX_DEBUG_LOGGING
+        // 1. Define Columns (Items)
+        const tileColumns: string[] = [];       // Names of available tile columns (Primary)
+        const shapeColumns: string[] = [];      // Names of shape columns (Secondary)
+        const tileNameToPrimaryIndex = new Map<string, number>();
+        const shapeNameToSecondaryIndex = new Map<string, number>();
+        let primaryIndexCounter = 0;
+        let secondaryIndexCounter = 0;
+
+        // Add Tile Columns (Primary)
+        for (let i = 0; i < TOTAL_TILES; i++) {
+            if (!((initialGridStateBigint >> BigInt(i)) & 1n)) {
+                const tileName = `T${i}`;
+                tileColumns.push(tileName);
+                tileNameToPrimaryIndex.set(tileName, primaryIndexCounter++);
+            }
+        }
+        const numPrimaryColumns = tileColumns.length;
+        if (numPrimaryColumns === 0) {
+             if(enableMaximalDebug) console.log("[findMaximalPlacement Debug] No available tiles based on initialGridState. Returning empty solution.");
+             return { maxShapes: 0, solutions: [] };
+         }
+
+        // Add Shape Columns (Secondary)
+        allShapes.forEach(shape => {
+            const shapeName = `S${shape.id}`;
+            shapeColumns.push(shapeName);
+            shapeNameToSecondaryIndex.set(shapeName, secondaryIndexCounter++);
+        });
+        const numSecondaryColumns = shapeColumns.length;
+        if(enableMaximalDebug) console.log(`[findMaximalPlacement Debug] Columns defined: ${numPrimaryColumns} Primary (Tiles), ${numSecondaryColumns} Secondary (Shapes)`);
+
+        // 2. Define Options (Rows for the DLX matrix)
+        const dlxOptions: Constraint<PlacementRecord>[] = [];
+        for (const [shapeId, data] of shapeDataMap.entries()) {
+            const shapeColName = `S${data.id}`;
+            const secondaryShapeIndex = shapeNameToSecondaryIndex.get(shapeColName);
+
+            if (secondaryShapeIndex === undefined) {
+                 console.warn(`[findMaximalPlacement] Shape ID ${data.id} from shapeDataMap not found in secondary columns. Skipping.`);
+                 continue;
+            }
+
+            for (const placementMask of data.validPlacements) { 
+                if (placementMask !== 0n && (placementMask & initialGridStateBigint) === 0n) { 
+                    
+                    const placementData: PlacementRecord = {
+                        shapeId: data.id,
+                        placementMask: placementMask
+                    };
+                    
+                    // Create sparse arrays for primary and secondary rows
+                    const primaryRowArray = new Array(numPrimaryColumns).fill(0) as (0 | 1)[];
+                    const secondaryRowArray = new Array(numSecondaryColumns).fill(0) as (0 | 1)[];
+                    let placementIsValidForCurrentColumns = true;
+                    let coveredPrimaryIndicesCount = 0;
+
+                    for(const tileId of bitmaskToTileIds(placementMask)){
+                        const tileName = `T${tileId}`;
+                        const primaryTileIndex = tileNameToPrimaryIndex.get(tileName);
+                        if (primaryTileIndex !== undefined) {
+                            primaryRowArray[primaryTileIndex] = 1;
+                            coveredPrimaryIndicesCount++;
+                        } else {
+                            // This placement covers a tile that is already occupied by initialGridState
+                            placementIsValidForCurrentColumns = false;
+                            break;
+                        }
+                    }
+                    
+                    if (!placementIsValidForCurrentColumns || coveredPrimaryIndicesCount === 0) {
+                        continue; // Skip if placement hits occupied tile or covers no available primary columns
+                    }
+                    
+                    // Set the secondary column (shape)
+                    secondaryRowArray[secondaryShapeIndex] = 1;
+                                        
+                    dlxOptions.push({
+                        primaryRow: primaryRowArray,     // Sparse array for primary columns (Tiles)
+                        secondaryRow: secondaryRowArray,   // Sparse array for secondary columns (Shapes)
+                        data: placementData              // Attach the PlacementRecord data
+                    });
+                }
+            }
+        }
+
+        // console.log(`[findMaximalPlacement] Built ${dlxOptions.length} options (constraints)`); // Reduced further
+        if (dlxOptions.length === 0) {
+             if(enableMaximalDebug) console.log("[findMaximalPlacement Debug] No valid options generated. Returning empty solution.");
+             return { maxShapes: 0, solutions: [] };
+         }
+
+        // 3. Run the DLX solver
+        const solutionsRaw: Result<PlacementRecord>[][] = findAll(dlxOptions) as Result<PlacementRecord>[][]; 
+
+        // 4. Process Results
+        const finalSolutions: SolutionRecord[] = [];
+        if (solutionsRaw && solutionsRaw.length > 0) {
+            const maxPlaced = solutionsRaw.reduce((max, sol) => Math.max(max, sol.length), 0);
+            // Note: maxPlaced here refers to the number of constraints (placements) in the solution,
+            // which should correspond to the number of shapes placed.
+            const maximalSolutions = solutionsRaw.filter(sol => sol.length === maxPlaced); 
+
+            maximalSolutions.forEach(solution => {
+                let calculatedGridState = initialGridStateBigint;
+                const placements: PlacementRecord[] = solution.map(item => {
+                    const placementData = item.data; 
+                    calculatedGridState |= placementData.placementMask;
+                    return placementData;
+                });
+                finalSolutions.push({
+                    gridState: calculatedGridState,
+                    placements: placements
+                });
+            });
+             if(enableMaximalDebug) console.log(`[findMaximalPlacement Debug] Found ${finalSolutions.length} maximal solutions placing ${maxPlaced} shapes.`);
+            return { maxShapes: maxPlaced, solutions: finalSolutions };
+        } else {
+             if(enableMaximalDebug) console.log("[findMaximalPlacement Debug] DLX solver returned no solutions.");
+            return { maxShapes: 0, solutions: [] };
+        }
+
+    } catch (error: any) {
+        console.error("Error in findMaximalPlacement:", error);
+        return { maxShapes: 0, solutions: [], error: error.message || 'Unknown error' };
+    }
+};
+
+// --- Function: findExactKTilingSolutions --- 
+// Refactored version for exact cover with k specific shapes
+export function findExactKTilingSolutions(
+    k: number,                     // Target number of shapes
+    shapeDataMap: ShapeDataMap,    // Precomputed placements for ALL potential shapes
+    _initialConstraints: PlacementRecord[], // Marked unused
+    shapesToUse: ShapeInput[],       // List of shapes TO USE for tiling (should have length k)
+    initialGridState: bigint = 0n, 
+    lockedTilesMask: bigint = 0n   
+): { solutions: SolutionRecord[], error?: string } { 
+    if (ENABLE_DLX_DEBUG_LOGGING) {
+        console.log(`[DLX Debug] Starting findExactKTilingSolutions for k=${k}...`);
+        console.log(`[DLX Debug] shapesToUse: ${shapesToUse.map(s=>s.id).join(', ')}`);
+        console.log(`[DLX Debug] initialGridState: ${initialGridState.toString(16)}`);
+        console.log(`[DLX Debug] lockedTilesMask: ${lockedTilesMask.toString(16)}`);
+    }
+    if (k !== shapesToUse.length) {
+        console.error(`[DLX findExactKTilingSolutions] Mismatch: k is ${k} but shapesToUse has ${shapesToUse.length} items!`);
+        return { solutions: [], error: `Input mismatch: k=${k}, number of shapes provided=${shapesToUse.length}` };
+    }
+     const startTime = Date.now();
+    try {
+        // Build constraints using only the shapesToUse and available tiles
+        // console.log("[DLX findExactKTilingSolutions] Building constraints..."); // Reduced logging
+        if (ENABLE_DLX_DEBUG_LOGGING) console.log("[DLX Debug] Building constraints...");
+        const { constraints, columnCount } = buildDancingLinksConstraints(
+            shapeDataMap,
+            shapesToUse,
+            initialGridState,
+            lockedTilesMask
+        );
+
+        if (constraints.length === 0 || columnCount === 0) {
+             if (ENABLE_DLX_DEBUG_LOGGING) console.log("[DLX Debug] No constraints built, returning empty.");
+             return { solutions: [] };
+         }
+         
+        // console.log(`[DLX findExactKTilingSolutions] Constraints built (${constraints.length} rows, ${columnCount} cols). Calling findAll...`); // Reduced logging
+        if (ENABLE_DLX_DEBUG_LOGGING) console.log(`[DLX Debug] Constraints built (${constraints.length} rows, ${columnCount} cols). Calling findAll...`);
+        let dlxSolutions: Result<PlacementRecord>[][] = []; // Will hold multiple solutions now
+        try {
+            // Find ALL solutions instead of just one
+            dlxSolutions = dlx.findAll(constraints); 
+        } catch(dlxError) {
+            console.error("[DLX findExactKTilingSolutions] Error calling findAll:", dlxError); // Corrected message
+            return { solutions: [], error: `DLX Solver Error: ${dlxError instanceof Error ? dlxError.message : String(dlxError)}` };
+        }
+        
+        const endTime = Date.now();
+        // console.log(`[DLX findExactKTilingSolutions] findAll completed in ${endTime - startTime}ms. Found ${dlxSolutions.length} raw solution(s).`); // Reduced further
+        if (ENABLE_DLX_DEBUG_LOGGING) console.log(`[DLX Debug] findAll completed in ${endTime - startTime}ms. Found ${dlxSolutions.length} raw solution(s).`);
+        if (ENABLE_DLX_DEBUG_LOGGING) {
+            try {
+                const solutionsString = JSON.stringify(dlxSolutions, (key, value) =>
+                    typeof value === 'bigint' ? value.toString() : value, 2
+                );
+                console.log('[DLX Debug] Raw Solutions (BigInts as Strings):', solutionsString);
+            } catch (logError) {
+                console.error("[DLX Debug] Error stringifying raw solutions:", logError);
+            }
+        }
+
+        // Convert the single dlx solution (if found) to SolutionRecord format
+        const formattedSolutions: SolutionRecord[] = [];
+        // Iterate through ALL solutions found by findAll
+        for (const solutionItems of dlxSolutions) {
+            const placements: PlacementRecord[] = solutionItems.map(item => item.data);
+
+            if (placements.length === k) {
+                const finalGridState = placements.reduce((acc, p) => acc | p.placementMask, initialGridState);
+                formattedSolutions.push({ gridState: finalGridState, placements });
+            } else {
+                console.warn(`[DLX findExactKTilingSolutions] Solution found by findAll has ${placements.length} items, expected ${k}. Discarding.`); // Corrected message
+            }
+        }
+
+        // Deduplicate solutions based on the final grid state
+        const uniqueSolutionsMap = new Map<string, SolutionRecord>();
+        formattedSolutions.forEach(sol => {
+            // Use gridState converted to string as the key for uniqueness
+            uniqueSolutionsMap.set(sol.gridState.toString(), sol);
+        });
+        const uniqueFormattedSolutions = Array.from(uniqueSolutionsMap.values());
+
+        // console.log("[DLX findExactKTilingSolutions] Finished processing solution."); // Reduced logging
+        // console.log(`[DLX findExactKTilingSolutions] Found ${formattedSolutions.length} raw solutions, returning ${uniqueFormattedSolutions.length} unique formatted solution(s).`); // Reduced further - Commented out
+        if (ENABLE_DLX_DEBUG_LOGGING) {
+            console.log("[DLX Debug] Finished processing solution.");
+            console.log(`[DLX Debug] Found ${formattedSolutions.length} raw solutions, returning ${uniqueFormattedSolutions.length} unique formatted solution(s).`);
+        }
+        return { solutions: uniqueFormattedSolutions }; // Return unique solutions
+
+    } catch (error) {
+        const errorEndTime = Date.now();
+        console.error("[DLX findExactKTilingSolutions] Error:", error);
+        return { 
+            solutions: [], 
+            error: `Error in findExactKTilingSolutions: ${error instanceof Error ? error.message : String(error)} (Took ${errorEndTime - startTime}ms)` 
+        };
+     }
+} 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -14,7 +14,6 @@ import {
   Sword,
   SwordIcon,
   Info,
-  ArrowRight,
   Zap,
   BarChart3,
   Sparkles,
@@ -25,8 +24,6 @@ import {
   Minus,
   RefreshCw,
   CheckCircle2,
-  Lightbulb,
-  Award,
   Shield,
   ShieldCheck,
   Crosshair,
@@ -360,14 +357,14 @@ export default function BaseAttackCalculator() {
   const BASE_CRIT_MULTIPLIER = 1.5 // Assume 150% base crit damage (Adjust if known)
 
   // 1. Calculate Total Attack
-  const calculateTotalAttack = (baseAtk: number, atkBonusPct: number, flatAtkBonus: number = 0, pctAtkBonus: number = 0): number => {
+  const calculateTotalAttack = useCallback((baseAtk: number, atkBonusPct: number, flatAtkBonus: number = 0, pctAtkBonus: number = 0): number => {
     // Apply percentage bonuses first, then flat bonus
     const totalPctBonus = (safeParseFloat(atkBonusPct) + safeParseFloat(pctAtkBonus)) / 100
     return (safeParseFloat(baseAtk) * (1 + totalPctBonus)) + safeParseFloat(flatAtkBonus)
-  }
+  }, []);
 
   // 2. Calculate Average Damage Output (Pre-Mitigation)
-  const calculateAverageDamageOutput = (totalAttack: number, critRate: number, critDmgBonus: number, allDmg: number): number => {
+  const calculateAverageDamageOutput = useCallback((totalAttack: number, critRate: number, critDmgBonus: number, allDmg: number): number => {
     const cr = safeParseFloat(critRate) / 100
     const cdBonus = safeParseFloat(critDmgBonus) / 100
     const ad = safeParseFloat(allDmg) / 100
@@ -377,10 +374,31 @@ export default function BaseAttackCalculator() {
     const totalAverageDamage = (nonCritDamage + critDamage) * (1 + ad)
 
     return totalAverageDamage
-  }
+  }, [BASE_CRIT_MULTIPLIER]);
+
+  // 4. Calculate Mitigation Factor
+  const calculateMitigationFactor = useCallback((targetDef: number, targetLvl: number, attackerDefPen: number): number => {
+    const tDef = safeParseFloat(targetDef)
+    const tLvl = safeParseFloat(targetLvl)
+    const pen = safeParseFloat(attackerDefPen) / 100
+
+    if (tDef <= 0 || tLvl <= 0) return 0 // Avoid division by zero or nonsensical results
+
+    // Example mitigation formula (Needs verification for Bless Unleashed specific formula!)
+    // This is a common RPG formula structure, adjust as needed.
+    const effectiveDefense = Math.max(0, tDef * (1 - pen)) // Ensure defense doesn't go below 0
+    const mitigation = effectiveDefense / (effectiveDefense + (tLvl * 50)) // Level scaling factor (50 is arbitrary, adjust!)
+
+    return Math.min(1, Math.max(0, mitigation)) // Clamp between 0% and 100% reduction
+  }, []);
+
+  // 5. Calculate Final Damage (Post-Mitigation)
+  const calculateFinalDamage = useCallback((avgDamageOutput: number, mitigationFactor: number): number => {
+    return safeParseFloat(avgDamageOutput) * (1 - safeParseFloat(mitigationFactor))
+  }, []);
 
   // 3. Apply Buffs (returns calculated stats with buffs)
-  const applyBuffs = (currentStats: { 
+  const applyBuffs = useCallback((currentStats: { 
     base_atk: number; 
     atk_bonus: number; 
     crit_rate: number; 
@@ -428,6 +446,9 @@ export default function BaseAttackCalculator() {
     const buffedDefPen = currentStats.def_pen
 
     const buffedTotalAttack = calculateTotalAttack(currentStats.base_atk, buffedAtkBonus)
+    const buffedAvgDamage = calculateAverageDamageOutput(buffedTotalAttack, buffedCritRate, buffedCritDamage, buffedAllDamage);
+    const buffedMitigation = calculateMitigationFactor(safeParseFloat(targetStats.defense), safeParseFloat(targetStats.level), buffedDefPen);
+    const buffedFinalDamage = calculateFinalDamage(buffedAvgDamage, buffedMitigation);
 
     return {
       atkBonus: atkBuff,
@@ -438,32 +459,11 @@ export default function BaseAttackCalculator() {
       critDamage: buffedCritDamage,
       allDamage: buffedAllDamage,
       defPen: buffedDefPen,
-      avgDamageOutput: calculateAverageDamageOutput(buffedTotalAttack, buffedCritRate, buffedCritDamage, buffedAllDamage),
-      mitigationFactor: calculateMitigationFactor(safeParseFloat(targetStats.defense), safeParseFloat(targetStats.level), buffedDefPen),
-      finalDamage: calculateFinalDamage(calculateAverageDamageOutput(buffedTotalAttack, buffedCritRate, buffedCritDamage, buffedAllDamage), calculateMitigationFactor(safeParseFloat(targetStats.defense), safeParseFloat(targetStats.level), buffedDefPen)),
+      avgDamageOutput: buffedAvgDamage,
+      mitigationFactor: buffedMitigation,
+      finalDamage: buffedFinalDamage,
     }
-  }
-
-  // 4. Calculate Mitigation Factor
-  const calculateMitigationFactor = (targetDef: number, targetLvl: number, attackerDefPen: number): number => {
-    const tDef = safeParseFloat(targetDef)
-    const tLvl = safeParseFloat(targetLvl)
-    const pen = safeParseFloat(attackerDefPen) / 100
-
-    if (tDef <= 0 || tLvl <= 0) return 0 // Avoid division by zero or nonsensical results
-
-    // Example mitigation formula (Needs verification for Bless Unleashed specific formula!)
-    // This is a common RPG formula structure, adjust as needed.
-    const effectiveDefense = Math.max(0, tDef * (1 - pen)) // Ensure defense doesn't go below 0
-    const mitigation = effectiveDefense / (effectiveDefense + (tLvl * 50)) // Level scaling factor (50 is arbitrary, adjust!)
-
-    return Math.min(1, Math.max(0, mitigation)) // Clamp between 0% and 100% reduction
-  }
-
-  // 5. Calculate Final Damage (Post-Mitigation)
-  const calculateFinalDamage = (avgDamageOutput: number, mitigationFactor: number): number => {
-    return safeParseFloat(avgDamageOutput) * (1 - safeParseFloat(mitigationFactor))
-  }
+  }, [buffs, targetStats, calculateTotalAttack, calculateAverageDamageOutput, calculateMitigationFactor, calculateFinalDamage]);
 
   // Effect to recalculate whenever inputs change, including validation
   useEffect(() => {
@@ -603,7 +603,7 @@ export default function BaseAttackCalculator() {
         finalDamage: buffFinalDamage,
       },
     })
-  }, [baseStats, targetStats, equipmentA, equipmentB, buffs]) // Recalculate when any input changes
+  }, [baseStats, targetStats, equipmentA, equipmentB, buffs, applyBuffs, calculateTotalAttack, calculateAverageDamageOutput, calculateMitigationFactor, calculateFinalDamage]) // Recalculate when any input changes
 
   // Helper to format change percentage/value
   const formatChange = (newValue: number, baseValue: number): ChangeInfo | null => {
@@ -1041,25 +1041,25 @@ export default function BaseAttackCalculator() {
                   <AccordionItem value="item-1">
                     <AccordionTrigger>What is 'Final Damage (Avg per Hit)'?</AccordionTrigger>
                     <AccordionContent className="text-sm">
-                      This is the estimated average damage you will deal with a single hit *after* considering your stats, critical hit chance/damage, and the target's defense mitigation based on the provided inputs. It represents your theoretical sustained damage output.
+                      This is the estimated average damage you will deal with a single hit *after* considering your stats, critical hit chance/damage, and the target&apos;s defense mitigation based on the provided inputs. It represents your theoretical sustained damage output.
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="item-2">
                     <AccordionTrigger>Why is Crit Damage Bonus important?</AccordionTrigger>
                     <AccordionContent className="text-sm">
-                      Critical hits deal significantly more damage. The base multiplier is assumed to be {BASE_CRIT_MULTIPLIER * 100}%. The 'Crit Damage Bonus' stat adds *on top* of this base. Higher Crit Rate and Crit Damage Bonus greatly increase your average damage.
+                      Critical hits deal significantly more damage. The base multiplier is assumed to be {BASE_CRIT_MULTIPLIER * 100}%. The &apos;Crit Damage Bonus&apos; stat adds *on top* of this base. Higher Crit Rate and Crit Damage Bonus greatly increase your average damage.
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="item-3">
                     <AccordionTrigger>How does Defense Penetration work?</AccordionTrigger>
                     <AccordionContent className="text-sm">
-                      Defense Penetration allows your attacks to ignore a percentage of the target's defense, resulting in higher damage, especially against heavily armored targets. The exact mitigation formula for Bless Unleashed might vary, but this calculator uses a common RPG structure.
+                      Defense Penetration allows your attacks to ignore a percentage of the target&apos;s defense, resulting in higher damage, especially against heavily armored targets. The exact mitigation formula for Bless Unleashed might vary, but this calculator uses a common RPG structure.
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="item-4">
                     <AccordionTrigger>How are buffs applied?</AccordionTrigger>
                     <AccordionContent className="text-sm">
-                      Currently, the selected Elixir, Panacea, and Food buffs are applied directly to your *Base Stats* for the 'Base Stats + Buffs' calculation. They are *not* automatically added to the Equipment A/B calculations in this version. Future updates might allow comparing (Equip A + Buffs) vs (Equip B + Buffs).
+                      Currently, the selected Elixir, Panacea, and Food buffs are applied directly to your *Base Stats* for the &apos;Base Stats + Buffs&apos; calculation. They are *not* automatically added to the Equipment A/B calculations in this version. Future updates might allow comparing (Equip A + Buffs) vs (Equip B + Buffs).
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="item-5">

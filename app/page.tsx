@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { Calculator, Clock, Flame, Shield, Sparkles, Award, Coffee, Map, Puzzle } from "lucide-react"
+import { Calculator, Clock, Shield, Sparkles, Award, Coffee, Map } from "lucide-react"
 import SupporterList from "@/components/SupporterList"
 
 export default function Home() {
@@ -30,7 +30,7 @@ export default function Home() {
             <CardContent>
               <div className="space-y-3">
                 <p className="text-muted-foreground text-sm">
-                  Calculate gear scores and base attack values to maximize your character's potential.
+                  Calculate gear scores and base attack values to maximize your character&apos;s potential.
                 </p>
                 <div className="flex flex-col gap-2">
                   <Button size="sm" asChild variant="default" className="bg-secondary text-secondary-foreground hover:bg-secondary/80 dark:bg-zinc-800 dark:text-secondary-foreground dark:hover:bg-zinc-700 group-hover:dark:bg-black group-hover:dark:border group-hover:dark:border-primary transition-all">
@@ -154,7 +154,7 @@ export default function Home() {
                 <Award className="h-5 w-5 mr-2 text-yellow-400" />
                 Special Thanks
               </h2>
-              <p className="text-muted-foreground text-sm">This project wouldn't be possible without:</p>
+              <p className="text-muted-foreground text-sm">This project wouldn&apos;t be possible without:</p>
               <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
                 <span className="text-sm text-muted-foreground">nodamagesquad guild</span>
                 <span className="text-sm text-muted-foreground">OGWaffle</span>
