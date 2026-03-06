@@ -1,4 +1,4 @@
-## Why
+# Why
 
 Next.js 16.1.6 is available and the project is on 15.5.x. Next.js 16 brings Turbopack as the default bundler, improved routing/prefetching, and removes several deprecated APIs. Staying current reduces security risk and ensures access to ongoing maintenance.
 

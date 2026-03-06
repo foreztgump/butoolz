@@ -1,4 +1,4 @@
-## ADDED Requirements
+# ADDED Requirements
 
 ### Requirement: Next.js 16 dependency versions
 The project SHALL use Next.js ^16.1.6 with React ^19.2.0 and React-DOM ^19.2.0. Type packages (@types/react, @types/react-dom) SHALL be updated to latest compatible versions.

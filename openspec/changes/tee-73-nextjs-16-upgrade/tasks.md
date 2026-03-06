@@ -1,4 +1,4 @@
-## 1. Update Dependencies
+# 1. Update Dependencies
 
 - [x] 1.1 Update `next` from `^15.5.10` to `^16.1.6` in package.json
 - [x] 1.2 Update `react` from `^19.0.0` to `^19.2.0` in package.json
