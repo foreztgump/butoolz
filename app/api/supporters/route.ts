@@ -3,10 +3,15 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
+// Define a type for the row returned by the database query
+interface SupporterRow {
+  name: string;
+}
+
 // Construct the path to the database file relative to the project root
 const DB_PATH = path.resolve(process.cwd(), 'data', 'supporters.db');
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   console.log(`API route GET /api/supporters called. DB path: ${DB_PATH}`);
 
   // Check if the database file exists before attempting to connect
@@ -27,12 +32,12 @@ export async function GET(request: Request) {
 
     // Prepare and run the query
     const stmt = db.prepare('SELECT name FROM supporters ORDER BY name ASC'); // Order alphabetically
-    const rows = stmt.all(); // Returns an array of objects like [{ name: 'Alice' }, { name: 'Bob' }]
+    const rows = stmt.all() as SupporterRow[];
 
     console.log(`Found ${rows.length} supporters in the database.`);
 
     // Extract just the names into a simple array
-    const names = rows.map((row: any) => row.name);
+    const names = rows.map((row: SupporterRow) => row.name);
 
     // Close the connection
     db.close();

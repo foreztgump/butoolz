@@ -1,405 +1,574 @@
-// public/solver.worker.ts
+// app/shapedoctor/solver.worker.ts - Optimized Backtracking Version
 
-// --- Constants (Copied from component) ---
-const TOTAL_TILES = 24;
-// 0 indicates none
-// [top, topleft, bottomleft, bottom, bottomright, topright]
-const ADJACENT_LIST = [
-  [0, 0, 0, 0, 0, 0],
-  [0, 0, 2, 5, 3, 0],
-  [0, 0, 4, 7, 5, 1],
-  [0, 1, 5, 8, 6, 0],
-  [0, 0, 0, 9, 7, 2],
-  [1, 2, 7, 10, 8, 3],
-  [0, 3, 8, 11, 0, 0],
-  [2, 4, 9, 12, 10, 5],
-  [3, 5, 10, 13, 11, 6],
-  [4, 0, 0, 14, 12, 7],
-  [5, 7, 12, 15, 13, 8],
-  [6, 8, 13, 16, 0, 0],
-  [7, 9, 14, 17, 15, 10],
-  [8, 10, 15, 18, 16, 11],
-  [9, 0, 0, 19, 17, 12],
-  [10, 12, 17, 20, 18, 13],
-  [11, 13, 18, 21, 0, 0],
-  [12, 14, 19, 22, 20, 15],
-  [13, 15, 20, 23, 21, 16],
-  [14, 0, 0, 0, 22, 17],
-  [15, 17, 22, 24, 23, 18],
-  [16, 18, 23, 0, 0, 0],
-  [17, 19, 0, 0, 24, 20],
-  [18, 20, 24, 0, 0, 21],
-  [20, 22, 0, 0, 0, 23],
-];
-const PROGRESS_UPDATE_INTERVAL = 5000; // Send update every 5000 states explored
-const NUM_HEX_COLORS = 12; // Match the length of HEX_COLORS in page.tsx
+import * as workerpool from 'workerpool';
+// @ts-ignore - Ignore missing types for mathjs if not critical
+import { combinations as mathCombinations } from 'mathjs';
+import {
+  shapeStringToBitmask,
+  translateShapeBitmask,
+  bitmaskToTileIds,
+  countSetBits,
+  getCanonicalShape,
+  isValidPlacement,
+  placeShape,
+  removeShape,
+  isGridFull,
+  findLowestSetBitIndex,
+} from './bitmaskUtils';
+import { HEX_GRID_COORDS, ADJACENT_LIST, TOTAL_TILES } from './shapedoctor.config';
+import { findExactKTilingSolutions } from './solver.dlx';
+import { 
+  // Core Types
+  PotentialShape,
+  ShapeData,
+  ShapeDataMap, 
+  PlacementRecord, 
+  SolutionRecord, 
+  // Parallel Task Communication Types
+  SolverTaskContext,
+  DLXBatchPayload,
+  BacktrackingBranchPayload,
+  WorkerTaskPayload,
+  WorkerMessageType,
+  WorkerParallelResultMessage,
+  WorkerParallelProgressMessage,
+  WorkerParallelErrorMessage,
+  WorkerParallelLogMessage,
+  WorkerParallelResponseMessage,
+  SerializedSolutionRecord,
+} from './types';
 
-// --- Solver Logic (Copied and adapted) ---
+// DEFINE ONLY types not exported from types.ts if needed
+interface ShapeInput { id: string }; // Used internally by solver.dlx
 
-// index_of_potential is the number of which potential in the list_of_potentials array that should be added
-// solution is an array where each index represents either -1 for empty or the ID of which potential is placed there
-// solution_offset is the tile that should be used in the solution
-// potential_offset is the tile that should be used from the potential
-// used is an array that indicates which tiles of the potential have already been placed in the solution
-// return either true if the fit worked, false if there was an overlap or the potential was out of bounds
-const fitPotential = (
-  potentialsList: string[], // Pass potentials array
-  potentialIndex: number,
-  currentSolution: number[], // Mutable copy for recursion branch
-  solutionOffset: number,
-  potentialOffset: number,
-  usedPotentialTiles: Set<number>
-): boolean => {
-  if (potentialIndex < 0 || potentialIndex >= potentialsList.length)
-    return false; // Bounds check
+// Define the type for the taskData specific to runCombinatorialExactTiling
+// Based on the data passed from page.tsx
+// REMOVE THIS INTERFACE as it references the old type and seems unused now
+/*
+interface ExactTilingTaskData extends SolverExecDataExactTiling {
+    k: number;
+    shapesToTileWith: { id: string }[];
+}
+*/
 
-  const potentialString = potentialsList[potentialIndex];
-  let effectivePotentialOffset = potentialOffset;
+// --- Utility Function: Generate Combinations ---
+function* combinations<T>(arr: T[], k: number): Generator<T[]> {
+    if (k < 0 || k > arr.length) {
+        return;
+    }
+    if (k === 0) {
+        yield [];
+        return;
+    }
+    if (k === arr.length) {
+        yield arr;
+        return;
+    }
+    
+    const first = arr[0];
+    const rest = arr.slice(1);
+    
+    // Combinations including the first element
+    for (const combo of combinations(rest, k - 1)) {
+        yield [first, ...combo];
+    }
+    
+    // Combinations excluding the first element
+    for (const combo of combinations(rest, k)) {
+        yield combo;
+    }
+}
 
-  // Find the first '1' in the potential string if starting
-  if (effectivePotentialOffset === -1) {
-    effectivePotentialOffset = potentialString.indexOf("1") + 1;
-    if (effectivePotentialOffset === 0) return false; // Potential has no tiles?
-  }
+const FULL_GRID_MASK = (1n << BigInt(TOTAL_TILES)) - 1n; // Mask for a full grid
 
-  // Check bounds and overlap for the current tile placement
-  if (
-    solutionOffset <= 0 ||
-    solutionOffset > TOTAL_TILES ||
-    currentSolution[solutionOffset] !== -1
-  ) {
-    return false; // Out of bounds or tile already occupied
-  }
+// State variable to store precomputed data for each shape (Now managed by context)
+// let allShapeData: ShapeDataMap = new Map(); // Remove global state
 
-  // Place the tile
-  currentSolution[solutionOffset] = potentialIndex;
-  usedPotentialTiles.add(effectivePotentialOffset);
+// Define the type for HEX_GRID_COORDS elements
+interface HexCoord { id: number; q: number; r: number; s?: number; }
 
-  // Explore neighbours
-  const potentialNeighbors = ADJACENT_LIST[effectivePotentialOffset];
-  const solutionNeighbors = ADJACENT_LIST[solutionOffset];
-  if (!potentialNeighbors || !solutionNeighbors) return false; // Safety check
+// --- Precomputation Function (Now internal, called by initializeSolverContext) ---
+const precomputeAllShapeDataInternal = (
+  potentials: PotentialShape[], // Use PotentialShape from types.ts
+  lockedTilesMask: bigint | string
+): Map<string, ShapeData> => {
+  // console.log("[Worker Precompute] Starting precomputation (Single Orientation, All Translations)...");
+  const computationStartTime = Date.now();
+  const computedData: Map<string, ShapeData> = new Map();
 
-  for (let j = 0; j < 6; j++) {
-    const potentialNeighborTile = potentialNeighbors[j];
+  const lockedTilesMaskBigint = typeof lockedTilesMask === 'string' ? BigInt(lockedTilesMask) : lockedTilesMask;
 
-    if (
-      potentialNeighborTile !== 0 &&
-      potentialString.charAt(potentialNeighborTile - 1) === "1"
-    ) {
-      // If the neighbor is part of the potential shape
-      if (!usedPotentialTiles.has(potentialNeighborTile)) {
-        // And hasn't been placed yet in this recursive path
-        const solutionNeighborTile = solutionNeighbors[j];
+  const coordsMap = new Map<number, { q: number; r: number }>();
+  HEX_GRID_COORDS.forEach((coord, index) => {
+    coordsMap.set(index, { q: coord.q, r: coord.r });
+  });
 
-        if (solutionNeighborTile === 0) {
-          return false; // Can't place neighbor, leads out of bounds
+  potentials.forEach((potential: PotentialShape) => { // Use PotentialShape
+    const shapeId = potential.id; // This is the unique ID like shapeA::11001010...
+    const canonicalForm = potential.canonicalForm; // This is the canonical string '11001010...'
+    const baseShapeMask = potential.bitmask; // Use the bitmask directly
+
+    try {
+      if (!computedData.has(canonicalForm)) { // Compute only once per canonical form
+        // console.log(`[Worker Precompute] Computing for canonical form: ${canonicalForm}`);
+        if (baseShapeMask === 0n) {
+          console.warn(`[Worker Precompute] Skipping shape with empty mask (from ${shapeId})`);
+          computedData.set(canonicalForm, { id: canonicalForm, canonicalBitmask: 0n, validPlacements: [] });
+          return;
         }
 
-        // Recursively try to place the neighbour
-        const result = fitPotential(
-          potentialsList,
-          potentialIndex,
-          currentSolution,
-          solutionNeighborTile,
-          potentialNeighborTile,
-          usedPotentialTiles
-        );
-        if (!result) {
-          return false; // If any neighbour placement fails, this path fails
+        const initialTileCount = countSetBits(baseShapeMask);
+        if (initialTileCount !== 4) {
+          console.warn(`[Worker Precompute] Skipping shape ${canonicalForm} because initial mask has ${initialTileCount} tiles, not 4.`);
+          computedData.set(canonicalForm, { id: canonicalForm, canonicalBitmask: baseShapeMask, validPlacements: [] });
+          return; // Skip this shape
         }
-      }
-    }
-  }
 
-  return true; // All connected tiles of the potential were placed successfully from this starting point
-};
-
-// Main recursive solving function
-const solveRecursive = (
-  potentialsList: string[], // Pass potentials array
-  currentSolution: number[],
-  potentialIdxToTry: number,
-  allSolutions: number[][], // Accumulator for all found solutions
-  searchedStates: Set<string> // To avoid redundant searches
-): void => {
-  // Changed return to void as boolean wasn't really used effectively
-  // Optimization: Use join instead of JSON.stringify for potentially faster keys
-  const stateKey = currentSolution.join(",") + "|" + potentialIdxToTry;
-  if (searchedStates.has(stateKey)) {
-    return; // Already explored this state
-  }
-  searchedStates.add(stateKey);
-
-  // *** ADD Progress Update ***
-  if (searchedStates.size % PROGRESS_UPDATE_INTERVAL === 0) {
-    self.postMessage({ type: "progress", count: searchedStates.size });
-  }
-  // *** END Progress Update ***
-
-  if (potentialIdxToTry >= potentialsList.length) {
-    // Base case: Tried all potentials for this branch
-    allSolutions.push([...currentSolution]); // Add a copy
-    return;
-  }
-
-  // Option 1: Try to place the current potential (potentialIdxToTry)
-  for (let startTile = 1; startTile <= TOTAL_TILES; startTile++) {
-    const tempSolution = [...currentSolution]; // Create a copy for this attempt
-    const usedTiles = new Set<number>();
-
-    // Make a separate mutable copy ONLY for fitPotential's recursion branch
-    const fitAttemptSolution = [...tempSolution];
-
-    if (
-      fitPotential(
-        potentialsList,
-        potentialIdxToTry,
-        fitAttemptSolution,
-        startTile,
-        -1,
-        usedTiles
-      )
-    ) {
-      // If placement succeeded, recurse for the *next* potential using the modified grid
-      // Pass the successfully modified 'fitAttemptSolution' down
-      solveRecursive(
-        potentialsList,
-        fitAttemptSolution,
-        potentialIdxToTry + 1,
-        allSolutions,
-        searchedStates
-      );
-    }
-    // If fitPotential fails, we just try the next startTile with the original 'tempSolution' (which is same as currentSolution here)
-  }
-
-  // Option 2: Skip placing the current potential and move to the next one
-  // This ensures we find solutions even if not all potentials can be placed
-  solveRecursive(
-    potentialsList,
-    currentSolution,
-    potentialIdxToTry + 1,
-    allSolutions,
-    searchedStates
-  );
-};
-
-// --- Graph Coloring Helper ---
-const colorSolution = (solutionGrid: number[], numColors: number): number[] => {
-  const coloredGrid = Array(TOTAL_TILES + 1).fill(-1);
-  const potentialAdjacency: Map<number, Set<number>> = new Map();
-  const potentialIndicesPresent: Set<number> = new Set();
-
-  // 1. Build adjacency graph
-  for (let tileIdx = 1; tileIdx <= TOTAL_TILES; tileIdx++) {
-    const potentialIdx1 = solutionGrid[tileIdx];
-    if (potentialIdx1 === -1) continue;
-    potentialIndicesPresent.add(potentialIdx1);
-    if (!potentialAdjacency.has(potentialIdx1)) {
-      potentialAdjacency.set(potentialIdx1, new Set());
-    }
-    const neighbors = ADJACENT_LIST[tileIdx];
-    if (!neighbors) continue;
-    for (const neighborTileIdx of neighbors) {
-      if (neighborTileIdx === 0) continue;
-      const potentialIdx2 = solutionGrid[neighborTileIdx];
-      if (potentialIdx2 !== -1 && potentialIdx1 !== potentialIdx2) {
-        if (!potentialAdjacency.has(potentialIdx2)) {
-          potentialAdjacency.set(potentialIdx2, new Set());
+        const validPlacements: bigint[] = []; // Store as array
+        const sourceTileIndex = findLowestSetBitIndex(baseShapeMask);
+        if (sourceTileIndex === -1) {
+          console.warn(`[Worker Precompute] Could not find anchor for non-empty shape ${canonicalForm}. Skipping.`);
+          computedData.set(canonicalForm, { id: canonicalForm, canonicalBitmask: baseShapeMask, validPlacements: [] });
+          return;
         }
-        potentialAdjacency.get(potentialIdx1)?.add(potentialIdx2);
-        potentialAdjacency.get(potentialIdx2)?.add(potentialIdx1);
-      }
-    }
-  }
+        const sourceCoords = coordsMap.get(sourceTileIndex);
+        if (!sourceCoords) {
+          console.error(`[Worker Precompute] Could not find coordinates for source index ${sourceTileIndex} of shape ${canonicalForm}. Check HEX_GRID_COORDS structure/order. Skipping.`);
+          computedData.set(canonicalForm, { id: canonicalForm, canonicalBitmask: baseShapeMask, validPlacements: [] });
+          return;
+        }
+        const { q: sourceQ, r: sourceR } = sourceCoords;
 
-  // 2. Assign colors greedily
-  const potentialColorMap: Map<number, number> = new Map();
-  const sortedPotentialIndices = Array.from(potentialIndicesPresent).sort(
-    (a, b) => a - b
-  );
+        for (let targetTileIndex = 0; targetTileIndex < TOTAL_TILES; targetTileIndex++) {
+          const targetCoords = coordsMap.get(targetTileIndex);
+          if (!targetCoords) {
+            console.error(`[Worker Precompute] Missing coordinates for target index ${targetTileIndex}. Skipping translation.`);
+            continue;
+          }
+          const { q: targetQ, r: targetR } = targetCoords;
+          const deltaQ = targetQ - sourceQ;
+          const deltaR = targetR - sourceR;
+          const translatedMask = translateShapeBitmask(baseShapeMask, deltaQ, deltaR);
 
-  for (const potentialIdx of sortedPotentialIndices) {
-    const neighborColors = new Set<number>();
-    const adjacentPotentials =
-      potentialAdjacency.get(potentialIdx) || new Set();
-    for (const neighborPotentialIdx of adjacentPotentials) {
-      if (potentialColorMap.has(neighborPotentialIdx)) {
-        neighborColors.add(potentialColorMap.get(neighborPotentialIdx)!);
-      }
-    }
-    let assignedColor = -1;
-    for (let colorIdx = 0; colorIdx < numColors; colorIdx++) {
-      if (!neighborColors.has(colorIdx)) {
-        assignedColor = colorIdx;
-        break;
-      }
-    }
-    if (assignedColor === -1) {
-      console.warn(
-        `[Worker] Could not find unique color for potential ${potentialIdx}, cycling colors.`
-      );
-      assignedColor = potentialIdx % numColors;
-    }
-    potentialColorMap.set(potentialIdx, assignedColor);
-  }
-
-  // 3. Create final colored grid
-  for (let tileIdx = 1; tileIdx <= TOTAL_TILES; tileIdx++) {
-    const potentialIdx = solutionGrid[tileIdx];
-    if (potentialIdx !== -1 && potentialColorMap.has(potentialIdx)) {
-      coloredGrid[tileIdx] = potentialColorMap.get(potentialIdx)!;
-    }
-  }
-  return coloredGrid;
-};
-
-// --- Web Worker Message Handling (Modified for Coloring) ---
-self.onmessage = (event: MessageEvent<{ potentials: string[] }>) => {
-  const { potentials: potentialsList } = event.data;
-  if (!potentialsList || potentialsList.length === 0) {
-    self.postMessage({ type: "error", message: "No potentials provided." });
-    return;
-  }
-
-  const initialSolution = Array(TOTAL_TILES + 1).fill(-1);
-  const allFoundSolutions: number[][] = [];
-  const searchedStates = new Set<string>();
-
-  try {
-    solveRecursive(
-      potentialsList,
-      initialSolution,
-      0,
-      allFoundSolutions,
-      searchedStates
-    );
-
-    let minEmptyTiles = TOTAL_TILES + 1;
-    let bestSolutionsRaw: number[][] = [];
-
-    if (allFoundSolutions.length > 0) {
-      allFoundSolutions.forEach((sol) => {
-        const emptyCount = sol.reduce(
-          (count, tile, index) =>
-            index === 0 ? count : tile === -1 ? count + 1 : count,
-          0
-        );
-        if (emptyCount < minEmptyTiles) {
-          minEmptyTiles = emptyCount;
-          bestSolutionsRaw = [sol];
-        } else if (emptyCount === minEmptyTiles) {
-          const solString = sol.join(",");
-          if (
-            !bestSolutionsRaw.some(
-              (existing) => existing.join(",") === solString
-            )
-          ) {
-            bestSolutionsRaw.push(sol);
+          if (translatedMask !== 0n && (translatedMask & lockedTilesMaskBigint) === 0n) {
+            const translatedTileCount = countSetBits(translatedMask);
+            if (translatedTileCount === 4) {
+              validPlacements.push(translatedMask);
+            }
           }
         }
-      });
+        computedData.set(canonicalForm, { id: canonicalForm, canonicalBitmask: baseShapeMask, validPlacements });
+      } else {
+        // console.log(`[Worker Precompute] Canonical form ${canonicalForm} already computed.`);
+      }
+
+    } catch (e) {
+      console.error(`[Worker Precompute] Error precomputing shape ${canonicalForm} (from ${shapeId}):`, e);
+      computedData.set(canonicalForm, { id: canonicalForm, canonicalBitmask: baseShapeMask, validPlacements: [] });
     }
+  });
 
-    // Color the best solutions
-    const bestSolutionsColored = bestSolutionsRaw.map((rawSolution) =>
-      colorSolution(rawSolution, NUM_HEX_COLORS)
-    );
-
-    self.postMessage({ type: "progress", count: searchedStates.size }); // Final progress
-
-    // Send colored solutions
-    self.postMessage({
-      type: "result",
-      bestSolutions: bestSolutionsColored,
-      searchedCount: searchedStates.size,
-    });
-  } catch (error) {
-    console.error("[Worker] Error during solving:", error);
-    self.postMessage({
-      type: "error",
-      message: error instanceof Error ? error.message : "Unknown worker error",
-    });
-  }
+  const computationEndTime = Date.now();
+  // console.log(`[Worker Precompute] Precomputation finished in ${computationEndTime - computationStartTime}ms. Computed data for ${computedData.size} canonical shapes.`);
+  return computedData;
 };
 
-// Indicate worker is ready (optional)
-// self.postMessage({ type: 'ready' });
-
-// Make sure this file is treated as a module by the bundler
-self.onmessage = (e: MessageEvent) => {
-  const { potentials } = e.data;
-
-  // console.log("[Worker] Received potentials:", potentials);
-  if (!potentials || !Array.isArray(potentials)) {
-    self.postMessage({ type: "error", message: "Invalid potentials received" });
-    return;
-  }
-
-  const initialSolution = Array(TOTAL_TILES + 1).fill(-1);
-  const allSolutions: number[][] = [];
-  const searchedStates = new Set<string>();
-
+// --- NEW Exported Function: Initialize Context ---
+const initializeSolverContext = async (
+  potentials: PotentialShape[],
+  lockedTilesMaskStr: string // Expect string due to workerpool serialization
+): Promise<ShapeDataMap> => {
+  // console.log("[Worker Initialize] Received initialization request.");
   try {
-    const startTime = performance.now();
-    solveRecursive(potentials, initialSolution, 0, allSolutions, searchedStates);
-    const endTime = performance.now();
-    // console.log(
-    //   `[Worker] Recursive solve finished in ${(endTime - startTime).toFixed(2)}ms`
-    // );
-    // console.log(`[Worker] Searched ${searchedStates.size} states.`);
-    // console.log(`[Worker] Found ${allSolutions.length} raw solutions.`);
-
-    // Filter for complete solutions (all tiles filled)
-    const completeSolutions = allSolutions.filter((sol) =>
-      sol.slice(1).every((tile) => tile !== -1)
-    );
-    // console.log(
-    //   `[Worker] Found ${completeSolutions.length} complete solutions.`
-    // );
-
-    // If no complete solutions, consider partial ones (find the one with fewest empty tiles)
-    let solutionsToSend = completeSolutions;
-    if (completeSolutions.length === 0 && allSolutions.length > 0) {
-      console.log("[Worker] No complete solutions, checking partials...");
-      let minEmpty = TOTAL_TILES + 1;
-      allSolutions.forEach((sol) => {
-        const emptyCount = sol.slice(1).filter((t) => t === -1).length;
-        minEmpty = Math.min(minEmpty, emptyCount);
-      });
-      console.log(`[Worker] Fewest empty tiles in partials: ${minEmpty}`);
-      solutionsToSend = allSolutions.filter(
-        (sol) => sol.slice(1).filter((t) => t === -1).length === minEmpty
-      );
-      console.log(
-        `[Worker] Sending ${solutionsToSend.length} best partial solutions.`
-      );
-    } else {
-      // console.log(
-      //   `[Worker] Sending ${solutionsToSend.length} complete solutions.`
-      // );
-    }
-
-    // Color the selected best solutions
-    const coloredBestSolutions = solutionsToSend.map((sol) =>
-      colorSolution(sol, NUM_HEX_COLORS)
-    );
-
-    // console.log(
-    //   "[Worker] Sending colored solutions:",
-    //   coloredBestSolutions.length
-    // );
-    self.postMessage({
-      type: "result",
-      bestSolutions: coloredBestSolutions,
-      searchedCount: searchedStates.size,
-    });
-  } catch (error: any) {
-    console.error("[Worker] Error during solving:", error);
-    self.postMessage({ type: "error", message: error.message || "Unknown error" });
+    const lockedTilesMask = BigInt(lockedTilesMaskStr);
+    const shapeDataMap = precomputeAllShapeDataInternal(potentials, lockedTilesMask);
+    // We return the map directly; the workerpool promise handles the async nature.
+    // console.log("[Worker Initialize] Context initialized successfully.");
+    return shapeDataMap;
+  } catch (error) {
+    console.error("[Worker Initialize] Error during initialization:", error);
+    throw error; // Re-throw to make it a worker error
   }
 };
 
-// Add an empty export statement to ensure the file is treated as an ES module.
-export {};
+// Helper to calculate combinations safely
+function calculateTotalCombinations(n: number, k: number): number {
+    if (k < 0 || k > n) {
+        return 0;
+    }
+    if (k === 0 || k === n) {
+        return 1;
+    }
+    if (k > n / 2) {
+        k = n - k; // Optimization
+    }
+    try {
+        // Use a library or careful implementation for large numbers if needed
+        // For moderate N (like 24 choose 11), standard numbers should be okay
+        // but using a library like mathjs is safer.
+        const result = mathCombinations(n, k);
+        if (typeof result === 'number' && isFinite(result)) {
+             return result;
+        }
+         console.warn(`[Combinations] Calculation resulted in non-finite number for C(${n}, ${k}). Reporting 0.`);
+        return 0; // Or throw error / handle appropriately
+    } catch (e) {
+        console.error(`[Combinations] Error calculating C(${n}, ${k}):`, e);
+        return 0; // Indicate failure
+    }
+}
+
+// --- Internal Solver Logic (Adapted from previous exports) ---
+
+// Internal function for Exact Tiling (now processes combinations passed to it)
+// Note: This function itself is NOT parallel, the loop over combinations is removed
+const solveExactTilingCombination = (
+  combination: string[], // Array of shape IDs for *this specific* combination
+  kValue: number,
+  context: SolverTaskContext
+): SolutionRecord | null => {
+    // console.log(`[Worker solveExactTilingCombination] Solving for combination: ${combination.join(', ')}`);
+    try {
+      // --- Add cancellation check early ---
+      if ((workerpool as any).isCancelled && (workerpool as any).isCancelled()) {
+          // console.log("[Worker solveExactTilingCombination] Cancelled before DLX execution.");
+          return null; 
+      }
+      // ---------------------------------
+
+      const { shapeDataMap, initialGridState, lockedTilesMask } = context;
+
+      // The shapes to use are defined by the combination array
+      const shapesToUseInput: ShapeInput[] = combination.map(id => ({ id }));
+
+      // Need to map the incoming shape IDs (like shapeA::110...) to their canonical forms
+      // to look up precomputed data in shapeDataMap.
+      const shapeDataMapForCombination: ShapeDataMap = new Map();
+      const canonicalFormsInCombination = new Set<string>();
+
+      for (const fullShapeId of combination) {
+         const parts = fullShapeId.split('::');
+         if (parts.length === 2) {
+             const canonicalForm = parts[0]; // Assuming ID format is canonical::uniqueifier or similar
+             // TODO: Adjust canonicalForm extraction if ID format differs
+             const precomputedData = shapeDataMap.get(canonicalForm);
+             if (precomputedData) {
+                 // We map the *instance ID* (fullShapeId) to the *precomputed canonical data*
+                 // This allows buildDancingLinksConstraints to use the correct data for each instance.
+                 shapeDataMapForCombination.set(fullShapeId, precomputedData);
+                 canonicalFormsInCombination.add(canonicalForm);
+             } else {
+                 console.warn(`[Worker solveExactTilingCombination] Precomputed data not found for canonical form ${canonicalForm} (from ${fullShapeId})`);
+             }
+         } else {
+             console.warn(`[Worker solveExactTilingCombination] Invalid shape ID format for lookup: ${fullShapeId}`);
+         }
+      }
+      
+      // Check if we actually found data for k unique canonical forms
+      // This check might be redundant if the combination generation ensures k shapes are passed.
+      // if (canonicalFormsInCombination.size !== kValue) {
+      //     console.warn(`[Worker solveExactTilingCombination] Combination provided ${combination.length} IDs, but only mapped to ${canonicalFormsInCombination.size} unique canonical forms with data. Expected ${kValue}.`);
+          // Potentially return null or handle error
+      // }
+
+      const result = findExactKTilingSolutions(
+        kValue,
+        shapeDataMapForCombination, // Pass the map keyed by INSTANCE ID
+        [], // initialConstraints - not used in current dlx impl
+        shapesToUseInput, // Array of { id: instanceId } for buildConstraints
+        initialGridState,
+        lockedTilesMask
+      );
+
+      if (result.solutions && result.solutions.length > 0) {
+        // console.log(`[Worker solveExactTilingCombination] Solution FOUND for combination: ${combination.join(', ')}`);
+        return result.solutions[0]; // Return the first solution found for this combo
+      } else if (result.error) {
+         console.error(`[Worker solveExactTilingCombination] DLX error for combination ${combination.join(', ')}:`, result.error);
+         // Decide if this should throw or just return null
+         return null;
+      } else {
+        // console.log(`[Worker solveExactTilingCombination] No solution for combination: ${combination.join(', ')}`);
+        return null;
+      }
+
+    } catch (error) {
+        console.error(`[Worker solveExactTilingCombination] Unexpected error processing combination ${combination.join(', ')}:`, error);
+        // Decide how to handle unexpected errors - throw? log? return null?
+        return null;
+    }
+};
+
+// Internal function for Backtracking (structure remains, needs adaptation for parallel start)
+// This function will need significant changes to accept a starting point/
+// branch and return the best result *for that branch only*.
+const solveBacktrackingBranch = async (
+  payload: BacktrackingBranchPayload, // Accepts the specific payload for this branch
+  partitionIndexToSkip?: number // <-- Add parameter
+): Promise<SolutionRecord[] | null> => {
+  const { context, startPlacements, startPotentialIndex } = payload; // Destructure payload
+  const { shapeDataMap, initialGridState, lockedTilesMask, potentials } = context;
+  // Note: initialGridState from context might be ignored if startPlacements are provided, or used as base
+  
+  // console.log(`[Worker solveBacktrackingBranch] Started. startPotentialIndex: ${startPotentialIndex ?? 'N/A'}, startPlacements count: ${startPlacements.length}`); // <-- Comment out
+
+  // --- Initialize State from Payload --- 
+  let currentMaxK = 0;
+  let bestSolutions: SolutionRecord[] = [];
+  let rawSolutionCountAtMaxK = 0;
+  const RAW_SOLUTION_LIMIT = 30000;
+  let iterations = 0;
+
+  // Initialize grid state and placed shapes based on startPlacements
+  let startingGridState = initialGridState; // Start with base grid (usually 0n)
+  const initialPlacedShapes: PlacementRecord[] = [];
+  
+  for (const placement of startPlacements) {
+      // Assume startPlacements are valid and don't overlap each other (dispatcher ensures this)
+      startingGridState |= placement.placementMask; // Apply placement mask
+      initialPlacedShapes.push({ ...placement }); // Copy placement record
+  }
+  // console.log(`[Worker solveBacktrackingBranch] Initialized gridState: ${startingGridState.toString(16)}, placedShapes: ${initialPlacedShapes.length}`); // <-- Comment out
+
+  // Determine the index of the potential to start the search from
+  const actualStartPotentialIndex = startPotentialIndex ?? 0; // Default to 0 if not provided
+
+  // --- Backtracking Recursive Function (Largely Unchanged Internally) --- 
+  const backtrack = (potentialIndex: number, currentGridState: bigint, placedShapes: PlacementRecord[]) => {
+    
+    // --- Cancellation Check --- 
+    if ((workerpool as any).isCancelled && (workerpool as any).isCancelled()) {
+        // console.log("[Worker Backtrack] Cancellation detected.");
+        return; // Stop exploration if cancelled
+    }
+    // ------------------------
+
+    iterations++;
+
+    // Periodically emit progress update (consider making interval dynamic or based on branch size)
+    if (iterations % 50000 === 0) { // Re-enable progress emit for debugging
+        // try { // <-- REMOVE this entire try-catch block
+        //     (workerpool.workerEmit as (msg: WorkerBacktrackingProgressMessage) => void)({
+        //         type: 'BACKTRACKING_PROGRESS',
+        //         payload: {
+        //             iterations: iterations,
+        //             currentMaxK: currentMaxK
+        //         }
+        //     });
+        // } catch (e) {
+        //     console.error("[Worker Backtrack] Error emitting progress:", e);
+        // }
+    }
+
+    // --- Base Case ---
+    if (potentialIndex >= potentials.length) {
+      const currentK = placedShapes.length;
+      if (currentK > currentMaxK) { // Use currentMaxK scoped to this branch
+        currentMaxK = currentK;
+        const newBestSolution: SolutionRecord = {
+          gridState: currentGridState,
+          placements: [...placedShapes],
+          maxShapes: currentMaxK
+        };
+        bestSolutions = [newBestSolution];
+        rawSolutionCountAtMaxK = 1;
+      } else if (currentK === currentMaxK && currentMaxK > 0) {
+         if (rawSolutionCountAtMaxK < RAW_SOLUTION_LIMIT) {
+             const tiedSolution: SolutionRecord = {
+                 gridState: currentGridState,
+                 placements: [...placedShapes],
+                 maxShapes: currentMaxK
+             };
+             bestSolutions.push(tiedSolution);
+             rawSolutionCountAtMaxK++;
+         } else if (rawSolutionCountAtMaxK === RAW_SOLUTION_LIMIT) {
+             rawSolutionCountAtMaxK++;
+         }
+      }
+      return; // End this recursive path
+    }
+
+    // --- Recursive Step --- //
+    const currentPotential = potentials[potentialIndex];
+    if (!currentPotential) {
+        console.error(`[Worker Backtrack] Error: potentialIndex ${potentialIndex} out of bounds.`);
+        return;
+    }
+
+    const canonicalData = shapeDataMap.get(currentPotential.canonicalForm);
+    const validPlacements = canonicalData?.validPlacements ?? [];
+
+    // --- Option 1: Try placing the current potential ---
+    for (const placementMask of validPlacements) {
+      if ((currentGridState & placementMask) === 0n) {
+        placedShapes.push({ shapeId: currentPotential.id, placementMask });
+        backtrack(potentialIndex + 1, currentGridState | placementMask, placedShapes);
+        placedShapes.pop();
+      }
+    }
+
+    // --- Option 2: Skip the current potential --- 
+    // --- MODIFIED: Check partitionIndexToSkip --- 
+    if (potentialIndex !== partitionIndexToSkip) { 
+         backtrack(potentialIndex + 1, currentGridState, placedShapes);
+    } else {
+        // If this is the partition index, don't explore the 'skip' branch here,
+        // because a dedicated task was already dispatched for that.
+        // console.log(`[Worker Backtrack] Skipped recursive call for partition index ${potentialIndex}`);
+    }
+    // --- END MODIFICATION ---
+
+  };
+
+  // --- Start the Search for this Branch --- 
+  // console.log(`[Worker solveBacktrackingBranch] Starting search from index ${actualStartPotentialIndex}`); // <-- Comment out
+  
+  // Heuristic: Sorting might still be beneficial globally, 
+  // but applying it *within* each branch might be complex/less effective.
+  // The dispatcher in page.tsx could potentially pass sorted potentials.
+  // For now, we use the order provided in context.potentials.
+
+  // Start the search using the INITIALIZED state for this branch
+  backtrack(actualStartPotentialIndex, startingGridState, initialPlacedShapes); 
+
+  // console.log(`[Worker solveBacktrackingBranch] Branch search finished. Max k for branch: ${currentMaxK}. Found ${bestSolutions.length} raw solutions.`); // Keep commented
+
+  // --- Filter and Return Results for this Branch --- //
+  let filteredSolutions: SolutionRecord[] = [];
+  if (bestSolutions.length > 0) {
+      const uniqueGridStates = new Set<bigint>();
+      for (const solution of bestSolutions) {
+          if (!uniqueGridStates.has(solution.gridState)) {
+              uniqueGridStates.add(solution.gridState);
+              filteredSolutions.push(solution);
+              // Limit is applied AFTER aggregation in the main thread now
+              // if (filteredSolutions.length >= 500) break;
+          }
+      }
+  }
+
+  // Return the array of unique solutions found *within this branch*
+  const result = filteredSolutions.length > 0 ? filteredSolutions : null;
+  // console.log(`[Worker solveBacktrackingBranch] Returning ${filteredSolutions.length} unique solutions for k=${currentMaxK} from this branch.`);
+  // Log the actual result being returned
+  // console.log("[Worker solveBacktrackingBranch] Actual return value:", JSON.stringify(result, (key, value) => 
+  //     typeof value === 'bigint' ? value.toString() : value // Handle BigInt serialization for logging
+  // , 2));
+
+  // console.log(`[Worker solveBacktrackingBranch] FINISHED branch. Returning ${result ? result.length : 0} solutions.`); // <-- Remove log
+  return result;
+};
+
+
+// --- NEW Main Worker Entry Point for Parallel Tasks ---
+const processParallelTask = async (task: WorkerTaskPayload): Promise<SerializedSolutionRecord | SerializedSolutionRecord[] | null> => {
+    const taskStartTime = Date.now();
+    const originatingSolverType = task.data.originatingSolverType; // Extract type
+    let finalResult: SerializedSolutionRecord | SerializedSolutionRecord[] | null = null; // Variable to store the final result (serialized)
+
+    try {
+        switch (task.type) {
+            case 'DLX_BATCH':
+                const { combinations, kValue, context } = task.data;
+                const totalInBatch = combinations.length;
+                let batchSolution: SerializedSolutionRecord | null = null; // Use Serialized type
+                // console.log(`[Worker processParallelTask] Processing DLX_BATCH with ${totalInBatch} combinations.`);
+
+                for (let i = 0; i < combinations.length; i++) {
+                    // -- Check cancellation WITHIN loop --
+                    if ((workerpool as any).isCancelled && (workerpool as any).isCancelled()) {
+                        // console.log("[Worker processParallelTask] DLX_BATCH cancelled during loop.");
+                        return null; // Exit if cancelled, returning null
+                    }
+                    // --------------------------------
+
+                    const combination = combinations[i];
+                    const solution = solveExactTilingCombination(combination, kValue, context);
+                    
+                    if (solution) {
+                        // Solution found! Serialize and prepare to return.
+                        batchSolution = {
+                           ...solution,
+                           gridState: solution.gridState.toString(), // Serialize BigInt
+                           placements: solution.placements.map(p => ({ 
+                               ...p, 
+                               placementMask: p.placementMask.toString() // Serialize BigInt
+                           }))
+                        }; // No type assertion needed, shape matches SerializedSolutionRecord
+                        break; // Stop processing this batch
+                    }
+                }
+
+                // --- Emit progress AFTER loop completes --- 
+                // Report the total number of combinations processed in THIS batch
+                workerpool.workerEmit({ 
+                    type: 'PARALLEL_PROGRESS',
+                    payload: { checked: totalInBatch } // Report batch size as 'checked'
+                } as WorkerParallelProgressMessage);
+                // -----------------------------------------
+
+                finalResult = batchSolution; // Set the result for this batch (serialized solution or null)
+                break;
+
+            case 'BACKTRACKING_BRANCH':
+                // Extract the skip index from the payload data
+                const partitionIndexToSkip = task.data.partitionIndexToSkip;
+                // console.log(`[Worker processParallelTask] Processing BACKTRACKING_BRANCH (partitionIndexToSkip: ${partitionIndexToSkip})...`);
+                // Pass the skip index to the solver function
+                const branchSolutions = await solveBacktrackingBranch(task.data, partitionIndexToSkip); 
+                // console.log("[Worker processParallelTask] BACKTRACKING_BRANCH finished.");
+
+                // Serialize the entire array of solutions, or keep null if no solutions found
+                finalResult = branchSolutions ? branchSolutions.map(solution => ({
+                    ...solution,
+                    gridState: solution.gridState.toString(), // Serialize BigInt for gridState
+                    placements: solution.placements.map(p => ({
+                        ...p,
+                        placementMask: p.placementMask.toString() // Serialize BigInt for placementMask
+                    }))
+                })) : null; // Type matches SerializedSolutionRecord[] | null
+                break;
+
+            default:
+                console.error("[Worker processParallelTask] Unknown task type received:", task);
+                // Optionally emit error message
+                workerpool.workerEmit({ 
+                    type: 'PARALLEL_ERROR', 
+                    payload: { message: `Unknown task type: ${(task as any).type}` } 
+                } as WorkerParallelErrorMessage);
+                finalResult = null; // Return null on unknown type
+        }
+
+    } catch (error: any) {
+        const isCancellation = error instanceof workerpool.Promise.CancellationError || error.name === 'CancellationError';
+        if (!isCancellation) {
+            console.error(`[Worker processParallelTask] Error processing task type ${task.type}:`, error);
+            // Optionally emit error message
+            workerpool.workerEmit({ 
+                type: 'PARALLEL_ERROR', 
+                payload: { 
+                    message: `Error in task ${task.type}: ${error.message}`,
+                    originalTaskType: task.type 
+                } 
+            } as WorkerParallelErrorMessage);
+        }
+        finalResult = null; // Return null on error
+
+    } finally {
+         const taskEndTime = Date.now();
+         // console.log(`[Worker processParallelTask] Finished task type ${task.type} in ${taskEndTime - taskStartTime}ms`);
+    }
+    
+    // Return the final result (serialized solution(s) or null)
+    return finalResult;
+};
+
+
+// --- Worker Registration (Updated) ---
+workerpool.worker({
+  initializeSolverContext: initializeSolverContext,
+  processParallelTask: processParallelTask
+});
+
+// console.log('[Solver Worker] Worker updated for parallel tasks and ready.'); // Keep commented

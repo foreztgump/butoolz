@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { motion, type Variants } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ResizableBox, ResizeCallbackData } from 'react-resizable';
 import 'react-resizable/css/styles.css'; // Import default resizable styles
 import {
@@ -30,14 +30,29 @@ const useAudio = (audioFiles: Record<string, string>, initialVolume: number) => 
     const audioBuffersRef = useRef<Record<string, AudioBuffer>>({});
     const [isReady, setIsReady] = useState(false); // Track if context and gain are ready
 
+    // Adjust volume (Moved before useEffect that uses it)
+    const setVolume = useCallback((vol: number) => {
+        if (gainNodeRef.current && audioContextRef.current && isReady) {
+            const clampedVol = Math.max(0, Math.min(1, vol)); // Ensure volume is between 0 and 1
+            // Use linearRampToValueAtTime for smoother volume changes (optional)
+             gainNodeRef.current.gain.setValueAtTime(clampedVol, audioContextRef.current.currentTime);
+            // gainNodeRef.current.gain.linearRampToValueAtTime(clampedVol, audioContextRef.current.currentTime + 0.05); // 50ms ramp
+        }
+    }, [isReady]);
+
     // Initialize AudioContext and GainNode
     useEffect(() => {
         if (typeof window !== 'undefined' && !audioContextRef.current) {
             try {
-                audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+                // Check for standard AudioContext first, then prefixed version
+                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+                if (!AudioContextClass) {
+                    throw new Error("Web Audio API not supported");
+                }
+                audioContextRef.current = new AudioContextClass();
                 gainNodeRef.current = audioContextRef.current.createGain();
                 gainNodeRef.current.connect(audioContextRef.current.destination);
-                setVolume(initialVolume); // Set initial volume
+                setVolume(initialVolume); // Set initial volume - Now defined
                 setIsReady(true);
                 console.log("AudioContext and GainNode initialized.");
 
@@ -55,7 +70,7 @@ const useAudio = (audioFiles: Record<string, string>, initialVolume: number) => 
         // return () => {
         //     audioContextRef.current?.close().catch(e => console.error("Error closing AudioContext:", e));
         // };
-    }, [initialVolume]); // Add initialVolume as dependency
+    }, [initialVolume, setVolume]); // Add initialVolume and setVolume as dependencies
 
     // Preload audio files
     useEffect(() => {
@@ -93,16 +108,6 @@ const useAudio = (audioFiles: Record<string, string>, initialVolume: number) => 
         });
 
     }, [audioFiles, isReady]); // Rerun if audioFiles mapping changes or context becomes ready
-
-    // Adjust volume
-    const setVolume = useCallback((vol: number) => {
-        if (gainNodeRef.current && audioContextRef.current && isReady) {
-            const clampedVol = Math.max(0, Math.min(1, vol)); // Ensure volume is between 0 and 1
-            // Use linearRampToValueAtTime for smoother volume changes (optional)
-             gainNodeRef.current.gain.setValueAtTime(clampedVol, audioContextRef.current.currentTime);
-            // gainNodeRef.current.gain.linearRampToValueAtTime(clampedVol, audioContextRef.current.currentTime + 0.05); // 50ms ramp
-        }
-    }, [isReady]);
 
     // Play sound by alias
     const play = useCallback((alias: string) => {
@@ -458,7 +463,6 @@ const Timer: React.FC<TimerProps> = React.memo(({
           const prevWholeSecond = lastWholeSecondNotifiedRef.current;
           const newWholeSecond = Math.floor(Math.max(0, newTimeLeft));
 
-          let soundPlayedThisTick = false;
           if (prevWholeSecond !== null && prevWholeSecond > newWholeSecond) {
               if (!soundPlayedForSecondRef.current.has(newWholeSecond)) {
                   let specificSoundAlias: string | null = null;
@@ -483,7 +487,6 @@ const Timer: React.FC<TimerProps> = React.memo(({
 
                   if (soundToPlay && !isMuted && isAudioReady) {
                       playSound(soundToPlay);
-                      soundPlayedThisTick = true;
                       soundPlayedForSecondRef.current.add(newWholeSecond);
                   }
               }
@@ -594,15 +597,15 @@ const Timer: React.FC<TimerProps> = React.memo(({
 
 
   // --- Animation Variants & Dynamic Classes ---
-  const textBackgroundVariants: Variants = {
+  const textBackgroundVariants = {
     default: { backgroundColor: 'rgba(0, 0, 0, 0)', transition: { duration: 0.3 } },
-    yellow: { backgroundColor: ['rgba(250, 204, 21, 0.6)', 'rgba(250, 204, 21, 0.2)', 'rgba(250, 204, 21, 0.6)'], transition: { duration: 1.5, repeat: Infinity, ease: "easeInOut" } },
-    red: { backgroundColor: ['rgba(239, 68, 68, 0.7)', 'rgba(239, 68, 68, 0.3)', 'rgba(239, 68, 68, 0.7)'], transition: { duration: 1.0, repeat: Infinity, ease: "easeInOut" } }
+    yellow: { backgroundColor: ['rgba(250, 204, 21, 0.6)', 'rgba(250, 204, 21, 0.2)', 'rgba(250, 204, 21, 0.6)'], transition: { duration: 1.5, repeat: Infinity, ease: "easeInOut" as const } },
+    red: { backgroundColor: ['rgba(239, 68, 68, 0.7)', 'rgba(239, 68, 68, 0.3)', 'rgba(239, 68, 68, 0.7)'], transition: { duration: 1.0, repeat: Infinity, ease: "easeInOut" as const } }
   };
 
-  const boxPulseVariants: Variants = {
+  const boxPulseVariants = {
     default: { scale: 1, transition: { duration: 0.3 } },
-    red: { scale: [1, 1.02, 1], transition: { duration: 1.0, ease: "easeInOut", repeat: Infinity } }
+    red: { scale: [1, 1.02, 1], transition: { duration: 1.0, ease: "easeInOut" as const, repeat: Infinity } }
   };
 
   // --- DEFINE NEW innerBoxClasses --- Includes styles previously on ResizableBox

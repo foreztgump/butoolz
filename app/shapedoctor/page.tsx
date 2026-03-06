@@ -4,163 +4,163 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
+  CardContent,
 } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Progress } from "@/components/ui/progress";
 import {
   Puzzle,
   RefreshCw,
-  HelpCircle,
-  Save,
-  Play,
-  ArrowLeft,
-  ArrowRight,
-  ZoomIn,
-  ZoomOut,
-  Move,
-  Trash2,
-  XOctagon,
-  Hand,
-  Loader2,
-  Library,
-  PlusCircle, // Import new icons
+  Ban,
 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import * as Config from './shapedoctor.config';
+import type { Point, HexCoord } from './types';
+import * as HexUtils from './hexUtils';
+import { Separator } from "@/components/ui/separator";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
-// --- Constants & Config ---
-const TOTAL_TILES = 24;
-const MIN_ZOOM = 0.1;
-const MAX_ZOOM = 5;
-const ZOOM_SENSITIVITY = 0.001;
-const PAN_SENSITIVITY = 1;
+// Import the new components
+import ShapeCanvas from "./components/ShapeCanvas";
+import ControlPanel from "./components/ControlPanel";
+import StatusPanel from "./components/StatusPanel";
+import ResultsTabs from "./components/ResultsTabs";
 
-// Colors and Styles
-const HEX_COLORS = [
-  "#8B5CF6",
-  "#0D9488",
-  "#DB2777",
-  "#D97706",
-  "#65A30D",
-  "#0284C7",
-];
-const DEFAULT_COLOR = "#374151"; // gray-700
-const SELECTED_COLOR = "#A78BFA"; // violet-400
-const HOVER_COLOR = "#4B5563"; // gray-600
-const STROKE_COLOR_DEFAULT = "#6B7280"; // gray-500
-const STROKE_COLOR_ACTIVE = "#D1D5DB"; // gray-300
-const CANVAS_BG_DARK = "dark:bg-gray-900";
-const PREVIEW_BG = "bg-background";
+// Import workerpool
+import * as workerpool from 'workerpool';
 
-const HEX_SIZE = 30;
-const HEX_HEIGHT = Math.sqrt(3) * HEX_SIZE;
-const HEX_WIDTH = 2 * HEX_SIZE;
+// Import specific types needed for the new solver
+import { 
+    type SolverExecDataBacktracking, 
+    type SolverExecDataExactTiling,
+    type SolverResultPayloadBacktracking, 
+    type SolutionRecord,
+    type ShapeData,
+    type PlacementRecord,
+    type PotentialShape,
+    type ShapeDataMap,
+    type SolverTaskContext,
+    type DLXBatchPayload,
+    type BacktrackingBranchPayload,
+    type WorkerTaskPayload,
+    type WorkerParallelResponseMessage,
+    type SerializedSolutionRecord,
+} from './types';
+import { 
+    bitmaskToTileIds, 
+    shapeStringToBitmask,
+    translateShapeBitmask,
+    countSetBits,
+    setTileLock,
+    clearTileLock,
+    toggleTileLock,
+    isTileLocked,
+    getCanonicalShape,
+} from './bitmaskUtils';
 
-const PREDEFINED_SHAPES = [
-  "111010000000000000000000",
-  "110100100000000000000000",
-  "110100001000000000000000",
-  "110010100000000000000000",
-  "110010010000000000000000",
-  "110010000100000000000000",
-  "110000101000000000000000",
-  "110000100100000000000000",
-  "110000100001000000000000",
-  "101011000000000000000000",
-  "101010010000000000000000",
-  "101001010000000000000000",
-  "101001000010000000000000",
-  "101000010100000000000000",
-  "101000010010000000000000",
-  "101000010000100000000000",
-  "100110100000000000000000",
-  "100011010000000000000000",
-  "100010101000000000000000",
-  "100010100100000000000000",
-  "100010100001000000000000",
-  "100010010100000000000000",
-  "100010010010000000000000",
-  "100010010000100000000000",
-  "100010000101000000000000",
-  "100010000100100000000000",
-  "100010000100001000000000",
-  "011011000000000000000000",
-  "011010100000000000000000",
-  "011010010000000000000000",
-  "010011010000000000000000",
-  "010010010010000000000000",
-  "001110100000000000000000",
-  "001010101000000000000000",
-];
+// Import QOper8 and define types
+// import { QOper8 } from 'qoper8-ww';
+// import { type SolverResultPayload } from './solver.worker';
 
-const HEX_GRID_COORDS = [
-  { id: 1, q: 0, r: 0 },
-  { id: 2, q: -1, r: 0 },
-  { id: 3, q: 1, r: -1 },
-  { id: 4, q: -2, r: 0 },
-  { id: 5, q: 0, r: -1 },
-  { id: 6, q: 2, r: -2 },
-  { id: 7, q: -1, r: -1 },
-  { id: 8, q: 1, r: -2 },
-  { id: 9, q: -2, r: -1 },
-  { id: 10, q: 0, r: -2 },
-  { id: 11, q: 2, r: -3 },
-  { id: 12, q: -1, r: -2 },
-  { id: 13, q: 1, r: -3 },
-  { id: 14, q: -2, r: -2 },
-  { id: 15, q: 0, r: -3 },
-  { id: 16, q: 2, r: -4 },
-  { id: 17, q: -1, r: -3 },
-  { id: 18, q: 1, r: -4 },
-  { id: 19, q: -2, r: -3 },
-  { id: 20, q: 0, r: -4 },
-  { id: 21, q: 2, r: -5 },
-  { id: 22, q: -1, r: -4 },
-  { id: 23, q: 1, r: -5 },
-  { id: 24, q: 0, r: -5 },
-];
-const ADJACENT_LIST = [
-  [0, 0, 0, 0, 0, 0],
-  [0, 0, 2, 5, 3, 0],
-  [0, 0, 4, 7, 5, 1],
-  [0, 1, 5, 8, 6, 0],
-  [0, 0, 0, 9, 7, 2],
-  [1, 2, 7, 10, 8, 3],
-  [0, 3, 8, 11, 0, 0],
-  [2, 4, 9, 12, 10, 5],
-  [3, 5, 10, 13, 11, 6],
-  [4, 0, 0, 14, 12, 7],
-  [5, 7, 12, 15, 13, 8],
-  [6, 8, 13, 16, 0, 0],
-  [7, 9, 14, 17, 15, 10],
-  [8, 10, 15, 18, 16, 11],
-  [9, 0, 0, 19, 17, 12],
-  [10, 12, 17, 20, 18, 13],
-  [11, 13, 18, 21, 0, 0],
-  [12, 14, 19, 22, 20, 15],
-  [13, 15, 20, 23, 21, 16],
-  [14, 0, 0, 0, 22, 17],
-  [15, 17, 22, 24, 23, 18],
-  [16, 18, 23, 0, 0, 0],
-  [17, 19, 0, 0, 24, 20],
-  [18, 20, 24, 0, 0, 21],
-  [20, 22, 0, 0, 0, 23],
-];
-interface Point {
-  x: number;
-  y: number;
+// Remove old QOper8 types
+/*
+type QOper8TaskMessage = {
+    type: string;
+    data: any;
+    id?: string | number;
+};
+type QOper8Response = {
+  finished: boolean;
+  results: any; 
+} | undefined;
+*/
+
+// Define lockable tile IDs
+const LOCKABLE_TILE_IDS: ReadonlySet<number> = new Set([
+  1, 3, 6, 10, 13, 17, 20, 24, 27, 31, 34, 35, 38, 37, 39, 40, 41, 42, 43, 44
+]);
+
+const isSafeNumber = HexUtils.isSafeNumber;
+
+// Remove Poolifier ref
+// const poolManagerRef = useRef<SolverPool | null>(null);
+
+// Add this helper function somewhere within the ShapeDoctor component or outside it
+const countSetBitsFromString = (shapeString: string): number => {
+    let count = 0;
+    for (let i = 0; i < shapeString.length; i++) {
+        if (shapeString[i] === '1') {
+            count++;
+        }
+    }
+    return count;
+};
+
+// --- Helper Functions (Move parallel execution logic here) ---
+
+// Combinatorial Helpers
+function calculateTotalCombinations(n: number, k: number): number {
+  if (k < 0 || k > n) {
+    return 0;
+  }
+  if (k === 0 || k === n) {
+    return 1;
+  }
+  if (k > n / 2) {
+    k = n - k; // Optimization
+  }
+  let result = 1;
+  for (let i = 1; i <= k; ++i) {
+    result = result * (n - i + 1) / i;
+  }
+  return Math.round(result); // Use Math.round for potential floating point inaccuracies
 }
-interface HexCoord {
-  id: number;
-  q: number;
-  r: number;
+
+function* combinations<T>(elements: T[], k: number): Generator<T[]> {
+  if (k < 0 || k > elements.length) {
+    return; // Invalid input
+  }
+  if (k === 0) {
+    yield [];
+    return;
+  }
+  if (k === elements.length) {
+    yield [...elements];
+    return;
+  }
+
+  const n = elements.length;
+  const indices = Array.from({ length: k }, (_, i) => i);
+
+  while (true) {
+    yield indices.map(i => elements[i]);
+
+    // Find the rightmost index that can be incremented
+    let i = k - 1;
+    while (i >= 0 && indices[i] === i + n - k) {
+      i--;
+    }
+
+    if (i < 0) {
+      // All combinations generated
+      return;
+    }
+
+    // Increment this index
+    indices[i]++;
+
+    // Update subsequent indices
+    for (let j = i + 1; j < k; j++) {
+      indices[j] = indices[j - 1] + 1;
+    }
+  }
 }
-const isSafeNumber = (num: unknown): num is number =>
-  typeof num === "number" && Number.isFinite(num);
 
 export default function ShapeDoctor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -172,14 +172,17 @@ export default function ShapeDoctor() {
   const hoveredHexIdRef = useRef<number | null>(null);
   const currentOffsetRef = useRef<Point>({ x: 0, y: 0 });
   const animationFrameIdRef = useRef<number | null>(null);
-  const solverWorkerRef = useRef<Worker | null>(null);
+  const workerPoolRef = useRef<any | null>(null);
+  const anyExactSolutionFound = useRef<boolean>(false);
+  const shapeDataMapRef = useRef<ShapeDataMap | null>(null);
+  const activeWorkerPromisesRef = useRef<workerpool.Promise<any>[]>([]);
 
   const [selectedTiles, setSelectedTiles] = useState<Set<number>>(new Set());
   const [potentials, setPotentials] = useState<string[]>([]);
-  const [bestSolutions, setBestSolutions] = useState<number[][]>([]);
+  const [bestSolutions, setBestSolutions] = useState<SolutionRecord[]>([]);
   const [currentSolutionIndex, setCurrentSolutionIndex] = useState<number>(-1);
   const [gridState, setGridState] = useState<number[]>(() =>
-    Array(TOTAL_TILES + 1).fill(-1)
+    Array(Config.TOTAL_TILES + 1).fill(-1)
   );
   const [isSolving, setIsSolving] = useState<boolean>(false);
   const [zoom, setZoom] = useState(1);
@@ -187,485 +190,225 @@ export default function ShapeDoctor() {
   const [dragStart, setDragStart] = useState<Point>({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const [solveProgress, setSolveProgress] = useState<number>(0);
+  const [lockedTilesMask, setLockedTilesMask] = useState<bigint>(0n);
+  const [exactTilingSolutions, setExactTilingSolutions] = useState<SolutionRecord[]>([]);
+  const [isFindingExactTiling, setIsFindingExactTiling] = useState<boolean>(false);
+  const [currentExactTilingIndex, setCurrentExactTilingIndex] = useState<number>(-1);
+  const [currentSolver, setCurrentSolver] = useState<'exact' | 'maximal' | null>(null);
+  const [solverError, setSolverError] = useState<string | null>(null);
+  const [totalCombinations, setTotalCombinations] = useState<number | null>(null);
+  const [combinationsChecked, setCombinationsChecked] = useState<number>(0);
+  const [solverStatusMessage, setSolverStatusMessage] = useState<string | null>(null);
+  const [completedBacktrackingTasks, setCompletedBacktrackingTasks] = useState<number>(0);
+
+  // Calculate solveProgress based on checked and total combinations
+  useEffect(() => {
+    if (totalCombinations && totalCombinations > 0 && combinationsChecked > 0) {
+      const progress = Math.min(100, Math.round((combinationsChecked / totalCombinations) * 100));
+      setSolveProgress(progress);
+    } else {
+      setSolveProgress(0); // Reset to 0 if total is null/zero or checked is zero
+    }
+  }, [combinationsChecked, totalCombinations]); // Re-run when these change
+
+  const formattedProgress = `${Math.round(solveProgress)}%`;
+
+  // Calculate FULL_GRID_MASK directly
+  const FULL_GRID_MASK = (1n << BigInt(Config.TOTAL_TILES)) - 1n;
+
+  // Initialize workerpool Pool
+  useEffect(() => {
+    console.log('Initializing workerpool...');
+    if (typeof window !== 'undefined') {
+      const workerPath = `/workers/solver.worker.js?v=${Date.now()}`;
+      const poolSize = navigator.hardwareConcurrency || 4;
+
+      try {
+        const pool = workerpool.pool(workerPath, { 
+          maxWorkers: poolSize,
+          workerType: 'web' 
+        });
+        workerPoolRef.current = pool;
+        console.log('Workerpool initialized:', pool);
+
+        toast.success("Solver pool ready.");
+
+      } catch (error) {
+        console.error("Failed to initialize workerpool:", error);
+        toast.error("Failed to initialize solver pool.");
+      }
+
+      return () => {
+          // Original cleanup:
+          if (workerPoolRef.current) {
+            console.log('Terminating workerpool...');
+            workerPoolRef.current.terminate()
+              .then(() => console.log('Workerpool terminated successfully.'))
+              .catch((err: any) => console.error('Error terminating workerpool:', err))
+              .finally(() => {
+                workerPoolRef.current = null;
+              });
+          }
+      };
+    }
+  }, []);
+
+  // --- Tile Locking Handler (Define before handleClick) ---
+  const handleToggleTileLock = useCallback((tileId: number) => {
+    // Only allow toggling for designated lockable tiles
+    if (!LOCKABLE_TILE_IDS.has(tileId)) {
+      toast.warning(`Tile ${tileId} is not lockable.`);
+      return;
+    }
+    setLockedTilesMask(prevMask => toggleTileLock(prevMask, tileId));
+  }, [setLockedTilesMask]); // LOCKABLE_TILE_IDS is constant
+
+  // --- Helper Functions ---
+  const updateGridStateFromSolution = useCallback((solution: SolutionRecord) => {
+    // console.log("[updateGridStateFromSolution] Input Solution:", JSON.stringify(solution, (key, value) => 
+    //     typeof value === 'bigint' ? value.toString() + 'n' : value, 2)
+    // ); 
+    const newGrid = Array(Config.TOTAL_TILES + 1).fill(-1);
+    const numColors = Config.HEX_COLORS.length;
+
+    if (solution.placements) {
+      solution.placements.forEach((placement, shapeIndex) => {
+        // Explicitly convert mask back to BigInt
+        let mask: bigint;
+        try {
+          // Assume it might be string or number after transport
+          mask = BigInt(placement.placementMask);
+        } catch (e) {
+          console.error(`Error converting placementMask ${placement.placementMask} to BigInt for shape ${placement.shapeId}`, e);
+          return; // Skip this placement if conversion fails
+        }
+
+        // Now use the converted mask
+        const currentShapeTiles = bitmaskToTileIds(mask);
+
+        if (currentShapeTiles.length === 0) {
+            // Add a log here to see if masks are resulting in zero tiles
+            console.warn(`Placement mask ${mask.toString()} for shape ${placement.shapeId} resulted in 0 tiles after bitmaskToTileIds`);
+            return; 
+        }
+
+        if (currentShapeTiles.length !== 4 && currentShapeTiles.length > 0) {
+          console.error(`    ERROR: Placement mask resulted in ${currentShapeTiles.length} tiles!`);
+        }
+
+        const forbiddenColors = new Set<number>();
+        // Find colors used by adjacent, already placed shapes
+        currentShapeTiles.forEach(tileId => {
+          const neighbors = Config.ADJACENT_LIST[tileId] || [];
+          neighbors.forEach(neighborId => {
+            if (neighborId !== 0 && newGrid[neighborId] !== -1) {
+              // Check if the neighbor belongs to a DIFFERENT shape that's already colored
+              // This check might be redundant if we process shapes sequentially and only look at `newGrid`
+              // which only contains colors from previously processed shapes.
+              forbiddenColors.add(newGrid[neighborId]);
+            }
+          });
+        });
+
+        // Find the first available color index
+        let chosenColorIndex = 0;
+        while (forbiddenColors.has(chosenColorIndex % numColors)) {
+          chosenColorIndex++;
+        }
+        chosenColorIndex %= numColors;
+
+        // Assign the chosen color to all tiles of the current shape
+        currentShapeTiles.forEach(tileId => {
+          if (tileId > 0 && tileId <= Config.TOTAL_TILES) {
+            newGrid[tileId] = chosenColorIndex;
+          }
+        });
+      });
+    } else {
+      console.warn("[updateGridStateFromSolution] Solution object missing placements array.");
+    }
+    
+    // Comment out detailed logging BEFORE setting state
+    // console.log("[updateGridStateFromSolution] Final newGrid calculated:", JSON.stringify(newGrid));
+    // Log non -1 values for quick check
+    // const coloredTiles = newGrid.map((color, index) => color !== -1 ? `${index}:${color}` : null).filter(x => x);
+    // console.log("[updateGridStateFromSolution] Colored tiles (id:color):", coloredTiles.join(', '));
+
+    setGridState(newGrid);
+  }, [setGridState]);
 
   // --- Coordinate Conversion & Drawing ---
-  const axialToPixel = useCallback((q: number, r: number): Point | null => {
-    const x = HEX_SIZE * ((3 / 2) * q);
-    const y = HEX_SIZE * ((Math.sqrt(3) / 2) * q + Math.sqrt(3) * r);
-    if (!isSafeNumber(x) || !isSafeNumber(y)) {
-      return null;
-    }
-    return { x, y };
-  }, []);
-  const screenToWorld = useCallback(
-    (
-      screenX: number,
-      screenY: number,
-      canvasWidth: number,
-      canvasHeight: number
-    ): Point | null => {
-      const currentOffset = currentOffsetRef.current;
-      const currentZoom = zoom;
-      if (
-        !isSafeNumber(screenX) ||
-        !isSafeNumber(screenY) ||
-        !isSafeNumber(currentOffset.x) ||
-        !isSafeNumber(currentOffset.y) ||
-        !isSafeNumber(currentZoom) ||
-        currentZoom <= 0 ||
-        canvasWidth <= 0 ||
-        canvasHeight <= 0
-      ) {
-        return null;
-      }
-      const x = (screenX - canvasWidth / 2 - currentOffset.x) / currentZoom;
-      const y = (screenY - canvasHeight / 2 - currentOffset.y) / currentZoom;
-      if (!isSafeNumber(x) || !isSafeNumber(y)) {
-        return null;
-      }
-      return { x, y };
-    },
-    [zoom]
-  );
-  const drawHexagon = useCallback(
-    (
-      ctx: CanvasRenderingContext2D,
-      x: number,
-      y: number,
-      size: number,
-      fillColor: string,
-      lineWidth: number = 1,
-      strokeStyle: string
-    ) => {
-      if (
-        !isSafeNumber(x) ||
-        !isSafeNumber(y) ||
-        !isSafeNumber(size) ||
-        size <= 0
-      ) {
-        return;
-      }
-      ctx.beginPath();
-      for (let i = 0; i < 6; i++) {
-        const angle = (Math.PI / 3) * i;
-        const xPos = x + size * Math.cos(angle);
-        const yPos = y + size * Math.sin(angle);
-        if (!isSafeNumber(xPos) || !isSafeNumber(yPos)) {
-          ctx.closePath();
-          return;
-        }
-        if (i === 0) ctx.moveTo(xPos, yPos);
-        else ctx.lineTo(xPos, yPos);
-      }
-      ctx.closePath();
-      try {
-        ctx.fillStyle = fillColor;
-        ctx.fill();
-        ctx.strokeStyle = strokeStyle;
-        const finalLineWidth = Math.max(0.5, lineWidth / zoom);
-        if (!isSafeNumber(finalLineWidth)) {
-          ctx.lineWidth = 1; /* Fallback */
-        } else {
-          ctx.lineWidth = finalLineWidth;
-        }
-        ctx.stroke();
-      } catch (e) {
-        console.error("Error during hex draw:", e);
-      }
-    },
-    [zoom]
-  ); // Added basic error log
-  const getHexAtPoint = useCallback(
-    (worldX: number, worldY: number): HexCoord | null => {
-      if (!isSafeNumber(worldX) || !isSafeNumber(worldY)) {
-        return null;
-      }
-      let clickedHex: HexCoord | null = null;
-      let minDistSq = Infinity;
-      for (const hex of HEX_GRID_COORDS) {
-        const p = axialToPixel(hex.q, hex.r);
-        if (!p) continue;
-        const dSq = (p.x - worldX) ** 2 + (p.y - worldY) ** 2;
-        if (!isSafeNumber(dSq)) {
-          continue;
-        }
-        if (dSq < minDistSq) {
-          minDistSq = dSq;
-          if (dSq <= (HEX_SIZE * 1.05) ** 2) {
-            // Allow slightly larger click area
-            clickedHex = hex;
-          }
-        }
-      }
-      return clickedHex;
-    },
-    [axialToPixel]
-  ); // axialToPixel is stable
-
-  // --- Main Drawing Function ---
-  const drawGrid = useCallback(() => {
-    if (animationFrameIdRef.current) {
-      cancelAnimationFrame(animationFrameIdRef.current);
-      animationFrameIdRef.current = null;
-    }
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const { width, height } = canvas;
-    if (!ctx || width === 0 || height === 0) {
-      return;
-    }
-    const currentHoverId = hoveredHexIdRef.current;
-    const currentOffset = currentOffsetRef.current;
-    const currentZoom = zoom;
-    if (
-      !isSafeNumber(currentOffset.x) ||
-      !isSafeNumber(currentOffset.y) ||
-      !isSafeNumber(currentZoom) ||
-      currentZoom <= 0
-    ) {
-      return;
-    }
-
-    try {
-      ctx.clearRect(0, 0, width, height);
-      ctx.save();
-      ctx.translate(width / 2 + currentOffset.x, height / 2 + currentOffset.y);
-      ctx.scale(currentZoom, currentZoom);
-
-      HEX_GRID_COORDS.forEach((hex) => {
-        const p = axialToPixel(hex.q, hex.r);
-        if (!p) return;
-        const { x, y } = p;
-        let fillColor = DEFAULT_COLOR;
-        let isHovered = hex.id === currentHoverId;
-        let isSelected =
-          currentSolutionIndex === -1 && selectedTiles.has(hex.id);
-        let strokeStyle = STROKE_COLOR_DEFAULT;
-
-        const colorIndex = gridState[hex.id];
-        if (
-          colorIndex !== -1 &&
-          colorIndex >= 0 &&
-          colorIndex < HEX_COLORS.length
-        ) {
-          fillColor = HEX_COLORS[colorIndex];
-          strokeStyle = STROKE_COLOR_ACTIVE;
-        } else if (isSelected) {
-          fillColor = SELECTED_COLOR;
-          strokeStyle = STROKE_COLOR_ACTIVE;
-        } else if (isHovered && currentSolutionIndex === -1) {
-          fillColor = HOVER_COLOR;
-        }
-
-        drawHexagon(ctx, x, y, HEX_SIZE, fillColor, 1, strokeStyle);
-      });
-      ctx.restore();
-    } catch (e) {
-      console.error("Error during drawGrid exec:", e);
-      try {
-        ctx.restore();
-      } catch (restoreError) {
-        console.error(
-          "Failed to restore context after drawGrid error:",
-          restoreError
-        );
-      }
-    }
-  }, [
-    axialToPixel,
-    drawHexagon,
-    currentSolutionIndex,
-    gridState,
-    selectedTiles,
-    zoom,
-  ]); // Dependencies seem correct
-
-  // --- RAF Scheduler ---
-  const scheduleDraw = useCallback(() => {
-    if (!isClient) return;
-    if (animationFrameIdRef.current) {
-      cancelAnimationFrame(animationFrameIdRef.current);
-    }
-    animationFrameIdRef.current = requestAnimationFrame(drawGrid);
-  }, [isClient, drawGrid]); // drawGrid is stable
-
-  // --- Effects ---
-  useEffect(() => {
-    setIsClient(true);
-    return () => {
-      solverWorkerRef.current?.terminate();
-      if (animationFrameIdRef.current)
-        cancelAnimationFrame(animationFrameIdRef.current);
-    };
-  }, []); // Runs once
-  useEffect(() => {
-    if (!isClient || !containerRef.current) return;
+  const drawMainCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
-    let initialOffsetSet = false;
-    const handleResize = () => {
-      const { width, height } = container.getBoundingClientRect();
-      if (width > 0 && height > 0) {
-        canvas.width = width;
-        canvas.height = height;
-      } else {
-        return;
-      }
-      if (!initialOffsetSet) {
-        let minX = Infinity,
-          minY = Infinity,
-          maxX = -Infinity,
-          maxY = -Infinity;
-        HEX_GRID_COORDS.forEach((hex) => {
-          const p = axialToPixel(hex.q, hex.r);
-          if (p) {
-            minX = Math.min(minX, p.x - HEX_WIDTH / 2);
-            maxX = Math.max(maxX, p.x + HEX_WIDTH / 2);
-            minY = Math.min(minY, p.y - HEX_HEIGHT / 2);
-            maxY = Math.max(maxY, p.y + HEX_HEIGHT / 2);
-          }
-        });
-        if (
-          isSafeNumber(minX) &&
-          maxX > minX &&
-          isSafeNumber(minY) &&
-          maxY > minY
-        ) {
-          const cX = minX + (maxX - minX) / 2;
-          const cY = minY + (maxY - minY) / 2;
-          const iOffset = { x: -cX, y: -cY };
-          if (isSafeNumber(iOffset.x) && isSafeNumber(iOffset.y)) {
-            currentOffsetRef.current = iOffset;
-            initialOffsetSet = true;
-            scheduleDraw();
-            return;
-          }
-        }
-      }
-      scheduleDraw();
-    };
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(container);
-    handleResize();
-    return () => resizeObserver.disconnect();
-  }, [isClient, axialToPixel, scheduleDraw]); // Dependencies seem correct
-  useEffect(() => {
-    if (isClient) {
-      scheduleDraw();
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const { width, height } = canvas.getBoundingClientRect();
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
     }
-  }, [
-    isClient,
-    zoom,
-    selectedTiles,
-    gridState,
-    currentSolutionIndex,
-    scheduleDraw,
-  ]); // Redraw on these changes
-  useEffect(() => {
-    // Interaction listeners effect
-    if (!isClient) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
 
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      if (!rect || canvas.width === 0 || canvas.height === 0) return;
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      const delta = e.deltaY * ZOOM_SENSITIVITY;
-      if (!isSafeNumber(delta)) return;
-      const currentZoom = zoom;
-      const currentOffset = currentOffsetRef.current;
-      const worldXBefore =
-        (mouseX - canvas.width / 2 - currentOffset.x) / currentZoom;
-      const worldYBefore =
-        (mouseY - canvas.height / 2 - currentOffset.y) / currentZoom;
-      if (!isSafeNumber(worldXBefore) || !isSafeNumber(worldYBefore)) return;
-      let potentialNewZoom = currentZoom * (1 - delta);
-      if (!isSafeNumber(potentialNewZoom) || potentialNewZoom <= 0) return;
-      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, potentialNewZoom));
-      if (newZoom === currentZoom) return;
-      const worldXAfterZoom = worldXBefore * newZoom;
-      const worldYAfterZoom = worldYBefore * newZoom;
-      const newOffsetX = mouseX - canvas.width / 2 - worldXAfterZoom;
-      const newOffsetY = mouseY - canvas.height / 2 - worldYAfterZoom;
-      if (!isSafeNumber(newOffsetX) || !isSafeNumber(newOffsetY)) return;
-      setZoom(newZoom);
-      currentOffsetRef.current = { x: newOffsetX, y: newOffsetY };
-      // scheduleDraw(); // Draw is handled by the main scheduleDraw effect reacting to zoom change
-    };
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const currentOffset = currentOffsetRef.current;
+    const currentHoverId = hoveredHexIdRef.current;
+    const currentGridState = gridState;
 
-    const handleMouseDown = (e: MouseEvent) => {
-      if (e.button !== 0) return;
-      setIsDragging(true);
-      setDragStart({
-        x: e.clientX - currentOffsetRef.current.x,
-        y: e.clientY - currentOffsetRef.current.y,
-      });
-      canvas.style.cursor = "grabbing";
-    };
+    HexUtils.drawHexGrid(
+      ctx,
+      centerX,
+      centerY,
+      zoom,
+      currentOffset.x,
+      currentOffset.y,
+      currentHoverId,
+      currentGridState,
+      selectedTiles,
+      lockedTilesMask,
+      LOCKABLE_TILE_IDS
+    );
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      if (!rect || canvas.width === 0 || canvas.height === 0) return;
-      const mX = e.clientX - rect.left;
-      const mY = e.clientY - rect.top;
-      if (!isSafeNumber(mX) || !isSafeNumber(mY)) return;
-      let needsManualRedraw = false; // Use a flag for redraws not covered by state changes
+    // Continue the animation loop
+    animationFrameIdRef.current = requestAnimationFrame(drawMainCanvas);
+  }, [zoom, gridState, selectedTiles, lockedTilesMask, LOCKABLE_TILE_IDS]);
 
-      // Update hover state (doesn't use state, directly uses ref and schedules draw if needed)
-      const world = screenToWorld(mX, mY, canvas.width, canvas.height);
-      const hexUnderMouse = world ? getHexAtPoint(world.x, world.y) : null;
-      const newHoverId = hexUnderMouse ? hexUnderMouse.id : null;
-      if (newHoverId !== hoveredHexIdRef.current) {
-        hoveredHexIdRef.current = newHoverId;
-        needsManualRedraw = true; // Hover change needs explicit redraw
+  // Revert back to useCallback
+  const drawPotentialShapes = useCallback(() => {
+    potentials.forEach((shape, index) => {
+      const canvas = potentialCanvasRefs.current.get(index);
+      if (canvas) {
+        // Pass fillColorOverride and hideGrid for consistent styling
+        HexUtils.drawPreviewGrid(
+          canvas,
+          shape,
+          index,
+          0.7, // Use default size ratio like predefined
+          '#a78bfa', // Override with violet color
+          true      // Hide background grid
+        );
       }
+    });
+  }, [potentials]); // Dependency on potentials array
 
-      // Handle dragging (updates ref directly, needs explicit redraw)
-      if (isDragging) {
-        const nX = (e.clientX - dragStart.x) * PAN_SENSITIVITY;
-        const nY = (e.clientY - dragStart.y) * PAN_SENSITIVITY;
-        if (isSafeNumber(nX) && isSafeNumber(nY)) {
-          if (
-            currentOffsetRef.current.x !== nX ||
-            currentOffsetRef.current.y !== nY
-          ) {
-            currentOffsetRef.current = { x: nX, y: nY };
-            needsManualRedraw = true; // Offset change needs explicit redraw
-          }
-        }
+  const drawPredefinedShapes = useCallback(() => {
+    Config.PREDEFINED_SHAPES.forEach((shape, index) => {
+      const canvas = predefinedCanvasRefs.current.get(index);
+      if (canvas) {
+        HexUtils.drawPreviewGrid(
+          canvas,
+          Config.PREDEFINED_SHAPES[index],
+          index,
+          0.5, // Default sizeRatio - Explicitly set smaller value
+          '#a78bfa', // Tailwind violet-400 equivalent for the single color
+          true      // Hide the background grid
+        );
       }
-
-      if (needsManualRedraw) {
-        scheduleDraw(); // Schedule draw only if hover or offset changed
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        canvas.style.cursor = "grab";
-      }
-    };
-
-    const handleMouseLeave = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        canvas.style.cursor = "grab";
-      }
-      if (hoveredHexIdRef.current !== null) {
-        hoveredHexIdRef.current = null;
-        scheduleDraw(); // Schedule draw needed to clear hover effect
-      }
-    };
-
-    const handleClick = (e: MouseEvent) => {
-      // Check if dragging occurred between mousedown and mouseup
-      // Simple check: if mouse moved significantly, consider it a drag
-      const movedSignificantly =
-        Math.abs(e.clientX - (dragStart.x + currentOffsetRef.current.x)) > 5 ||
-        Math.abs(e.clientY - (dragStart.y + currentOffsetRef.current.y)) > 5;
-
-      if (isDragging && movedSignificantly) return; // Ignore click if it was likely a drag
-
-      if (currentSolutionIndex !== -1) {
-        toast.warning("Click 'Back to Edit' first.", { duration: 3000 });
-        return;
-      }
-      const currentCanvas = canvasRef.current;
-      if (
-        !currentCanvas ||
-        currentCanvas.width === 0 ||
-        currentCanvas.height === 0
-      )
-        return;
-      const rect = currentCanvas.getBoundingClientRect();
-      if (!rect) return;
-      const screenX = e.clientX - rect.left;
-      const screenY = e.clientY - rect.top;
-      const world = screenToWorld(
-        screenX,
-        screenY,
-        currentCanvas.width,
-        currentCanvas.height
-      );
-      if (!world) return;
-      const clickedHex = getHexAtPoint(world.x, world.y);
-      if (clickedHex) {
-        const clickedId = clickedHex.id;
-        setSelectedTiles((prev) => {
-          const newSelection = new Set(prev);
-          if (newSelection.has(clickedId)) {
-            newSelection.delete(clickedId);
-          } else {
-            if (newSelection.size >= 4) {
-              toast.warning("Max 4 tiles.", { duration: 3000 });
-              return prev; // Return previous state if max reached
-            }
-            // Check connectivity only if adding a tile to an existing selection
-            if (newSelection.size > 0) {
-              const neighbors = ADJACENT_LIST[clickedId] || [];
-              const isAdjacent = neighbors.some(
-                (neighborId: number) =>
-                  neighborId !== 0 && newSelection.has(neighborId)
-              );
-              if (!isAdjacent) {
-                toast.warning("Tiles must be connected.", { duration: 3000 });
-                return prev; // Return previous state if not adjacent
-              }
-            }
-            newSelection.add(clickedId);
-          }
-          return newSelection; // Return the modified set
-        });
-      }
-    };
-
-    // Add listeners
-    canvas.addEventListener("wheel", handleWheel, { passive: false });
-    canvas.addEventListener("mousedown", handleMouseDown);
-    canvas.addEventListener("mousemove", handleMouseMove);
-    // Use window for mouseup to catch drags ending outside canvas
-    window.addEventListener("mouseup", handleMouseUp);
-    canvas.addEventListener("mouseleave", handleMouseLeave);
-    canvas.addEventListener("click", handleClick);
-    canvas.style.cursor = "grab";
-
-    // Cleanup function
-    return () => {
-      canvas.removeEventListener("wheel", handleWheel);
-      canvas.removeEventListener("mousedown", handleMouseDown);
-      canvas.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp); // Remove from window
-      canvas.removeEventListener("mouseleave", handleMouseLeave);
-      canvas.removeEventListener("click", handleClick);
-      if (animationFrameIdRef.current) {
-        cancelAnimationFrame(animationFrameIdRef.current);
-        animationFrameIdRef.current = null;
-      }
-    };
-  }, [
-    // Dependencies for interaction effect
-    isClient,
-    zoom,
-    setZoom,
-    isDragging,
-    setIsDragging,
-    dragStart,
-    setDragStart, // State used directly in handlers
-    screenToWorld,
-    getHexAtPoint,
-    scheduleDraw, // Stable callbacks
-    currentSolutionIndex,
-    setSelectedTiles, // State/Setters used in click handler
-    // ADJACENT_LIST is constant
-    // toast is stable library function
-    // Refs (canvasRef, currentOffsetRef, hoveredHexIdRef) don't need to be deps
-  ]);
+    });
+  }, []); // Dependency on drawPreviewGrid (now HexUtils.drawPreviewGrid) is implicit
 
   // --- Core Solving Logic / Check Potential ---
   const checkPotential = useCallback((potential: string): number => {
@@ -684,7 +427,7 @@ export default function ShapeDoctor() {
 
     while (queue.length > 0) {
       const currentTile = queue.shift()!;
-      const neighbors = ADJACENT_LIST[currentTile] || [];
+      const neighbors = Config.ADJACENT_LIST[currentTile] || [];
       for (const neighbor of neighbors) {
         // Check if the neighbor is part of the potential shape ('1') and not visited
         if (
@@ -699,34 +442,51 @@ export default function ShapeDoctor() {
     }
     // If the number of visited tiles equals the number of '1's, it's connected
     return visited.size;
-  }, []); // ADJACENT_LIST is constant
+  }, []); // Config.ADJACENT_LIST is constant
 
   // --- State Update Event Handlers ---
   const handleClearSelection = useCallback(() => {
     setSelectedTiles(new Set());
   }, [setSelectedTiles]);
+
+  const handleResetSelection = useCallback(() => {
+    setSelectedTiles(new Set());
+    setPotentials([]);
+    setBestSolutions([]);
+    setCurrentSolutionIndex(-1);
+    setExactTilingSolutions([]);
+    setCurrentExactTilingIndex(-1);
+    setGridState(Array(Config.TOTAL_TILES + 1).fill(-1));
+    setSolveProgress(0);
+    currentOffsetRef.current = { x: 0, y: 0 };
+    setZoom(1);
+    setLockedTilesMask(0n); // Reset locked tiles
+    setSolverError(null); // Also clear any solver errors
+    toast.info("Selection, results, and locked tiles cleared.");
+  }, []); // Dependencies remain the same as state setters are stable
+
   const handleSavePotential = useCallback(() => {
-    if (selectedTiles.size === 0) {
-      toast.error("Select tiles first.", { duration: 3000 });
-      return;
-    }
     // Allow saving shapes of size 1 to 4
-    if (selectedTiles.size > 4) {
-      toast.error("Select maximum 4 tiles.", { duration: 3000 });
+    if (selectedTiles.size !== 4) {
+      toast.error("Select exactly 4 tiles to save a potential shape.", { duration: 3000 });
       return;
     }
 
     let potentialString = "";
-    for (let i = 1; i <= TOTAL_TILES; i++) {
+    for (let i = 1; i <= Config.TOTAL_TILES; i++) {
       potentialString += selectedTiles.has(i) ? "1" : "0";
     }
 
+    // Validate length (should always be correct if TOTAL_TILES is right)
+    if (potentialString.length !== Config.TOTAL_TILES) {
+        toast.error(`Internal Error: Generated potential string has wrong length (${potentialString.length}). Expected ${Config.TOTAL_TILES}. Potential not saved.`);
+        console.error("Generated invalid potential string:", potentialString);
+        return; 
+    }
+
     // Check connectivity using the checkPotential function
-    const numberOfOnes = Array.from(potentialString).filter(
-      (c) => c === "1"
-    ).length;
-    if (checkPotential(potentialString) !== numberOfOnes) {
-      // This check might be redundant if the click handler prevents non-adjacent selections, but good safeguard.
+    // Use selectedTiles.size which we already know is 4
+    if (checkPotential(potentialString) !== 4) { 
       toast.error("Selected tiles must form a single connected shape.", {
         duration: 4000,
       });
@@ -734,719 +494,1296 @@ export default function ShapeDoctor() {
     }
 
     setPotentials((prev) => [...prev, potentialString]);
-    toast.success(`Potential ${potentials.length + 1} saved.`);
+    toast.success(`Potential ${potentials.length + 1} (4 tiles) saved.`);
     setSelectedTiles(new Set()); // Clear selection after saving
   }, [
     selectedTiles,
-    potentials,
+    potentials, // Keep potentials dependency for the success message index
     checkPotential,
     setPotentials,
     setSelectedTiles,
-  ]); // Dependencies seem correct
+  ]);
 
-  const handleSolve = useCallback(() => {
-    if (potentials.length === 0) {
-      toast.error("Save or add at least one potential shape first.", {
-        duration: 3000,
-      });
-      return;
-    }
-    // Ensure all saved potentials are valid 4-tile shapes before solving
-    const invalidPotential = potentials.find(
-      (p) => Array.from(p).filter((c) => c === "1").length !== 4
-    );
-    if (invalidPotential) {
-      toast.error(
-        "Solver currently only works with 4-tile potential shapes. Please remove shapes that are not size 4.",
-        { duration: 6000 }
-      );
-      return;
-    }
+  // --- Helper Functions (Move parallel execution logic here) ---
 
-    solverWorkerRef.current?.terminate(); // Terminate previous worker if any
-    setIsSolving(true);
-    setBestSolutions([]);
-    setCurrentSolutionIndex(-1);
-    setSelectedTiles(new Set()); // Clear selection when solving starts
-    setGridState(Array(TOTAL_TILES + 1).fill(-1)); // Reset grid visually
-    setSolveProgress(0);
-    toast.info("Solving in background...", {
-      id: "solving-toast",
-      duration: 10000,
-    }); // Longer duration maybe
+  // Central handler for messages from any worker
+  const handleWorkerMessage = useCallback((message: WorkerParallelResponseMessage) => {
+    // console.log(`[Main Thread] handleWorkerMessage triggered. Type: ${message.type}`); // Keep commented out
+    // console.log(`[Main Thread] currentSolver state inside handleWorkerMessage: ${currentSolver}`); 
 
-    // Initialize worker
-    // Use new URL() syntax for proper module worker handling in Next.js/Webpack
-    solverWorkerRef.current = new Worker(
-      new URL("./solver.worker.ts", import.meta.url)
-    );
+    switch (message.type) {
+      case 'PARALLEL_PROGRESS':
+        // Update progress based on batches checked
+        const checkedInBatch = message.payload.checked ?? 0; 
+        
+        // --- Add Log --- 
+        console.log(`[Main Thread] Received PARALLEL_PROGRESS: checked=${checkedInBatch}`);
+        // ------------- 
+        
+        // ONLY update the raw count here
+        setCombinationsChecked(prev => prev + checkedInBatch);
+        break;
 
-    solverWorkerRef.current.onmessage = (event: MessageEvent) => {
-      const {
-        type,
-        bestSolutions: coloredBestSolutions,
-        message,
-        count,
-        searchedCount,
-      } = event.data;
-      if (type === "result") {
-        console.log(
-          `[Main] Worker finished. Searched: ${searchedCount}. Found ${
-            coloredBestSolutions?.length || 0
-          } best.`
-        );
-        setBestSolutions(coloredBestSolutions || []);
-        setIsSolving(false);
-        setSolveProgress(0);
-        toast.dismiss("solving-toast");
-        if (coloredBestSolutions && coloredBestSolutions.length > 0) {
-          setCurrentSolutionIndex(0); // Show the first solution
-          toast.success(
-            `Found ${coloredBestSolutions.length} best solution(s).`,
-            { duration: 5000 }
-          );
+      case 'PARALLEL_RESULT':
+        // Handle solutions found by a worker
+        const resultPayload = message.payload; // Payload can be SolutionRecord | SolutionRecord[] | null
+        const solverType = message.originatingSolverType; // <-- Use type from message
+        // console.log(`[Main Thread] Processing PARALLEL_RESULT from originating solver: ${solverType}`); 
+
+        // --- Ignore DLX results here, they are handled by Promise.allSettled --- 
+        if (solverType === 'exact') {
+            // console.log("[Main Thread] Ignoring PARALLEL_RESULT for exact tiling in handleWorkerMessage.");
+            break; // Stop processing this message type for exact tiling
+        } 
+        // ------------------------------------------------------------------------
+
+        // --- At this point, solverType MUST be 'maximal' (or potentially other types if added later) --- 
+        if (resultPayload) {
+                 // Backtracking sends an array of solutions (or null)
+                 if (Array.isArray(resultPayload)) { // Check if it's an array
+                     const solutions = resultPayload as SolutionRecord[]; // Safe assertion now
+                // console.log(`[Main Thread] Backtracking SOLUTIONS FOUND by worker (count: ${solutions.length})`); 
+                     if (solutions.length > 0) {
+                   // Storing results is now handled AFTER all workers finish in runParallelMaximalPlacement
+                     }
+                 } else {
+                    console.error("[Main Thread] Received NON-ARRAY payload for Maximal Placement result. Expected array.", resultPayload);
+            }
         } else {
-          toast.warning(
-            "No valid placement found for the given potential(s).",
-            { duration: 5000 }
-          );
+           // Null payload handling for maximal placement
+           // console.log(`[Main Thread] Received null result payload (solver: ${solverType}).`); 
         }
-        solverWorkerRef.current?.terminate(); // Terminate after use
-        solverWorkerRef.current = null;
-      } else if (type === "error") {
-        console.error("[Main] Worker error:", message);
+        break; // Moved break here, was inside the if(resultPayload) block
+
+      case 'PARALLEL_ERROR':
+        const errorMsg = message.payload.message;
+        console.error("[Main Thread] Received error from worker:", errorMsg);
+        if (!solverError) { // Avoid overwriting earlier errors
+          setSolverError(`Worker Error: ${errorMsg}`);
+          toast.error(`Worker Error: ${errorMsg}`);
+        }
+        // Optionally terminate pool on worker error
+        // if (workerPoolRef.current) workerPoolRef.current.terminate(true);
+        break;
+
+      // Add case for PARALLEL_LOG
+      case 'PARALLEL_LOG':
+        const { level, message: logMessage } = message.payload;
+        const logPrefix = "[Worker Log]";
+        switch (level) {
+          case 'debug':
+            console.debug(`${logPrefix} ${logMessage}`);
+            break;
+          case 'info':
+            console.info(`${logPrefix} ${logMessage}`);
+            break;
+          case 'warn':
+            console.warn(`${logPrefix} ${logMessage}`);
+            break;
+          case 'error':
+            console.error(`${logPrefix} ${logMessage}`);
+            break;
+          default:
+            console.log(`${logPrefix} (Unknown level ${level}): ${logMessage}`);
+        }
+        break;
+
+      // Add case for BACKTRACKING_PROGRESS
+      // case 'BACKTRACKING_PROGRESS': // Keep case but comment out processing // <-- REMOVE THIS CASE ENTIRELY
+        // const { iterations, currentMaxK } = message.payload;
+        // Update UI state for progress display (e.g., a status message)
+        // setSolverStatusMessage(`Searching... Iteration: ${iterations.toLocaleString()}, Max K Found: ${currentMaxK}`);
+        // break; // Add break to satisfy switch structure
+
+      default:
+        // Type guard for exhaustive check (optional but good practice)
+        const _exhaustiveCheck: never = message;
+        console.warn("[Main Thread] Received unknown message type from worker:", _exhaustiveCheck);
+    }
+  }, [
+      totalCombinations,
+      solverError,
+      anyExactSolutionFound,
+      setCombinationsChecked,
+      setExactTilingSolutions,
+      setCurrentExactTilingIndex,
+      setSolverError,
+      updateGridStateFromSolution,
+      setBestSolutions,
+      setCurrentSolutionIndex,
+      setSolverStatusMessage,
+      exactTilingSolutions.length
+  ]);
+
+  // Dynamic Batch Size Calculation
+  const determineDynamicBatchSize = useCallback((totalItems: number): number => {
+    const poolSize = navigator.hardwareConcurrency || 4;
+    if (totalItems <= 0) return 100;
+    const targetBatchesPerWorker = 4;
+    const totalTargetBatches = poolSize * targetBatchesPerWorker;
+    let batchSize = Math.ceil(totalItems / totalTargetBatches);
+    batchSize = Math.max(10, batchSize);
+    batchSize = Math.min(5000, batchSize);
+    return batchSize;
+  }, []); // Empty dependency array if it doesn't depend on component state
+
+  // Helper to dispatch a batch specifically for Exact Tiling
+  const dispatchBatchForExactTiling = useCallback(( 
+      batchCombinations: string[][],
+      kValue: number,
+      context: SolverTaskContext 
+  ): workerpool.Promise<SerializedSolutionRecord | null> | null => {
+      if (!workerPoolRef.current || batchCombinations.length === 0) return null;
+
+      const batchPayload: DLXBatchPayload = {
+          combinations: batchCombinations,
+          kValue: kValue,
+          context: context,
+          originatingSolverType: 'exact'
+      };
+      const taskPayload: WorkerTaskPayload = { type: 'DLX_BATCH', data: batchPayload };
+
+      try {
+          // Execute WITH 'on' callback for progress/logs, but ignore results here
+          const promise = workerPoolRef.current.exec(
+              'processParallelTask', 
+              [taskPayload],
+              { 
+                  on: handleWorkerMessage // Re-add callback for intermediate messages
+              } 
+          ); 
+          return promise;
+      } catch (execError) {
+          console.error("Error dispatching worker batch for Exact Tiling:", execError);
+          if (!solverError) {
+              setSolverError("Failed to dispatch solver task.");
+              toast.error("Failed to dispatch solver task.");
+          }
+          return null;
+      }
+  }, [solverError, handleWorkerMessage]);
+
+  // Function to handle parallel exact tiling - MODIFIED FOR AGGREGATION & LIMIT
+  const runParallelExactTiling = useCallback(async ( 
+      potentialsToUse: PotentialShape[],
+      kValue: number,
+      initialGridState: bigint,
+      lockedTilesMask: bigint,
+      shapeDataMap: ShapeDataMap
+  ): Promise<boolean> => {
+      // console.log("[runParallelExactTiling] Entered function."); // <-- Remove log
+      if (!workerPoolRef.current) {
+          console.error("Worker pool not ready for exact tiling.");
+          return false;
+      }
+
+      const nValue = potentialsToUse.length;
+      let totalCombs = 0;
+      try {
+        totalCombs = calculateTotalCombinations(nValue, kValue);
+        // console.log(`Total combinations C(${nValue}, ${kValue}) = ${totalCombs}`);
+         if (totalCombs > 10_000_000) { 
+             toast.error(`Too many combinations (${totalCombs}). Attempting fallback...`); // Changed message
+             setSolverError(`Too many combinations C(${nValue}, ${kValue})`);
+             // Don't set isSolving false, let the fallback run
+             // Return a specific value or throw an error to signal fallback needed
+             throw new Error('CombinationsExceeded'); // Signal caller to fallback
+         }
+        setTotalCombinations(totalCombs);
+        setCombinationsChecked(0); 
+      } catch (e) { 
+          if ((e as Error).message === 'CombinationsExceeded') {
+              throw e; // Re-throw specific error for fallback
+          }
+          console.error("Error calculating combinations:", e);
+          setSolverError("Failed to calculate combinations.");
+          setIsSolving(false);
+          return false; // Explicitly return false
+      }
+      
+      // Reset state for this run
+      setExactTilingSolutions([]); 
+      setCurrentExactTilingIndex(-1);
+
+      const potentialIds = potentialsToUse.map(p => p.id);
+      const combinationGenerator = combinations(potentialIds, kValue);
+      const BATCH_SIZE = Math.max(10, Math.min(2000, determineDynamicBatchSize(totalCombs || 0))); 
+      let batch: string[][] = [];
+      const allPromises: workerpool.Promise<SerializedSolutionRecord | null>[] = []; 
+      let dispatchedCount = 0;
+
+      const context: SolverTaskContext = { lockedTilesMask, initialGridState, shapeDataMap, potentials: potentialsToUse };
+      
+      // console.log(`[runParallelExactTiling] Starting dispatch with batch size ${BATCH_SIZE}...`);
+
+      // --- Dispatch loop --- 
+      for (const combination of combinationGenerator) {
+          batch.push(combination);
+          if (batch.length >= BATCH_SIZE) {
+              dispatchedCount += batch.length;
+              const promise = dispatchBatchForExactTiling(batch, kValue, context); 
+              if(promise) allPromises.push(promise);
+              batch = [];
+              await new Promise(resolve => setTimeout(resolve, 0));
+          }
+      }
+      // Dispatch any remaining combinations
+      if (batch.length > 0) {
+          dispatchedCount += batch.length;
+          const promise = dispatchBatchForExactTiling(batch, kValue, context); 
+          if(promise) allPromises.push(promise);
+      }
+
+      // console.log(`[runParallelExactTiling] Dispatched ${dispatchedCount} combinations in ${allPromises.length} batches. Waiting for all results...`);
+      activeWorkerPromisesRef.current = allPromises;
+      setSolverStatusMessage(`Checking ${totalCombs.toLocaleString()} combinations across ${allPromises.length} tasks...`);
+
+      // --- Wait for ALL tasks and Aggregate Results --- 
+      let finalUniqueSolutions: SolutionRecord[] = [];
+      try {
+          // console.log(`[runParallelExactTiling] Waiting for ${allPromises.length} promises...`); // <-- Remove log
+          const settledResults = await Promise.allSettled(allPromises);
+          // console.log("[runParallelExactTiling] All promises settled."); // <-- Remove log
+          setSolverStatusMessage('Aggregating results...');
+
+          // Process results from settled promises
+          const candidateSolutionsSerialized: SerializedSolutionRecord[] = []; 
+
+          settledResults.forEach((result, index) => {
+              if (result.status === 'fulfilled' && result.value) {
+                  // Value should be SerializedSolutionRecord | null
+                  const workerSolution = result.value as SerializedSolutionRecord; // Assert serialized type
+                  if (workerSolution) { // Check if not null
+                     candidateSolutionsSerialized.push(workerSolution);
+                  }
+              } else if (result.status === 'rejected') {
+                   const reason = result.reason;
+                   const isCancellation = reason instanceof Error && (reason.name === 'CancellationError' || reason.message.includes('cancelled')); 
+                   if (!isCancellation) {
+                       // console.error(`[runParallelExactTiling] Exact Tiling worker task ${index} rejected:`, reason); // Keep commented
+                       // Don't set global error, allow fallback
+                   }
+               }
+          });
+
+          // console.log(`[runParallelExactTiling] Aggregation complete. Found ${candidateSolutionsSerialized.length} candidate serialized solutions.`); // Keep commented
+          setSolverStatusMessage('Filtering unique solutions...');
+
+          // Log all candidate solutions BEFORE filtering
+          // console.log(`[runParallelExactTiling] Candidate solutions count: ${candidateSolutionsSerialized.length}`); // <-- Remove log
+          
+          // --- Detailed Log for First Few Candidates --- 
+          // if (candidateSolutionsSerialized.length > 0) { // <-- Remove log block
+          //     console.log("--- First Few Candidate Details (Before Filtering) ---");
+          //     const limit = Math.min(10, candidateSolutionsSerialized.length); // Log up to 10
+          //     for (let i = 0; i < limit; i++) {
+          //         const sol = candidateSolutionsSerialized[i];
+          //         const shapeIds = sol.placements.map(p => p.shapeId).sort().join(', '); // Get sorted list of shape IDs used
+          //         console.log(`  Candidate ${i}: gridState=${sol.gridState}, shapes=[${shapeIds}]`);
+          //     }
+          //     console.log("-----------------------------------------------------");
+          // } 
+          // --- End Detailed Log ---
+
+          // Filter for unique solutions based on SHAPE COMBINATION (string) and limit to 50
+          if (candidateSolutionsSerialized.length > 0) {
+              const uniqueSolutionsMap = new Map<string, SerializedSolutionRecord>(); // Key is now shape combination string
+              for (const solution of candidateSolutionsSerialized) {
+                  // Create a key based on sorted shape instance IDs
+                  const shapeCombinationKey = solution.placements
+                      .map(p => p.shapeId)
+                      .sort()
+                      .join(','); // Join sorted IDs into a string key
+                  
+                  if (!uniqueSolutionsMap.has(shapeCombinationKey)) {
+                      uniqueSolutionsMap.set(shapeCombinationKey, solution);
+                      if (uniqueSolutionsMap.size >= 50) { // Apply limit of 50
+                           console.log("[runParallelExactTiling] Reached limit of 50 unique solutions (by shape combination)."); 
+                          break;
+                      }
+                  }
+              }
+              const finalUniqueSolutionsSerialized = Array.from(uniqueSolutionsMap.values());
+
+              // Log the final result before returning
+              // console.log(`[runParallelExactTiling] Final solutions count (unique by shape combo): ${finalUniqueSolutionsSerialized.length}`); // <-- Remove log
+              // Optional: Log the actual solutions if count is small or for debugging
+              // if (finalUniqueSolutionsSerialized.length < 10) { 
+              //    console.log("[runParallelExactTiling] Final unique solutions (by shape combo):", finalUniqueSolutionsSerialized);
+              // }
+
+              // Deserialize final results
+              finalUniqueSolutions = finalUniqueSolutionsSerialized.map(s => ({ 
+                  ...s,
+                  gridState: BigInt(s.gridState),
+                  placements: s.placements.map(p => ({
+                      ...p,
+                      placementMask: BigInt(p.placementMask)
+                  }))
+              }));
+            
+              setExactTilingSolutions(finalUniqueSolutions);
+              setCurrentExactTilingIndex(finalUniqueSolutions.length > 0 ? 0 : -1);
+              if (finalUniqueSolutions.length > 0) {
+                 updateGridStateFromSolution(finalUniqueSolutions[0]); 
+                 toast.success(`Exact tiling found! Displaying ${finalUniqueSolutions.length} unique solution(s).`);
+                 setSolverStatusMessage(`Found ${finalUniqueSolutions.length} unique solution(s).`);
+              } 
+              // No explicit toast if none found, fallback handles it
+          } 
+          // No explicit toast if none found initially, fallback handles it
+          else {
+              // If candidates were found but filtered to zero unique (unlikely but possible)
+              toast.info("Exact tiling finished: No unique solutions found.");
+          }
+
+      } catch (error: any) {
+          // This catch block might not be reached often with Promise.allSettled
+          // console.error("[runParallelExactTiling] Error during Promise.allSettled or aggregation:", error); // Keep commented
+          setSolverError("An error occurred during exact tiling search.");
+          toast.error("An error occurred during exact tiling search.");
+          // Re-throw to potentially trigger fallback in handleUnifiedSolve if needed?
+          // Or handle error state directly
+          return false; // Indicate failure on unexpected error
+      } finally {
+           activeWorkerPromisesRef.current = [];
+           setSolverStatusMessage(null);
+           // isSolving is reset in handleUnifiedSolve
+           // console.log("[runParallelExactTiling] finished.");
+      }
+      
+      // console.log(`[runParallelExactTiling] Returning ${finalUniqueSolutions.length > 0}`); // <-- Remove log
+      // Return boolean indicating if solutions were found for the fallback logic
+      return finalUniqueSolutions.length > 0;
+      
+  }, [
+      determineDynamicBatchSize, 
+      solverError, 
+      updateGridStateFromSolution, 
+      setSolverStatusMessage,
+      dispatchBatchForExactTiling 
+  ]);
+
+  // Function to handle parallel Maximal Placement (Backtracking) - MODIFIED FOR PARALLEL DISPATCH & PROMISE VALUE PROCESSING
+  const runParallelMaximalPlacement = useCallback(async (
+    potentialsToUse: PotentialShape[],
+    initialGridState: bigint,
+    lockedTilesMask: bigint,
+    shapeDataMap: ShapeDataMap 
+  ) => {
+    // console.log("[runParallelMaximalPlacement] Entered function."); 
+    if (!workerPoolRef.current) { 
+        toast.error("Worker pool not ready for backtracking.");
+        console.error("Worker pool is missing for backtracking.");
         setIsSolving(false);
-        setSolveProgress(0);
-        toast.dismiss("solving-toast");
-        toast.error(`Solver error: ${message}`, { duration: 6000 });
-        solverWorkerRef.current?.terminate();
-        solverWorkerRef.current = null;
-      } else if (type === "progress") {
-        setSolveProgress(count); // Update progress
+        return;
+    }
+    if (!shapeDataMap || shapeDataMap.size === 0) { // Added check for shapeDataMap
+        toast.error("Shape data map is not available for backtracking.");
+        console.error("Shape data map is missing for backtracking.");
+        setIsSolving(false);
+        return;
+    }
+
+    setCompletedBacktrackingTasks(0); 
+    setCurrentSolver('maximal');
+    setBestSolutions([]); 
+    setCurrentSolutionIndex(-1);
+    setSolverStatusMessage('Preparing tasks...'); // Updated initial message
+    const allPromises: workerpool.Promise<SerializedSolutionRecord[] | null>[] = []; 
+
+    const context: SolverTaskContext = { shapeDataMap, initialGridState, lockedTilesMask, potentials: potentialsToUse };
+
+    // --- Heuristic Partitioning Strategy --- 
+    let partitionPotentialIndex = -1;
+    let bestPlacementCountDiff = Infinity;
+    const targetTaskCount = (navigator.hardwareConcurrency || 4) * 2; // Target ~2x workers
+    const potentialsToConsider = Math.min(potentialsToUse.length, 5); // Check first 5 potentials
+
+    if (potentialsToUse.length > 0) {
+        for (let i = 0; i < potentialsToConsider; i++) {
+            const potential = potentialsToUse[i];
+            const potentialData = shapeDataMap.get(potential.canonicalForm);
+            const placementCount = potentialData?.validPlacements?.length ?? 0;
+            if (placementCount > 0) { // Only consider potentials with placements
+                 const diff = Math.abs(placementCount - targetTaskCount);
+                 if (diff < bestPlacementCountDiff) {
+                     bestPlacementCountDiff = diff;
+                     partitionPotentialIndex = i;
+                 }
+            }
+        }
+        // Fallback to first potential if none suitable found (or only one potential)
+        if (partitionPotentialIndex === -1) {
+             partitionPotentialIndex = 0;
+        }
+        console.log(`[runParallelMaximalPlacement] Partitioning based on potential index: ${partitionPotentialIndex}`);
+
+        const partitionPotential = potentialsToUse[partitionPotentialIndex];
+        const partitionPotentialData = shapeDataMap.get(partitionPotential.canonicalForm);
+        const partitionPlacements = partitionPotentialData?.validPlacements ?? [];
+        const potentialIndexAfterPartition = partitionPotentialIndex + 1; // Index to start search in branches
+
+        // Task 1: Skip the chosen partition potential
+        const skipPayload: BacktrackingBranchPayload = { 
+            startPlacements: [], 
+            startPotentialIndex: potentialIndexAfterPartition, // Start after the skipped one
+            // Need to filter out the skipped potential from the context passed?
+            // Alternative: Worker skips the partitionPotentialIndex if encountered.
+            // Let's keep context simple and handle skipping in worker (requires small worker mod)
+            context: { ...context, // Pass full context for now
+                 potentials: potentialsToUse // Send original list 
+            }, 
+            originatingSolverType: 'maximal',
+            partitionIndexToSkip: partitionPotentialIndex // Explicitly tell worker which index to skip
+        };
+        const skipTask: WorkerTaskPayload = { type: 'BACKTRACKING_BRANCH', data: skipPayload };
+        try {
+            const skipPromise = workerPoolRef.current.exec('processParallelTask', [skipTask]);
+            if (skipPromise) allPromises.push(skipPromise);
+        } catch (execError) { console.error("Error dispatching 'skip partition' backtracking task:", execError); }
+
+        // Tasks 2...N: Place the chosen partition potential
+        for (const placementMask of partitionPlacements) {
+            const startPlacement: PlacementRecord = { shapeId: partitionPotential.id, placementMask };
+    const branchPayload: BacktrackingBranchPayload = {
+                startPlacements: [startPlacement], 
+                startPotentialIndex: potentialIndexAfterPartition, // Start after the placed one
+                context: { ...context, // Pass full context
+                    potentials: potentialsToUse 
+                 }, 
+                originatingSolverType: 'maximal',
+                partitionIndexToSkip: partitionPotentialIndex // Still need to skip this index in sub-branches
+            };
+            const branchTask: WorkerTaskPayload = { type: 'BACKTRACKING_BRANCH', data: branchPayload };
+            try {
+                const branchPromise = workerPoolRef.current.exec('processParallelTask', [branchTask]);
+                if (branchPromise) allPromises.push(branchPromise);
+            } catch (execError) { console.error(`Error dispatching backtracking task for placement ${placementMask}:`, execError); }
+        }
+
+    } else {
+        console.warn("[runParallelMaximalPlacement] No potentials provided.");
+        setIsSolving(false);
+        return;
+    }
+    // --- End Heuristic Partitioning --- 
+    
+    console.log(`[runParallelMaximalPlacement] Dispatched ${allPromises.length} backtracking tasks. Waiting for results...`); // Log count after dispatch
+    activeWorkerPromisesRef.current = allPromises; 
+
+    // --- Wrap promises to track completion --- // <-- New Block
+    let settledCount = 0;
+    const totalTasks = allPromises.length;
+    setSolverStatusMessage(`Processing 0 / ${totalTasks} backtracking tasks...`); // Initial message
+
+    const trackingPromises = allPromises.map(p =>
+      p.then(
+        (value) => {
+          settledCount++;
+          setCompletedBacktrackingTasks(settledCount); // Update state on success
+          // Update status message periodically or based on count
+          if (settledCount % 5 === 0 || settledCount === totalTasks) { // Update every 5 or on last task
+             setSolverStatusMessage(`Processing ${settledCount} / ${totalTasks} backtracking tasks...`);
+          }
+          return { status: 'fulfilled', value }; // Keep standard settled format
+        },
+        (reason) => {
+          settledCount++;
+          setCompletedBacktrackingTasks(settledCount); // Update state on failure
+           if (settledCount % 5 === 0 || settledCount === totalTasks) {
+               setSolverStatusMessage(`Processing ${settledCount} / ${totalTasks} backtracking tasks...`);
+           }
+          return { status: 'rejected', reason }; // Keep standard settled format
+        }
+      )
+    );
+    // --------------------------------------
+
+    // --- Wait for all TRACKING tasks and Aggregate Results --- 
+    try {
+      // console.log(`[runParallelMaximalPlacement] Waiting for ${trackingPromises.length} tracking promises...`);
+      const settledResults = await Promise.allSettled(trackingPromises); // Wait for the wrappers
+      // console.log("[runParallelMaximalPlacement] All backtracking tracking promises settled."); 
+      setSolverStatusMessage(`Aggregating results from ${totalTasks} tasks...`);
+
+      // Process results - IMPORTANT: result.value is now {status: ..., value: ...} or {status: ..., reason: ...}
+      let overallMaxK = 0;
+      const candidateSolutionsSerialized: SerializedSolutionRecord[] = []; 
+
+      settledResults.forEach((wrappedResult: PromiseSettledResult<any>, index) => { // Type is now PromiseSettledResult<any> because of the wrapper
+          if (wrappedResult.status === 'fulfilled') {
+              const originalResult = wrappedResult.value; // This is our {status, value/reason} object
+              if (originalResult.status === 'fulfilled' && originalResult.value) {
+                  // Original promise was fulfilled, process originalResult.value
+                  const workerSolutions = originalResult.value as SerializedSolutionRecord[];
+                   if (Array.isArray(workerSolutions) && workerSolutions.length > 0) {
+                       // --- Start of existing aggregation logic --- 
+                        const workerMaxK = workerSolutions[0]?.maxShapes; 
+                        if (typeof workerMaxK === 'number' && isFinite(workerMaxK)) {
+                            if (workerMaxK > overallMaxK) {
+                                overallMaxK = workerMaxK;
+                                candidateSolutionsSerialized.length = 0; // Clear previous candidates
+                                candidateSolutionsSerialized.push(...workerSolutions); // Add serialized solutions
+                            } else if (workerMaxK === overallMaxK && overallMaxK > 0) {
+                                candidateSolutionsSerialized.push(...workerSolutions); // Add serialized solutions
+                            }
+                        } else {
+                             console.warn(` Worker ${index} returned solutions but maxShapes was invalid or missing:`, workerMaxK, workerSolutions[0]);
+                         }
+                         // --- End of existing aggregation logic --- 
+                   }
+              } else if (originalResult.status === 'rejected') {
+                  // Original promise was rejected
+                  const reason = originalResult.reason;
+                  const isCancellation = reason instanceof Error && (reason.name === 'CancellationError' || reason.message.includes('cancelled')); 
+                  if (!isCancellation) {
+                      // console.error(` Backtracking worker task ${index} rejected (via wrapper):`, reason); 
+                  }
+              }
+          } else {
+               // Tracking promise itself rejected (shouldn't normally happen here)
+               console.error(` Tracking promise ${index} rejected:`, wrappedResult.reason);
+           }
+      });
+
+      // ... (rest of filtering, deserialization, state updates - NO CHANGE needed here) ...
+        setSolverStatusMessage('Filtering unique solutions...');
+        if (candidateSolutionsSerialized.length > 0) {
+             const uniqueSolutionsMap = new Map<string, SerializedSolutionRecord>();
+            for (const solution of candidateSolutionsSerialized) {
+                const gridStateKey = solution.gridState; // Already a string
+                if (!uniqueSolutionsMap.has(gridStateKey)) {
+                    uniqueSolutionsMap.set(gridStateKey, solution);
+                    if (uniqueSolutionsMap.size >= 500) {
+                        // console.log("[runParallelMaximalPlacement] Reached limit of 500 unique solutions during aggregation.");
+                        break;
+                    }
+                }
+            }
+            const finalUniqueSolutionsSerialized = Array.from(uniqueSolutionsMap.values());
+            const finalUniqueSolutions = finalUniqueSolutionsSerialized.map(s => ({
+                ...s,
+                gridState: BigInt(s.gridState), // Convert back to BigInt
+                placements: s.placements.map(p => ({
+                    ...p,
+                    placementMask: BigInt(p.placementMask) // Convert back to BigInt
+                }))
+            }));
+            setBestSolutions(finalUniqueSolutions);
+            setCurrentSolutionIndex(finalUniqueSolutions.length > 0 ? 0 : -1);
+            if (finalUniqueSolutions.length > 0) {
+               updateGridStateFromSolution(finalUniqueSolutions[0]); 
+               toast.success(`Maximal placement found (${overallMaxK} shapes)! Found ${finalUniqueSolutions.length} unique layouts.`);
+            } else { 
+               toast.info("Backtracking finished: No placements possible (after filtering).?"); 
+               setBestSolutions([]); // Ensure solutions are cleared
+               setCurrentSolutionIndex(-1);
+            }
+        } else {
+             toast.info("Backtracking finished: No placements possible.");
+             setBestSolutions([]); // Ensure solutions are cleared
+             setCurrentSolutionIndex(-1);
+        }
+
+    } catch (error) { 
+        console.error("[runParallelMaximalPlacement] Error waiting for backtracking promises:", error);
+        if (!solverError) { 
+            setSolverError("Error processing backtracking results.");
+            toast.error("Error processing backtracking results.");
+        }
+    } finally {
+        activeWorkerPromisesRef.current = []; 
+        setSolverStatusMessage(null); 
+        // Reset completed task count (optional, could do at start)
+        // setCompletedBacktrackingTasks(0);
+        console.log("[runParallelMaximalPlacement] Exiting function.");
+    }
+  }, [
+      solverError, 
+      updateGridStateFromSolution, 
+      determineDynamicBatchSize, 
+      setSolverStatusMessage,
+      setCompletedBacktrackingTasks // <-- Add state setter dependency
+  ]); 
+
+  // --- Add useEffect for Backtracking Progress --- // <-- New Block
+  useEffect(() => {
+    if (currentSolver === 'maximal' && activeWorkerPromisesRef.current.length > 0) {
+      const totalTasks = activeWorkerPromisesRef.current.length;
+      // Prevent division by zero if totalTasks is somehow 0
+      const progress = totalTasks > 0 ? Math.min(100, Math.round((completedBacktrackingTasks / totalTasks) * 100)) : 0;
+      setSolveProgress(progress);
+    } else if (currentSolver !== 'maximal') {
+        // Optional: Reset progress if switching away from maximal
+        // setSolveProgress(0); 
+    }
+    // Check if solve is finished (isSolving is false but solver might still be 'maximal')
+    if (!isSolving && currentSolver === 'maximal') {
+         setSolveProgress(0); // Reset progress after solve finishes
+         setCompletedBacktrackingTasks(0); // Reset count too
+    }
+  }, [completedBacktrackingTasks, currentSolver, isSolving]);
+  // ----------------------------------------------
+
+  // --- Unified Solve Handler --- 
+  const handleUnifiedSolve = async () => {
+    console.log("[handleUnifiedSolve] Initiating solve...");
+    if (!workerPoolRef.current) {
+        toast.error("Solver pool not ready.");
+        return;
+    }
+    if (isSolving) {
+        toast.warning("Solver is already running.");
+        return;
+    }
+
+    // --- Reset State --- // (Keep this section)
+    setIsSolving(true);
+    setSolverError(null);
+    setBestSolutions([]); 
+    setExactTilingSolutions([]);
+    setCurrentSolutionIndex(-1);
+    setCurrentExactTilingIndex(-1);
+    setSolveProgress(0);
+    setCombinationsChecked(0);
+    console.log("[handleUnifiedSolve] combinationsChecked state reset to 0");
+    setTotalCombinations(null);
+    shapeDataMapRef.current = null; 
+    anyExactSolutionFound.current = false;
+    activeWorkerPromisesRef.current.forEach(p => p.cancel());
+    activeWorkerPromisesRef.current = [];
+
+    // --- Prepare Data --- // (Keep this section)
+    const currentPotentials = mapPotentialsToObjects(potentials);
+    const numSelectedPotentials = currentPotentials.length;
+    const currentLockedMask = lockedTilesMask;
+    const initialGridState = 0n; // Define initialGridState here
+
+     if (numSelectedPotentials === 0) {
+         toast.info("Please select at least one potential shape to solve.");
+         setIsSolving(false);
+         return;
+     }
+
+    try {
+        // --- 1. Initialize Context (Precomputation) --- // (Keep this section)
+        toast.info("Initializing solver context (precomputing placements)...");
+        console.log("Calling initializeSolverContext in worker...");
+        const precomputePromise = workerPoolRef.current.exec('initializeSolverContext', [
+            currentPotentials,
+            currentLockedMask.toString()
+        ]);
+        activeWorkerPromisesRef.current.push(precomputePromise);
+        const shapeDataMapResult = await precomputePromise;
+        activeWorkerPromisesRef.current = [];
+        shapeDataMapRef.current = shapeDataMapResult as ShapeDataMap; // Store the map
+        console.log("Solver context initialized. ShapeDataMap stored.");
+        toast.success("Solver context ready.");
+
+        if (!shapeDataMapRef.current || shapeDataMapRef.current.size === 0) {
+             throw new Error("Precomputation failed or resulted in no valid shape data.");
+         }
+
+        // Filter potentials based on precomputation // (Keep this section)
+        const validPotentials = currentPotentials.filter(p => {
+            const data = shapeDataMapRef.current?.get(p.canonicalForm);
+            return data && data.validPlacements.length > 0;
+        });
+        const numValidPotentials = validPotentials.length;
+        console.log(`Filtered potentials: ${numValidPotentials} have valid placements.`);
+
+        if (numValidPotentials === 0) {
+            toast.info("None of the selected shapes have any valid placements on the available grid.");
+            setIsSolving(false);
+            return;
+        }
+
+        // --- 2. Determine Mode --- // (Keep this section)
+        const availableTileMask = FULL_GRID_MASK & (~currentLockedMask);
+        const availableTileCount = countSetBits(availableTileMask);
+
+        if (availableTileCount === 0) {
+            toast.info("No tiles available to place shapes on.");
+            setIsSolving(false);
+            return;
+        }
+
+        const k = availableTileCount / 4;
+        const attemptExactTiling = availableTileCount > 0 && availableTileCount % 4 === 0 && numValidPotentials >= k;
+        console.log(`Available Tiles: ${availableTileCount}, k=${k}, N(valid)=${numValidPotentials}, Attempt Exact Tiling: ${attemptExactTiling}`);
+
+        // --- 3. Execute Solver --- // (Modify calls within this section)
+        let exactSolutionFound = false;
+        if (attemptExactTiling) {
+            setCurrentSolver('exact');
+            toast.info(`Attempting Exact Tiling with k=${k} shapes...`);
+            if (shapeDataMapRef.current) {
+                try {
+                    // Capture the boolean return value
+                    exactSolutionFound = await runParallelExactTiling(validPotentials, k, initialGridState, currentLockedMask, shapeDataMapRef.current);
+                } catch (error: any) {
+                    if (error.message === 'CombinationsExceeded') {
+                        // Allow fallback to proceed
+                        console.log("Combination limit exceeded, proceeding to fallback.");
+                    } else {
+                        // Rethrow other errors
+                        throw error;
+                    }
+                }
+            } else {
+                 throw new Error("Shape data map was not initialized correctly.");
+             }
+
+             // Use the captured boolean for fallback decision
+             if (!exactSolutionFound) {
+                 console.log("Exact Tiling finished, no solution found. Falling back to Maximal Placement.");
+                 toast.info("Exact tiling not found. Trying Maximal Placement...");
+                 setCurrentSolver('maximal');
+                 if (shapeDataMapRef.current) { 
+                    await runParallelMaximalPlacement(validPotentials, initialGridState, currentLockedMask, shapeDataMapRef.current);
+                 } else {
+                     throw new Error("Shape data map was not available for fallback.");
+                 }
+             }
+
+        } else {
+            setCurrentSolver('maximal');
+            toast.info("Attempting Maximal Placement...");
+             if (shapeDataMapRef.current) { 
+                 await runParallelMaximalPlacement(validPotentials, initialGridState, currentLockedMask, shapeDataMapRef.current);
+             } else {
+                  throw new Error("Shape data map was not available for maximal placement.");
+             }
+        }
+
+    } catch (error: any) { // (Keep error handling) 
+        console.error("Error during unified solve process:", error);
+        const errorMsg = error.message || (typeof error === 'string' ? error : "An unknown error occurred");
+        setSolverError(errorMsg);
+        toast.error(`Solver Error: ${errorMsg}`);
+        if (workerPoolRef.current && typeof workerPoolRef.current.terminate === 'function') {
+             workerPoolRef.current.terminate(true); 
+             workerPoolRef.current = null; 
+             toast.error("Solver pool terminated due to error. Please reload.");
+        }
+    } finally { // (Keep finally block)
+        setIsSolving(false);
+        activeWorkerPromisesRef.current = [];
+        console.log("handleUnifiedSolve finished.");
+    }
+};
+
+  // --- Rendering Logic ---
+  useEffect(() => {
+    setIsClient(true);
+    requestAnimationFrame(drawMainCanvas);
+    return () => {
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
       }
     };
-    solverWorkerRef.current.onerror = (error) => {
-      console.error("[Main] Worker onerror:", error);
-      setIsSolving(false);
-      setSolveProgress(0);
-      toast.dismiss("solving-toast");
-      toast.error(`Worker error: ${error.message}`, { duration: 6000 });
-      solverWorkerRef.current?.terminate();
-      solverWorkerRef.current = null;
-    };
-    // Post message *after* setting up handlers
-    solverWorkerRef.current.postMessage({ potentials });
-  }, [
-    potentials,
-    setIsSolving,
-    setBestSolutions,
-    setCurrentSolutionIndex,
-    setSelectedTiles,
-    setGridState,
-    setSolveProgress,
-  ]); // Dependencies seem correct
+  }, [drawMainCanvas]);
 
   useEffect(() => {
-    // Effect to update grid when solution changes
-    if (currentSolutionIndex !== -1 && bestSolutions[currentSolutionIndex]) {
-      setGridState(bestSolutions[currentSolutionIndex]);
-    } else {
-      // Ensure grid resets if we go back to edit mode or have no solutions
-      setGridState(Array(TOTAL_TILES + 1).fill(-1));
-    }
-  }, [currentSolutionIndex, bestSolutions, setGridState]); // Dependencies seem correct
+    drawPotentialShapes();
+  }, [potentials, drawPotentialShapes]);
 
-  const handleNextSolution = useCallback(() => {
-    if (bestSolutions.length === 0) return;
-    setCurrentSolutionIndex((prev) => (prev + 1) % bestSolutions.length);
-    setSelectedTiles(new Set());
-  }, [bestSolutions.length, setCurrentSolutionIndex, setSelectedTiles]);
-  const handlePrevSolution = useCallback(() => {
-    if (bestSolutions.length === 0) return;
-    setCurrentSolutionIndex(
-      (prev) => (prev - 1 + bestSolutions.length) % bestSolutions.length
-    );
-    setSelectedTiles(new Set());
-  }, [bestSolutions.length, setCurrentSolutionIndex, setSelectedTiles]);
-  const handleBackToEdit = useCallback(() => {
-    setSelectedTiles(new Set());
-    setGridState(Array(TOTAL_TILES + 1).fill(-1));
-    setCurrentSolutionIndex(-1);
-    toast.info(
-      "Editing mode activated."
-    ); /* scheduleDraw(); // scheduleDraw called by useEffect reacting to state changes */
-  }, [setSelectedTiles, setGridState, setCurrentSolutionIndex]); // Removed scheduleDraw, it's handled by useEffect
-  const handleReset = useCallback(() => {
-    setSelectedTiles(new Set());
-    setPotentials([]);
-    setBestSolutions([]);
-    setCurrentSolutionIndex(-1);
-    setGridState(Array(TOTAL_TILES + 1).fill(-1));
-    setIsSolving(false);
-    solverWorkerRef.current?.terminate();
-    solverWorkerRef.current = null;
-    setSolveProgress(0);
-    let newOffset = { x: 0, y: 0 };
-    let newZoom = 1;
-    const canvas = canvasRef.current;
-    // Recalculate initial offset
-    if (canvas && containerRef.current) {
-      // Check containerRef too
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity;
-      HEX_GRID_COORDS.forEach((hex) => {
-        const p = axialToPixel(hex.q, hex.r);
-        if (p) {
-          minX = Math.min(minX, p.x - HEX_WIDTH / 2);
-          maxX = Math.max(maxX, p.x + HEX_WIDTH / 2);
-          minY = Math.min(minY, p.y - HEX_HEIGHT / 2);
-          maxY = Math.max(maxY, p.y + HEX_HEIGHT / 2);
-        }
-      });
-      if (
-        isSafeNumber(minX) &&
-        maxX > minX &&
-        isSafeNumber(minY) &&
-        maxY > minY
-      ) {
-        const cX = minX + (maxX - minX) / 2;
-        const cY = minY + (maxY - minY) / 2;
-        const calculatedOffset = { x: -cX, y: -cY };
-        if (
-          isSafeNumber(calculatedOffset.x) &&
-          isSafeNumber(calculatedOffset.y)
-        )
-          newOffset = calculatedOffset;
-      }
+  // Handle grid update when solution index changes
+  useEffect(() => {
+    if (currentSolutionIndex >= 0 && bestSolutions[currentSolutionIndex]) {
+      // console.log(`[Debug useEffect] Updating grid from Maximal solution index: ${currentSolutionIndex}`); // Reduced
+      updateGridStateFromSolution(bestSolutions[currentSolutionIndex]);
+    } else if (currentExactTilingIndex >= 0 && exactTilingSolutions[currentExactTilingIndex]) {
+      // console.log(`[Debug useEffect] Updating grid from Exact Tiling solution index: ${currentExactTilingIndex}`); // Reduced
+      // console.log(`[Debug useEffect] currentSolver: ${currentSolver}, exactTilingSolutions length: ${exactTilingSolutions.length}`); // Add this log
+      updateGridStateFromSolution(exactTilingSolutions[currentExactTilingIndex]);
+    } else if (!isSolving) {
+      // Reset grid if no solution is selected and not solving
+      // setGridState(Array(Config.TOTAL_TILES + 1).fill(-1)); // Avoid resetting if user is interacting
     }
-    currentOffsetRef.current = newOffset;
-    setZoom(newZoom); // Trigger redraw via useEffect
-    toast.success("Reset complete.");
-    // Clear previews manually (although state changes should handle this)
-    potentialCanvasRefs.current.forEach((c) => {
-      const ctx = c.getContext("2d");
-      if (ctx) ctx.clearRect(0, 0, c.width, c.height);
-    });
-    predefinedCanvasRefs.current.forEach((c) => {
-      const ctx = c.getContext("2d");
-      if (ctx) ctx.clearRect(0, 0, c.width, c.height);
-    });
-    // scheduleDraw(); // Let useEffect handle redraw based on state changes (zoom, gridState etc)
-  }, [
-    axialToPixel,
-    setZoom,
-    setSelectedTiles,
-    setPotentials,
-    setBestSolutions,
-    setCurrentSolutionIndex,
-    setGridState,
-    setIsSolving,
-    setSolveProgress,
-  ]); // Added setZoom
+  }, [currentSolutionIndex, bestSolutions, currentExactTilingIndex, exactTilingSolutions, isSolving]); // Removed updateGridStateFromSolution dependency
+
+  // Debug: Log exactTilingSolutions when it changes
+  // console.log("[Debug] exactTilingSolutions state updated:", exactTilingSolutions); // Reduced
+
+  // --- Predefined Shapes --- 
+  const handleAddPredefinedPotential = useCallback(
+    (shapeString: string) => {
+        // Validate length
+        if (shapeString.length !== Config.TOTAL_TILES) {
+             toast.error(`Cannot add predefined shape: Invalid length (${shapeString.length}). Expected ${Config.TOTAL_TILES}.`);
+             console.error("Invalid predefined shape string:", shapeString);
+             return;
+        }
+        setPotentials((prev) => [...prev, shapeString]);
+        toast.success("Predefined shape added to saved potentials.");
+    },
+    [potentials] // Keep dependency on potentials for other logic if needed, or remove if only used for duplicate check
+  );
 
   const handleDeletePotential = useCallback(
     (indexToDelete: number) => {
-      setPotentials((prevPotentials) => {
-        // Check if index is valid
-        if (indexToDelete < 0 || indexToDelete >= prevPotentials.length)
-          return prevPotentials;
-
-        // Delete the canvas ref *before* updating state
-        potentialCanvasRefs.current.delete(indexToDelete);
-        // Adjust keys for remaining refs AFTER the deleted one (important!)
-        const newRefs = new Map<number, HTMLCanvasElement>();
-        potentialCanvasRefs.current.forEach((canvas, key) => {
-          if (key > indexToDelete) {
-            newRefs.set(key - 1, canvas); // Decrement key
-          } else if (key < indexToDelete) {
-            newRefs.set(key, canvas); // Keep same key
-          }
-        });
-        potentialCanvasRefs.current = newRefs; // Update the refs map
-
-        const updated = prevPotentials.filter(
-          (_, index) => index !== indexToDelete
-        );
-        toast.info(`Potential ${indexToDelete + 1} deleted.`);
-        return updated;
-      });
+      setPotentials((prev) => prev.filter((_, index) => index !== indexToDelete));
     },
     [setPotentials]
-  ); // Dependency is correct
+  );
 
-  // --- Potential Preview Drawing ---
-  // Using the corrected version from previous step
-  const drawPotential = useCallback(
-    (canvas: HTMLCanvasElement, potentialString: string) => {
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      const { width, height } = canvas;
-      ctx.clearRect(0, 0, width, height);
-      const tileIds: number[] = [];
-      for (let i = 0; i < potentialString.length; i++) {
-        if (potentialString.charAt(i) === "1") {
-          tileIds.push(i + 1);
-        }
-      }
-      if (tileIds.length === 0) return;
-
-      let minQ = Infinity,
-        maxQ = -Infinity,
-        minR = Infinity,
-        maxR = -Infinity;
-      const potentialHexes = tileIds
-        .map((id) => {
-          const hex = HEX_GRID_COORDS.find((h) => h.id === id);
-          if (hex) {
-            minQ = Math.min(minQ, hex.q);
-            maxQ = Math.max(maxQ, hex.q);
-            minR = Math.min(minR, hex.r);
-            maxR = Math.max(maxR, hex.r);
-          }
-          return hex;
-        })
-        .filter((hex): hex is HexCoord => !!hex);
-
-      if (potentialHexes.length === 0) return;
-
-      const centerQ = (minQ + maxQ) / 2;
-      const centerR = (minR + maxR) / 2;
-      const previewHexSize = 8;
-      const previewLineWidth = 0.5;
-
-      const previewDrawHexagon = (
-        x: number,
-        y: number,
-        size: number,
-        fillColor: string,
-        strokeStyle: string
-      ) => {
-        if (
-          !isSafeNumber(x) ||
-          !isSafeNumber(y) ||
-          !isSafeNumber(size) ||
-          size <= 0
-        ) {
-          return;
-        }
-        ctx.beginPath();
-        for (let i = 0; i < 6; i++) {
-          const angle = (Math.PI / 3) * i;
-          const xPos = x + size * Math.cos(angle);
-          const yPos = y + size * Math.sin(angle);
-          if (!isSafeNumber(xPos) || !isSafeNumber(yPos)) {
-            ctx.closePath();
-            return;
-          }
-          if (i === 0) ctx.moveTo(xPos, yPos);
-          else ctx.lineTo(xPos, yPos);
-        }
-        ctx.closePath();
-        try {
-          ctx.fillStyle = fillColor;
-          ctx.fill();
-          ctx.strokeStyle = strokeStyle;
-          ctx.lineWidth = previewLineWidth;
-          ctx.stroke();
-        } catch (e) {
-          console.error("Error drawing preview hex:", e);
-        }
-      };
-
-      potentialHexes.forEach((hex) => {
-        const adjustedQ = hex.q - centerQ;
-        const adjustedR = hex.r - centerR;
-        const x = width / 2 + previewHexSize * ((3 / 2) * adjustedQ);
-        const y =
-          height / 2 +
-          previewHexSize *
-            ((Math.sqrt(3) / 2) * adjustedQ + Math.sqrt(3) * adjustedR);
-        previewDrawHexagon(
-          x,
-          y,
-          previewHexSize,
-          SELECTED_COLOR,
-          STROKE_COLOR_ACTIVE
-        );
-      });
-    },
-    []
-  ); // Still self-contained, empty array is correct
-
-  // Ref setter for SAVED potentials
-  const setPotentialCanvasRef = useCallback(
-    (index: number, element: HTMLCanvasElement | null) => {
-      if (element) {
-        potentialCanvasRefs.current.set(index, element);
-        // Immediately draw potential if it exists in state
-        const potentialString = potentials[index];
-        if (potentialString) {
-          drawPotential(element, potentialString);
-        }
-      } else {
-        potentialCanvasRefs.current.delete(index);
-      }
-    },
-    [potentials, drawPotential]
-  ); // Needs potentials and drawPotential as deps
-
-  // Effect to draw SAVED potentials (This might be redundant if setPotentialCanvasRef draws immediately)
-  // Let's keep it for ensuring redraws if potentials array itself changes externally
-  useEffect(() => {
-    if (!isClient) return;
-    potentials.forEach((pString, index) => {
-      const canvas = potentialCanvasRefs.current.get(index);
-      if (canvas) {
-        drawPotential(canvas, pString);
-      }
-    });
-  }, [isClient, potentials, drawPotential]); // Dependencies are correct
-
-  // Ref setter for PREDEFINED shapes
   const setPredefinedCanvasRef = useCallback(
     (index: number, element: HTMLCanvasElement | null) => {
       if (element) {
         predefinedCanvasRefs.current.set(index, element);
-        // Immediately draw predefined shape
-        const shapeString = PREDEFINED_SHAPES[index];
-        if (shapeString) {
-          drawPotential(element, shapeString);
-        }
-      } else {
+        // Call drawPreviewGrid with override parameters for predefined shapes
+        HexUtils.drawPreviewGrid(
+          element,
+          Config.PREDEFINED_SHAPES[index],
+          index,
+          0.5, // Default sizeRatio - Explicitly set smaller value
+          '#a78bfa', // Tailwind violet-400 equivalent for the single color
+          true      // Hide the background grid
+        );
+    } else {
         predefinedCanvasRefs.current.delete(index);
       }
     },
-    [drawPotential]
-  ); // Depends on drawPotential (PREDEFINED_SHAPES is constant)
+    [] // No dependencies needed here as Config and HexUtils are stable
+  );
 
-  // --- Handler to Add Predefined Shape ---
-  const handleAddPredefinedPotential = useCallback(
-    (shapeString: string) => {
-      if (isSolving) {
-        toast.warning("Cannot add potentials while solving.", {
-          duration: 3000,
-        });
-        return;
+  const setPotentialCanvasRef = useCallback(
+    (index: number, element: HTMLCanvasElement | null) => {
+      if (element) {
+        potentialCanvasRefs.current.set(index, element);
+        // Call drawPreviewGrid normally for saved potentials (no overrides)
+        HexUtils.drawPreviewGrid(
+          element,
+          potentials[index],
+          index
+          // Using default sizeRatio, no color override, grid visible
+        );
+      } else {
+        potentialCanvasRefs.current.delete(index);
       }
-      setPotentials((prevPotentials) => {
-        toast.success(`Shape added to potentials.`);
-        return [...prevPotentials, shapeString];
-      });
     },
-    [isSolving, setPotentials]
-  ); // Dependencies are correct
+    [potentials] // Depends on potentials array
+  );
 
-  // Format progress count
-  const formattedProgress = isSolving ? solveProgress.toLocaleString() : "0";
+  // --- Event Handlers for Canvas Interaction (with Correct Types) --- 
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const delta = e.deltaY * -0.005;
+    setZoom((prevZoom) => Math.min(Math.max(0.2, prevZoom + delta), 3));
+  }, []); 
 
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - currentOffsetRef.current.x, y: e.clientY - currentOffsetRef.current.y });
+  }, []); 
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+
+    let hex: HexCoord | null = null;
+    let hexId: number | null = null; // Store ID separately
+
+    const worldPos = HexUtils.screenToWorld(screenX, screenY, canvas.width, canvas.height, currentOffsetRef.current, zoom);
+    if (worldPos) {
+        const axial = HexUtils.pixelToAxial(worldPos.x, worldPos.y);
+        if (axial) {
+            const rounded = HexUtils.hexRound(axial.q, axial.r);
+            if (rounded) {
+                 // Find the full coordinate object including ID from config
+                const foundCoord = Config.HEX_GRID_COORDS.find(coord => coord.q === rounded.q && coord.r === rounded.r);
+                if (foundCoord) {
+                    hex = rounded; // Keep the rounded q,r
+                    hexId = foundCoord.id; // Store the ID
+                }
+            }
+        }
+    }
+    hoveredHexIdRef.current = hexId; // Store the ID in the ref
+
+    if (isDragging) {
+      currentOffsetRef.current = {
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      };
+    }
+  }, [isDragging, zoom, dragStart.x, dragStart.y]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsDragging(false);
+    hoveredHexIdRef.current = null;
+  }, []);
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas || isDragging) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+
+    let hex: HexCoord | null = null;
+    let hexId: number | null = null; // Store ID separately
+
+    const worldPos = HexUtils.screenToWorld(screenX, screenY, canvas.width, canvas.height, currentOffsetRef.current, zoom);
+    if (worldPos) {
+        const axial = HexUtils.pixelToAxial(worldPos.x, worldPos.y);
+        if (axial) {
+            const rounded = HexUtils.hexRound(axial.q, axial.r);
+            if (rounded) {
+                 // Find the full coordinate object including ID from config
+                const foundCoord = Config.HEX_GRID_COORDS.find(coord => coord.q === rounded.q && coord.r === rounded.r);
+                if (foundCoord) {
+                    hex = rounded; // Keep the rounded q,r
+                    hexId = foundCoord.id; // Store the ID
+                }
+            }
+        }
+    }
+
+    if (hexId !== null && hexId > 0 && hexId <= Config.TOTAL_TILES) { // Use hexId now
+        if (LOCKABLE_TILE_IDS.has(hexId)) {
+            handleToggleTileLock(hexId); // Use the dedicated handler
+        } else {
+            if (isTileLocked(lockedTilesMask, hexId)) {
+                 toast.warning("Cannot select a locked tile.");
+                 return;
+             }
+            setSelectedTiles((prev) => {
+                const newSelection = new Set(prev);
+                if (newSelection.has(hexId)) {
+                    newSelection.delete(hexId);
+      } else {
+                    if (newSelection.size < 4) { 
+                        newSelection.add(hexId);
+                    } else {
+                        toast.error("Maximum 4 tiles selected.");
+                    }
+                }
+                return newSelection;
+            });
+        }
+    }
+  }, [
+    isDragging, 
+    zoom, 
+    lockedTilesMask, 
+    handleToggleTileLock, 
+    setSelectedTiles
+  ]);
+
+  // --- Handlers for viewing solutions ---
+  const handlePreviousSolution = useCallback(() => {
+      if(currentSolver === 'exact'){
+          setCurrentExactTilingIndex(prev => (prev > 0 ? prev - 1 : exactTilingSolutions.length - 1));
+      } else if (currentSolver === 'maximal'){
+         setCurrentSolutionIndex(prev => (prev > 0 ? prev - 1 : bestSolutions.length - 1));
+      }
+  }, [currentSolver, exactTilingSolutions, bestSolutions]);
+
+  const handleNextSolution = useCallback(() => {
+       if(currentSolver === 'exact'){
+           setCurrentExactTilingIndex(prev => (prev < exactTilingSolutions.length - 1 ? prev + 1 : 0));
+       } else if (currentSolver === 'maximal'){
+           setCurrentSolutionIndex(prev => (prev < bestSolutions.length - 1 ? prev + 1 : 0));
+       }
+  }, [currentSolver, exactTilingSolutions, bestSolutions]);
+  
+  // --- Effect to update grid when solution index changes ---
+  useEffect(() => {
+    if (currentSolver === 'exact' && currentExactTilingIndex >= 0 && exactTilingSolutions.length > 0) {
+      updateGridStateFromSolution(exactTilingSolutions[currentExactTilingIndex]);
+    } else if (currentSolver === 'maximal' && currentSolutionIndex >= 0 && bestSolutions.length > 0) {
+      updateGridStateFromSolution(bestSolutions[currentSolutionIndex]);
+    } else {
+      // If no solution is selected or available for the current mode, reset grid (optional)
+      // setGridState(Array(Config.TOTAL_TILES + 1).fill(-1)); 
+    }
+  }, [currentExactTilingIndex, exactTilingSolutions, currentSolutionIndex, bestSolutions, currentSolver, updateGridStateFromSolution]);
+
+  // --- Initialization and Drawing Effects ---
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      animationFrameIdRef.current = requestAnimationFrame(drawMainCanvas);
+      drawPotentialShapes();
+      drawPredefinedShapes();
+      // Add resize listener
+      const handleResize = () => {
+        // Redraw canvas on resize
+        if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current);
+        animationFrameIdRef.current = requestAnimationFrame(drawMainCanvas);
+      };
+      window.addEventListener("resize", handleResize);
+
+      return () => {
+        if (animationFrameIdRef.current) {
+          cancelAnimationFrame(animationFrameIdRef.current);
+        }
+        window.removeEventListener("resize", handleResize);
+      };
+    }
+  }, [isClient, drawMainCanvas, drawPotentialShapes, drawPredefinedShapes]);
+
+  // Effect to redraw previews when potentials change
+  useEffect(() => {
+    if (isClient) {
+      drawPotentialShapes();
+    }
+  }, [potentials, isClient, drawPotentialShapes]);
+
+  // --- Cancellation Handler ---
+  const handleCancelSolve = useCallback(() => {
+    if (activeWorkerPromisesRef.current.length > 0) {
+      activeWorkerPromisesRef.current.forEach(p => p.cancel());
+      activeWorkerPromisesRef.current = [];
+      console.log("Solver task cancellation requested.");
+      toast.info("Solver task cancellation requested.");
+      // Note: Worker needs to handle cancellation internally to actually stop.
+      // State like isSolving will be reset when the promise rejects/resolves after cancellation.
+    } else {
+      console.warn("Attempted to cancel, but no active worker promises found.");
+      // Maybe reset isSolving state here just in case?
+      // setIsSolving(false);
+    }
+  }, []); // No dependencies needed if only interacting with ref
+
+  // Re-add helper function
+  const mapPotentialsToObjects = (potentialsStrings: string[]): PotentialShape[] => {
+      return potentialsStrings.map((pStr, index) => {
+          const parts = pStr.split('::');
+          const canonicalForm = parts[0]; // Assuming first part is canonical
+          const id = parts.length > 1 ? pStr : `${canonicalForm}::instance_${index}`; // Create unique ID if needed
+          try {
+              const bitmask = shapeStringToBitmask(canonicalForm); // Calculate bitmask
+              if (countSetBits(bitmask) !== 4) {
+                  console.warn(`Potential ${pStr} does not have 4 tiles. Filtering out.`);
+                  return null; // Filter out invalid shapes early
+              }
+              return { id, canonicalForm, bitmask };
+          } catch (e) {
+              console.error(`Error processing potential string: ${pStr}`, e);
+              return null; // Filter out on error
+          }
+      }).filter((p): p is PotentialShape => p !== null); // Filter out nulls and assert type
+  };
+
+  // --- Rendering ---
   return (
-    <>
-      <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col min-h-screen">
-        <div className="mb-6 flex-shrink-0">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+    <main className="flex flex-col h-screen bg-gradient-to-br from-gray-900 to-black text-gray-100 overflow-hidden relative p-4 gap-4">
+      {/* <CookieConsentBanner /> */} 
+      <div className="flex flex-1 min-h-0 gap-4">
+        {/* Center Panel: Canvas (Now Left) */}
+        <div ref={containerRef} className="w-2/3 bg-gray-800/30 rounded-lg overflow-hidden border border-border/50 relative flex flex-col"> {/* Added flex flex-col */}
+          {/* Add Title */}
+          <h2 className="text-xl font-semibold text-center py-2 text-gray-300 bg-gray-900/50 flex-shrink-0"> {/* Adjusted styling */}
             Shape Doctor
-          </h1>
-          <p className="text-muted-foreground">
-            "Ain't nobody got time for that!"
-          </p>
-        </div>
-        <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
-          <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
-            <Card className="flex flex-col flex-grow bg-card">
-              <CardHeader className="pb-3 flex-shrink-0">
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-lg flex items-center gap-2 text-card-foreground">
-                    <Puzzle className="h-5 w-5 text-violet-400" /> Puzzle Grid
-                  </CardTitle>
-                   <Button variant="outline" size="sm" className="text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--destructive))] hover:text-[hsl(var(--destructive-foreground))] cursor-pointer" onClick={handleReset} disabled={isSolving}>
-                     <RefreshCw className="h-4 w-4 mr-1" /> Reset All
-                   </Button>
-                </div>
-                <CardDescription className="pt-1">
-                  {currentSolutionIndex !== -1
-                    ? `Viewing solution ${currentSolutionIndex + 1} / ${
-                        bestSolutions.length
-                      }.`
-                    : "Click to select (max 4), Save, Solve. Wheel=Zoom, Drag=Pan."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow p-0 overflow-hidden relative">
-                <div
-                  ref={containerRef}
-                  className={`w-full h-full min-h-[400px] bg-gray-100 ${CANVAS_BG_DARK} relative rounded-b-md`}
+          </h2>
+          <div className="flex-grow relative"> {/* New wrapper for canvas and overlay */}
+            {/* Progress Overlay */}
+            {isSolving && (
+              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10 text-white">
+                {currentSolver === 'exact' ? (
+                  <>
+                    <p className="text-xl font-semibold mb-2">Finding Exact Tilings...</p>
+                    <div className="w-3/4 h-4 bg-gray-600 rounded-full overflow-hidden mb-1">
+                      <div
+                        className="h-full bg-blue-500 transition-all duration-300 ease-out"
+                        style={{ width: `${formattedProgress}` }}
+                      ></div>
+                    </div>
+                    <p className="text-sm">
+                      {formattedProgress} 
+                      ({combinationsChecked.toLocaleString()} /
+                      {totalCombinations !== null && totalCombinations > 0
+                        ? totalCombinations.toLocaleString()
+                        : (isSolving ? 'calculating...' : '0')}
+                      combinations)
+                    </p>
+                  </>
+                ) : currentSolver === 'maximal' ? (
+                  <>
+                    <p className="text-xl font-semibold mb-2">Searching Maximal Placement...</p>
+                    <div className="w-3/4 h-4 bg-gray-600 rounded-full overflow-hidden mb-1">
+                       <div
+                         className="h-full bg-purple-500 transition-all duration-100 ease-linear" // Changed color, faster transition
+                         style={{ width: `${formattedProgress}` }} // Use the same formattedProgress state
+                       ></div>
+                     </div>
+                     <p className="text-sm mb-2">
+                         {formattedProgress} ({completedBacktrackingTasks} / {activeWorkerPromisesRef.current?.length ?? 0} tasks completed)
+                     </p>
+                    <p className="text-sm mb-2">
+                        {solverStatusMessage ?? 'Exploring possibilities...'}
+                    </p>
+                  </>
+                ) : ( 
+                     <>
+                       <p className="text-xl font-semibold mb-2">Solver Idle</p>
+                     </>
+                 ) 
+                 } 
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleCancelSolve}
+                  className="mt-4 bg-red-600 hover:bg-red-700 text-white transition-colors shadow-md"
                 >
-                  {isClient ? (
-                    <canvas
-                      ref={canvasRef}
-                      className="absolute top-0 left-0 w-full h-full touch-none will-change-transform rounded-b-md"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-                      Loading Canvas...
-                    </div>
-                  )}
-                  <div className="absolute bottom-2 right-2 flex flex-col gap-1 z-10">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7 bg-[hsl(var(--card)_/_0.8)] text-[hsl(var(--card-foreground))] border-[hsl(var(--border)_/_0.5)] backdrop-blur-sm hover:bg-[hsl(var(--card)_/_0.9)] transition-colors cursor-pointer"
-                      onClick={() =>
-                        setZoom((z) => Math.min(MAX_ZOOM, z * 1.2))
-                      }
-                      aria-label="Zoom In"
-                    >
-                      {" "}
-                      <ZoomIn className="h-4 w-4" />{" "}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7 bg-[hsl(var(--card)_/_0.8)] text-[hsl(var(--card-foreground))] border-[hsl(var(--border)_/_0.5)] backdrop-blur-sm hover:bg-[hsl(var(--card)_/_0.9)] transition-colors cursor-pointer"
-                      onClick={() =>
-                        setZoom((z) => Math.max(MIN_ZOOM, z / 1.2))
-                      }
-                      aria-label="Zoom Out"
-                    >
-                      {" "}
-                      <ZoomOut className="h-4 w-4" />{" "}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7 bg-[hsl(var(--card)_/_0.8)] text-[hsl(var(--card-foreground))] border-[hsl(var(--border)_/_0.5)] backdrop-blur-sm hover:bg-[hsl(var(--card)_/_0.9)] transition-colors cursor-pointer"
-                      onClick={handleReset}
-                      aria-label="Reset View & Zoom"
-                    >
-                      {" "}
-                      <Move className="h-4 w-4" />{" "}
-                    </Button>
-                  </div>
-                  {isSolving && (
-                    <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/70 via-black/50 to-transparent pointer-events-none">
-                      <div className="max-w-md mx-auto text-center">
-                        <Progress
-                          value={undefined}
-                          className="h-2 [&>div]:bg-violet-500"
-                        />
-                        <p className="text-xs mt-1 text-slate-300 font-mono">
-                          {" "}
-                          Solving... Explored {formattedProgress} states{" "}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter className="flex flex-wrap gap-2 justify-center p-3 flex-shrink-0 border-t border-border/50">
-                {currentSolutionIndex !== -1 ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] cursor-pointer"
-                      onClick={handlePrevSolution}
-                      disabled={bestSolutions.length <= 1 || isSolving}
-                    >
-                      {" "}
-                      <ArrowLeft className="h-4 w-4 mr-1" /> Prev{" "}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] cursor-pointer"
-                      onClick={handleNextSolution}
-                      disabled={bestSolutions.length <= 1 || isSolving}
-                    >
-                      {" "}
-                      Next <ArrowRight className="h-4 w-4 ml-1" />{" "}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] transition-colors hover:bg-[hsl(var(--primary)_/_0.9)] cursor-pointer"
-                      onClick={handleBackToEdit}
-                      disabled={isSolving}
-                    >
-                      {" "}
-                      Back to Edit{" "}
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      size="sm"
-                      className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary)_/_0.9)] transition-colors cursor-pointer"
-                      onClick={handleSavePotential}
-                      disabled={
-                        isSolving ||
-                        selectedTiles.size === 0 ||
-                        selectedTiles.size > 4
-                      }
-                    >
-                      {" "}
-                      <Save className="h-4 w-4 mr-1" /> Save (
-                      {selectedTiles.size}/4){" "}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] cursor-pointer"
-                      onClick={handleClearSelection}
-                      disabled={isSolving || selectedTiles.size === 0}
-                    >
-                      {" "}
-                      <XOctagon className="h-4 w-4 mr-1" /> Clear Sel.{" "}
-                    </Button>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-primary-foreground min-w-[90px] transition-colors cursor-pointer"
-                      onClick={handleSolve}
-                      disabled={isSolving || potentials.length === 0}
-                    >
-                      {isSolving ? (
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      ) : (
-                        <Play className="h-4 w-4 mr-1" />
-                      )}
-                      {isSolving ? "Solving..." : "Solve"}
-                    </Button>
-                  </>
-                )}
-              </CardFooter>
-            </Card>
-          </div>
-          <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
-             <Card className="flex-shrink-0 bg-card">
-               <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2 text-card-foreground">
-                     <HelpCircle className="h-5 w-5 text-violet-400" /> Status & Actions
-                  </CardTitle>
-                   <CardDescription className="text-xs">Current status, instructions, and global reset.</CardDescription>
-               </CardHeader>
-               <CardContent className="space-y-4 text-sm">
-                  <div className="space-y-1 text-card-foreground">
-                      <div className="flex justify-between">
-                          <span>Saved Potentials:</span>
-                          <span className="font-semibold">{potentials.length}</span>
-                      </div>
-                      <div className="flex justify-between">
-                          <span>Best Solutions:</span>
-                          <span className="font-semibold">{bestSolutions.length}</span>
-                      </div>
-                      {currentSolutionIndex !== -1 && (
-                          <>
-                              <div className="flex justify-between">
-                                  <span>Viewing Solution:</span>
-                                  <span>{currentSolutionIndex + 1} / {bestSolutions.length}</span>
-                              </div>
-                              {bestSolutions[currentSolutionIndex] && (
-                                  <div className="flex justify-between">
-                                      <span>Empty Tiles:</span>
-                                      <span className="font-semibold">
-                                          {bestSolutions[currentSolutionIndex].slice(1).filter(t => t === -1).length}
-                                      </span>
-                                  </div>
-                              )}
-                          </>
-                      )}
-                  </div>
-                  <div className="border-t border-border/50 pt-3">
-                      <h3 className="font-medium mb-1 text-card-foreground text-sm">How to Use</h3>
-                      <ol className="text-muted-foreground space-y-0.5 list-decimal pl-4 text-xs">
-                          <li>Select up to 4 connected hexes OR browse "Predefined Shapes" tab.</li>
-                          <li>Manually selected shapes: Click "Save Potential".</li>
-                          <li>Added/Saved shapes appear in "Saved Potentials" tab.</li>
-                          <li>Click "Solve" to find placements for saved potentials.</li>
-                          <li>Use Next/Prev to view solutions on the grid.</li>
-                          <li>Wheel=Zoom, Drag=Pan grid.</li>
-                      </ol>
-                   </div>
-               </CardContent>
-             </Card>
-             <Tabs defaultValue="predefined" className="flex-grow min-h-0 flex flex-col">
-               <TabsList className="grid w-full grid-cols-2 flex-shrink-0 mb-4">
-                 <TabsTrigger value="predefined" className="flex items-center gap-1 transition-colors duration-150 hover:text-violet-200 hover:bg-violet-900/30 data-[state=active]:text-violet-300 data-[state=active]:shadow-inner data-[state=active]:bg-violet-900/50 cursor-pointer">
-                   <Library className="h-4 w-4 mr-1" /> Predefined
-                 </TabsTrigger>
-                 <TabsTrigger value="saved" className="flex items-center gap-1 transition-colors duration-150 hover:text-violet-200 hover:bg-violet-900/30 data-[state=active]:text-violet-300 data-[state=active]:shadow-inner data-[state=active]:bg-violet-900/50 cursor-pointer">
-                   <Save className="h-4 w-4 mr-1" /> Saved ({potentials.length})
-                 </TabsTrigger>
-               </TabsList>
-
-               <TabsContent
-                 value="predefined"
-                 className="flex-grow min-h-0 overflow-y-auto mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md p-3 bg-card border border-border scrollbar-thin scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent"
-               >
-                  <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                     {isClient && PREDEFINED_SHAPES.map((shapeString, index) => (
-                         <Button
-                            key={`predefined-${index}`}
-                            variant="outline"
-                            size="icon"
-                            className="w-14 h-14 p-1 border-[hsl(var(--border)_/_0.5)] text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] focus-visible:ring-[hsl(var(--primary))] cursor-pointer"
-                            onClick={() => handleAddPredefinedPotential(shapeString)}
-                            disabled={isSolving}
-                            aria-label={`Add predefined shape ${index + 1}`}
-                        >
-                            <canvas
-                                ref={(el) => setPredefinedCanvasRef(index, el)}
-                                width="48"
-                                height="48"
-                                className={`border-none rounded-sm ${PREVIEW_BG}`}
-                            />
-                        </Button>
-                     ))}
-                      {!isClient && Array.from({ length: 12 }).map((_, i) => (
-                         <div key={`skel-predefined-${i}`} className="w-14 h-14 bg-muted/50 rounded animate-pulse"></div>
-                     ))}
-                 </div>
-               </TabsContent>
-
-               <TabsContent
-                 value="saved"
-                 className="mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md p-3 bg-card border border-border"
-               >
-                 {potentials.length > 0 ? (
-                    <div className="grid grid-cols-3 gap-2 max-h-[calc(7*(48px+theme(spacing.2)))] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent pr-1">
-                        {potentials.map((potentialString, index) => (
-                            <div key={`saved-${index}`} className="flex items-center justify-between p-2 bg-muted/50 rounded-md border border-border/50 group flex-shrink-0">
-                                <div className="flex-shrink-0 w-[48px] h-[48px]">
-                                    <canvas
-                                        ref={(el) => setPotentialCanvasRef(index, el)}
-                                        width="48"
-                                        height="48"
-                                        className={`border rounded ${PREVIEW_BG}`}
-                                    />
-                                </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="flex-shrink-0 h-7 w-7 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)] opacity-50 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity transition-colors cursor-pointer"
-                                    onClick={() => handleDeletePotential(index)}
-                                    disabled={isSolving}
-                                    aria-label={`Delete potential ${index + 1}`}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ))}
-                    </div>
-                 ) : (
-                    <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                         No potentials saved yet. Select tiles or add from "Predefined".
-                    </div>
-                 )}
-               </TabsContent>
-             </Tabs>
+                  <Ban className="h-4 w-4 mr-1" /> Cancel Search
+                </Button>
+              </div>
+            )}
+            <canvas
+              ref={canvasRef}
+              className="absolute top-0 left-0 w-full h-full cursor-grab active:cursor-grabbing"
+              onWheel={handleWheel}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+              onClick={handleClick}
+            />
           </div>
         </div>
-        <footer className="text-center text-xs text-muted-foreground mt-auto pt-8 flex-shrink-0">
-          Special Thanks to OGWaffle for the original concept and logic!
-        </footer>
+
+        {/* Right Sidebar: Controls, Status, Shapes */}
+        <div className="flex flex-col flex-grow flex-shrink-0 gap-4 overflow-y-auto border border-border/50 rounded-lg p-2 bg-gray-800/30">
+          {/* Controls */}
+          <ControlPanel
+            isSolving={isSolving}
+            handleSolve={handleUnifiedSolve}
+            handleSavePotential={handleSavePotential}
+            handleClearSelection={handleClearSelection}
+            handleResetAll={handleResetSelection}
+            selectedTilesCount={selectedTiles.size}
+            currentSolutionIndex={currentSolver === 'exact' ? currentExactTilingIndex : currentSolutionIndex}
+            solutionsList={currentSolver === 'exact' ? exactTilingSolutions : bestSolutions}
+            selectedTiles={selectedTiles}
+            handlePrevSolution={handlePreviousSolution}
+            handleNextSolution={handleNextSolution}
+            handleBackToEdit={() => {
+                setCurrentSolutionIndex(-1);
+                setCurrentExactTilingIndex(-1);
+                setGridState(Array(Config.TOTAL_TILES + 1).fill(-1));
+            }}
+            potentialsCount={potentials.length}
+            currentSolver={currentSolver}
+            handleCancelSolve={handleCancelSolve}
+            solveProgress={solveProgress}
+          />
+          {/* Status */}
+          <StatusPanel
+            solutionsList={currentSolver === 'exact' ? exactTilingSolutions : bestSolutions}
+            currentSolutionIndex={currentSolver === 'exact' ? currentExactTilingIndex : currentSolutionIndex}
+            isSolving={isSolving}
+            lockedTilesCount={countSetBits(lockedTilesMask)}
+            availableTiles={Config.TOTAL_TILES - countSetBits(lockedTilesMask)}
+            currentSolver={currentSolver}
+            solverError={solverError}
+            solveProgress={solveProgress}
+            totalCombinations={totalCombinations ?? 0}
+            combinationsChecked={combinationsChecked}
+            isExactTilingMode={currentSolver === 'exact'}
+            potentialsCount={potentials.length}
+            solverStatusMessage={solverStatusMessage}
+          />
+          {/* Shapes Tabs (Moved from bottom) */}
+          <div className="flex-grow min-h-[200px]"> {/* Ensure it takes remaining space */}
+            <ResultsTabs
+              isClient={isClient}
+              potentials={potentials}
+              isSolving={isSolving}
+              setPredefinedCanvasRef={setPredefinedCanvasRef}
+              setPotentialCanvasRef={setPotentialCanvasRef}
+              handleAddPredefinedPotential={handleAddPredefinedPotential}
+              handleDeletePotential={handleDeletePotential}
+            />
+          </div>
+        </div>
       </div>
-    </>
+
+      {/* Wrap the entire section in an Accordion */}
+      <Accordion type="single" collapsible className="w-full max-w-4xl mx-auto mt-8 mb-16 px-4 md:px-8">
+        <AccordionItem value="how-to-faq" className="border rounded-lg bg-card">
+          <AccordionTrigger className="text-xl font-semibold px-6 py-4 hover:no-underline">
+            How to Use & FAQ
+          </AccordionTrigger>
+          <AccordionContent className="px-6 pt-0 pb-6">
+            {/* Existing Section Content (h2 removed, grid moved inside) */}
+            <Separator className="mb-6 mt-2" /> {/* Add separator inside content */}
+            <div className="grid md:grid-cols-2 gap-8">
+
+              {/* How to Use Section - Direct List */}
+              <div className="text-card-foreground"> {/* Removed card bg/border */}
+                <h3 className="text-lg font-medium mb-3">How to Use</h3> {/* Adjusted heading size/margin */}
+                <ul className="list-disc list-inside space-y-1.5 text-sm"> {/* Adjusted spacing */}
+                  <li>Click tiles to select up to 4 connected hexes.</li>
+                  <li>Click lockable tiles (purple outline) to lock/unlock.</li>
+                  <li>Click "Save (x/4)" to save selection to "Saved Potentials".</li>
+                  <li>Or, add from "Predefined Shapes".</li>
+                  <li>Click "Solve" to find placements.</li>
+                  <li>Use Next/Prev to view solutions.</li>
+                  <li>Click "Back to Edit" to clear the solution view.</li>
+                  <li>Click "Reset All" to clear everything.</li>
+                  <li>Wheel=Zoom, Drag=Pan grid.</li>
+                </ul>
+              </div>
+
+              {/* FAQ Section - Single Accordion */}
+              <div className="text-card-foreground"> {/* Removed card bg/border */}
+                <h3 className="text-lg font-medium mb-3">FAQ</h3> {/* Adjusted heading size/margin */}
+                <Accordion type="single" collapsible className="w-full"> {/* Single, collapsible accordion */}
+                  <AccordionItem value="item-1">
+                    <AccordionTrigger>Why is the solver sometimes slow?</AccordionTrigger>
+                    <AccordionContent className="text-sm">
+                      Finding the best arrangement of shapes (especially Maximal Placement) is a complex problem (NP-hard). While optimized and parallelized, very complex inputs or large numbers of shapes can still take time. The Exact Tiling mode is generally faster if a perfect fit exists for the required number of shapes.
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="item-2">
+                    <AccordionTrigger>What does 'Maximal Placement' mean?</AccordionTrigger>
+                    <AccordionContent className="text-sm">
+                      This mode finds the largest possible number of your selected shapes that can fit onto the available (unlocked) grid tiles simultaneously, without overlapping. It doesn't necessarily fill the entire board.
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="item-3">
+                    <AccordionTrigger>What does 'Exact Tiling' mean?</AccordionTrigger>
+                    <AccordionContent className="text-sm">
+                      This mode attempts to find if a specific number of shapes (`k = Available Tiles / 4`) can perfectly cover *all* the available grid tiles without any gaps or overlaps. It only runs if the number of available tiles is divisible by 4. If it fails, it automatically falls back to Maximal Placement.
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="item-4">
+                    <AccordionTrigger>Can I use shapes with fewer than 4 tiles?</AccordionTrigger>
+                    <AccordionContent className="text-sm">
+                      No, the current solver and grid logic are designed specifically for 4-tile shapes (tetrominoes/tetriamonds on a hex grid).
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="item-5">
+                    <AccordionTrigger>Why can I only lock certain tiles?</AccordionTrigger>
+                    <AccordionContent className="text-sm">
+                      Currently, only a predefined set of tiles are designated as lockable to provide specific challenge scenarios while maintaining puzzle integrity. This might be expanded in the future.
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </div>
+
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </main>
   );
 }
+

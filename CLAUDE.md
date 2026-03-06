@@ -16,14 +16,17 @@ strategic programming. See CODE_PRINCIPLES.md for full details.
 - Prefer modifying existing patterns over introducing new ones. If the codebase does something one way, do it the same way unless explicitly told otherwise.
 - Always request local code review (`superpowers:code-reviewer`) before committing. Fix Critical and Important issues before proceeding.
 - Dark mode only — `forcedTheme="dark"` is intentional. Never add light mode support unless explicitly asked.
-- SQLite DB at `data/supporters.db` is synced by PM2 scheduler every 30 min. Never write to it from the Next.js app — it's read-only in the API route.
+- SQLite DB at `data/supporters.db` is read-only in the API route. Never write to it from the Next.js app.
+- Deployment: Coolify on butools.xyz. Dockerfile uses `node server.js` (no PM2), port 3000, standalone output.
 - Map tiles in `public/BlessMap/` are large binary assets. Don't modify or regenerate them.
 - Route directories use snake_case for URL-friendliness (`runes_dreaming`, `gearscore_cal`), even though code uses camelCase.
 - shadcn/ui components in `components/ui/` — use `npx shadcn@latest add <component>` to add new ones, don't hand-write them.
 - Feature modules go in `app/features/<name>/` with `components/`, `store/`, `data/`, `types.ts`. Don't put feature-specific code in shared `components/`.
 - `@/*` path alias maps to project root (configured in tsconfig.json).
 - Google Analytics ID `G-V5TV59NQZT` is hardcoded in layout.tsx — not an env var.
-- `BMC_ACCESS_TOKEN` is the only required env var. It's used by `scripts/fetchSupporters.mjs`, not by Next.js directly.
+- `BMC_ACCESS_TOKEN` is the only required env var. It's used by `scripts/fetchSupporters.mjs`, not by Next.js directly. Passed as Docker ARG in Coolify.
+- ShapeDoctor uses a webpack-built web worker (`worker.webpack.config.js`). The build script is `npm run build:worker:prod && next build`. Worker output at `public/workers/` is gitignored.
+- COOP/COEP headers are set in `next.config.ts` for SharedArrayBuffer support (required by ShapeDoctor solver).
 - The `overrides` in package.json (`systeminformation`, `basic-ftp`, `lodash`) are security patches — don't remove them.
 
 ## Existing Conventions
