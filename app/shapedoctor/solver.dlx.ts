@@ -80,17 +80,7 @@ const buildDancingLinksConstraints = (
     
     const numColumns = currentColumnIndex; // Total number of primary items
 
-    // --- Define Rows (Constraints) --- 
-    const knownSolutionMasksHex = new Set([
-        "9240000000", "d2000000000", // Shape 11010010...
-        "12600000",                   // Shape 01101001...
-        "17", "4c800",                 // Shape 11101000...
-        "102048", "1020480",             // Shape 11000001...
-        "810220", "4081100",             // Shape 10100000...
-        "9a0000000",                  // Shape 00111001...
-        "24408000000"                 // Shape 10001000...
-    ]);
-
+    // --- Define Rows (Constraints) ---
     // Iterate through each shape *instance* provided
     shapesToTileWith.forEach((shapeInstance, instanceIndex) => {
         const shapeId = shapeInstance.id;
@@ -110,14 +100,11 @@ const buildDancingLinksConstraints = (
 
         for (const placementMask of shapeData.validPlacements) {
             const placementMaskHex = placementMask.toString(16);
-            const isKnownSolutionPlacement = knownSolutionMasksHex.has(placementMaskHex);
-            const logPrefix = isKnownSolutionPlacement ? "*** KNOWN SOL PLACEMENT ***" : "   ";
 
-            // Log which instance we are building constraints for
-            if (ENABLE_DLX_DEBUG_LOGGING) console.log(`${logPrefix} [DLX Build Constraints Debug] Checking shape ${shapeId} (Instance ${instanceIndex}), placement ${placementMaskHex}`);
+            if (ENABLE_DLX_DEBUG_LOGGING) console.log(`[DLX Build Constraints Debug] Checking shape ${shapeId} (Instance ${instanceIndex}), placement ${placementMaskHex}`);
 
             if ((initialGridState & placementMask) === 0n) {
-                if (ENABLE_DLX_DEBUG_LOGGING) console.log(`${logPrefix}   -> Initial state check PASSED.`);
+                if (ENABLE_DLX_DEBUG_LOGGING) console.log(`  -> Initial state check PASSED.`);
                 const coveredTileIds = bitmaskToTileIds(placementMask);
                 let allCoveredTilesAvailable = true;
                 let reasonSkipped = ""; // For logging
@@ -126,13 +113,13 @@ const buildDancingLinksConstraints = (
                     if (!columnIndexMap.has(tileColName)) {
                         allCoveredTilesAvailable = false;
                         reasonSkipped = `Tile ${tileId} not available (not in column map - likely locked)`;
-                        if (ENABLE_DLX_DEBUG_LOGGING) console.log(`${logPrefix}     -> Tile check FAILED: ${reasonSkipped}`);
+                        if (ENABLE_DLX_DEBUG_LOGGING) console.log(`     -> Tile check FAILED: ${reasonSkipped}`);
                         break;
                     }
                 }
 
                 if (allCoveredTilesAvailable) {
-                    if (ENABLE_DLX_DEBUG_LOGGING) console.log(`${logPrefix}   -> Available tiles check PASSED.`);
+                    if (ENABLE_DLX_DEBUG_LOGGING) console.log(`   -> Available tiles check PASSED.`);
                     const row = new Array(numColumns).fill(0) as (0 | 1)[]; 
                     
                     // 1. Set the shape *instance* column
@@ -145,7 +132,7 @@ const buildDancingLinksConstraints = (
                         row[tileColIndex] = 1;
                     }
 
-                    if (ENABLE_DLX_DEBUG_LOGGING) console.log(`${logPrefix}     --> ADDING CONSTRAINT row for shape instance ${instanceIndex} (${shapeId}), placement ${placementMaskHex}`);
+                    if (ENABLE_DLX_DEBUG_LOGGING) console.log(`     --> ADDING CONSTRAINT row for shape instance ${instanceIndex} (${shapeId}), placement ${placementMaskHex}`);
                     constraints.push({
                         data: { shapeId: shapeId, placementMask }, // Store original shape ID
                         row: row // Assign the correctly typed row
@@ -154,7 +141,7 @@ const buildDancingLinksConstraints = (
                     // Logging moved inside the loop where failure occurs
                 }
             } else {
-                if (ENABLE_DLX_DEBUG_LOGGING) console.log(`${logPrefix}   -> Initial state check FAILED (overlaps). Skipping.`);
+                if (ENABLE_DLX_DEBUG_LOGGING) console.log(`   -> Initial state check FAILED (overlaps). Skipping.`);
             }
         }
     }); // End forEach loop over shape instances

@@ -135,13 +135,9 @@ export const isGridFull = (gridState: bigint): boolean => {
 export const rotateShapeBitmask = (shapeMask: bigint): bigint => {
   let rotatedMask = 0n;
   for (const coord of HEX_GRID_COORDS) {
-    // Add logging before the potentially problematic line
-    console.log(`[rotateShapeBitmask] coord.id=${coord.id}, typeof coord.id=${typeof coord.id}`);
     const bitPosition = BigInt(coord.id - 1);
-    console.log(`[rotateShapeBitmask] bitPosition=${bitPosition}, typeof bitPosition=${typeof bitPosition}`);
-    console.log(`[rotateShapeBitmask] shapeMask=${shapeMask}, typeof shapeMask=${typeof shapeMask}`);
-    
-    // Check if the current tile is part of the shape (Original Line 130 approx.)
+
+    // Check if the current tile is part of the shape
     if ((shapeMask & (1n << bitPosition)) !== 0n) {
       // Calculate rotated coordinates
       const { q: rotQ, r: rotR } = rotate60ClockwiseCoords(coord.q, coord.r);
@@ -219,21 +215,15 @@ export const generateUniqueOrientations = (baseShapeMask: bigint): Set<bigint> =
     if (currentMask !== 0n) { 
         uniqueOrientations.add(currentMask);
     }
-    // Log before calling rotate
-    console.log(`[generateUniqueOrientations] Before rotate ${i+1}/6: currentMask=${currentMask}, typeof=${typeof currentMask}`);
     currentMask = rotateShapeBitmask(currentMask);
   }
 
   // Reflect the base shape and add its 6 rotations
-  // Log before calling reflect
-  console.log(`[generateUniqueOrientations] Before reflect: baseShapeMask=${baseShapeMask}, typeof=${typeof baseShapeMask}`);
   currentMask = reflectShapeBitmask(baseShapeMask);
   for (let i = 0; i < 6; i++) {
      if (currentMask !== 0n) { 
         uniqueOrientations.add(currentMask);
      }
-    // Log before calling rotate (after reflect)
-    console.log(`[generateUniqueOrientations] After reflect, before rotate ${i+1}/6: currentMask=${currentMask}, typeof=${typeof currentMask}`);
     currentMask = rotateShapeBitmask(currentMask);
   }
 

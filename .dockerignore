@@ -17,6 +17,9 @@ goal
 butools-template.md
 django_bu_app.git.md
 
+# Python utility scripts (offline dev tools, not runtime)
+*.py
+
 # Ignored Test Config
 jest.config.js
 
