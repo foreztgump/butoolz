@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run build:worker:prod && next build --webpack",
+    "build": "npm run build:worker:dev && next build --webpack",
     "build:worker:dev": "webpack --config worker.webpack.config.js --mode development",
     "build:worker:prod": "webpack --config worker.webpack.config.js --mode production",
     "start": "next start"
