@@ -30,6 +30,15 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        source: "/workers/:path*",
+        headers: [
+          {
+            key: "Cross-Origin-Embedder-Policy",
+            value: "require-corp",
+          },
+        ],
+      },
     ];
   },
   webpack: (config, { isServer }) => {
