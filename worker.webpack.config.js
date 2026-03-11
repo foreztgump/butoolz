@@ -60,7 +60,7 @@ const config = {
   },
   
   // Target environment (important for workers)
-  target: 'webworker', 
+  target: 'webworker',
   
   // Optional: Source maps for debugging (useful in development)
   devtool: process.env.NODE_ENV === 'development' ? 'inline-source-map' : false,
