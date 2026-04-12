@@ -547,9 +547,6 @@ export default function RunesDreaming() {
                          : 'bg-muted/30 hover:bg-muted/50'
                      }`}
                      onClick={() => setMountBonusEnabled(prev => !prev)}
-                     role="button"
-                     tabIndex={0}
-                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setMountBonusEnabled(prev => !prev); } }}
                    >
                      <div className="flex items-center gap-3">
                        <div className="flex gap-0.5">
