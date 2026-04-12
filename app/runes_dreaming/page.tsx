@@ -275,34 +275,15 @@ export default function RunesDreaming() {
 
     let filledCount = 0;
 
-    if (runeType === "rainbow") {
-       // Corrected Rainbow Fill Logic: Applies one of each color sequentially
-      const slotsToFillCount = Math.min(emptySlotKeys.length, RUNE_TYPES.length);
-      for (let i = 0; i < slotsToFillCount; i++) {
-        updatedValues[emptySlotKeys[i]] = RUNE_TYPES[i];
-        filledCount++;
-      }
-      if (filledCount > 0) {
-        setRuneValues(updatedValues);
-        if (filledCount === RUNE_TYPES.length) {
-          toast.success(`Filled ${filledCount} slots with Rainbow Runes.`);
-        } else {
-          toast.info(`Filled ${filledCount} of ${RUNE_TYPES.length} slots with Rainbow Runes. Not enough empty slots.`);
-        }
-      }
-      // No else needed as the 'no empty slots' case is handled above
-    } else {
-      // Fill all available empty slots with the single color
-      emptySlotKeys.forEach(key => {
-        updatedValues[key] = runeType;
-        filledCount++;
-      });
-      if (filledCount > 0) {
-        setRuneValues(updatedValues);
-        const selectedRuneLabel = RUNE_OPTIONS.find(o => o.value === runeType)?.label || runeType;
-        toast.success(`Filled ${filledCount} empty slots with ${selectedRuneLabel} runes.`);
-      }
-      // No else needed
+    emptySlotKeys.forEach(key => {
+      updatedValues[key] = runeType;
+      filledCount++;
+    });
+
+    if (filledCount > 0) {
+      setRuneValues(updatedValues);
+      const selectedRuneLabel = RUNE_OPTIONS.find(o => o.value === runeType)?.label || runeType;
+      toast.success(`Filled ${filledCount} empty slots with ${selectedRuneLabel} runes.`);
     }
   }, [runeValues]); // Depends on runeValues
 
