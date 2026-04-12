@@ -88,6 +88,6 @@ Components should have a small, focused API surface. Prefer composition (childre
 ## Project Exceptions
 
 - **Route directory naming**: Uses snake_case (`runes_dreaming`, `gearscore_cal`) for URL-friendliness, not camelCase.
-- **No test framework yet**: Rule 11 (AAA Tests) applies once vitest is added. Until then, manual testing is acceptable.
+- **Jest + ts-jest in place**: `jest.config.js` configured, but coverage is minimal (only `app/shapedoctor/bitmaskUtils.test.ts` exists). Rule 11 (AAA Tests) applies to new tests — colocate `*.test.ts` next to source.
 - **Dark mode only**: No light mode support needed. `forcedTheme="dark"` is intentional.
 - **Mixed semicolons**: No enforced formatter — existing code has inconsistent semicolons. New code should be consistent within its file.

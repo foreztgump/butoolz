@@ -33,18 +33,24 @@ context:
   project: |
     BuTools — a gaming utility web app for Bless Unleashed PC players.
     Provides calculators, interactive maps, timers, and optimization tools.
-    Monolith architecture: Next.js 15 App Router + React 19 + TypeScript.
-    Dark-mode only. Deployed via Docker + PM2 on port 4001.
+    Monolith architecture: Next.js 16 App Router + React 19.2 + TypeScript (strict).
+    Dark-mode only. Deployed via Docker on Coolify (butools.xyz), port 4001
+    (Coolify injects PORT=4001 at runtime, overriding Dockerfile's ENV PORT=3000).
   architecture: |
     Feature modules live in app/features/<name>/ with components/, store/, data/, types.ts.
     Shared components in components/ (shadcn/ui in components/ui/).
     State management via Zustand stores (one per feature).
-    Single API endpoint: GET /api/supporters (SQLite backend).
-    Background scheduler: PM2 runs scripts/scheduler.mjs every 30min to sync Buy Me a Coffee supporters.
+    Single API endpoint: GET /api/supporters backed by read-only SQLite at data/supporters.db.
+    The supporters DB is populated by scripts/scheduler.mjs (node-cron, every 15 min)
+    invoking scripts/fetchSupporters.mjs. However, the scheduler is NOT running in production:
+    Dockerfile runs `node server.js` only, no separate scheduler service exists in Coolify.
+    ecosystem.config.cjs (PM2 config) is dead code. The DB contains stale data.
     Map tiles served from public/BlessMap/, marker data from data/map-markers/*.json.
+    ShapeDoctor uses a webpack-built web worker and requires COOP/COEP headers for SharedArrayBuffer.
   conventions: |
     PascalCase for React components, camelCase for functions/variables.
-    Route directories use snake_case (runes_dreaming, gearscore_cal).
-    Conventional commits: type(scope): description.
-    Branches: feat/<description>, fix/<description>.
-    No test framework in place yet — plan to add vitest.
+    Route directories use snake_case (runes_dreaming, gearscore_cal) for URL-friendliness.
+    Conventional commits with Linear IDs: type(scope): description [TEE-XXX].
+    Branches: feat/tee-XXX-description, fix/tee-XXX-description.
+    Jest + ts-jest configured (jest.config.js); test coverage is minimal —
+    add AAA tests alongside new code (colocate *.test.ts next to source).
