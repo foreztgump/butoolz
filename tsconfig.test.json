@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest"],
+    "rootDir": ".",
+    // ts-jest forces moduleResolution=node10 internally when it sets module=commonjs.
+    // This triggers TS6 deprecation TS5107. Safe to suppress until ts-jest adds TS6 support.
+    "ignoreDeprecations": "6.0"
+  },
+  "include": ["**/*.test.ts"],
+  "exclude": ["node_modules"]
+}

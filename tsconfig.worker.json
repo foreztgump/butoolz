@@ -10,6 +10,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "rootDir": "app/shapedoctor",
     "noEmit": false,
     "outDir": "./temp_worker_compile",
     "sourceMap": true
