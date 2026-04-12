@@ -10,7 +10,7 @@ TypeScript 6.0.2 shipped March 23, 2026. It changes 9 default compiler settings 
 - Upgrade to TypeScript 6.x with zero type errors
 - Adapt both tsconfig files to new TS6 defaults
 - All builds pass: `tsc --noEmit`, `next build`, `build:worker:prod`, Jest tests
-- No `ignoreDeprecations` flag — clean migration
+- No `ignoreDeprecations` flag in main tsconfigs (`tsconfig.json`, `tsconfig.worker.json`); scoped exception in `tsconfig.test.json` for ts-jest's internal `moduleResolution: node10` usage
 
 **Non-Goals:**
 - Adopting TS6 new features (Temporal types, `RegExp.escape`, `getOrInsert`, subpath `#/` imports)
@@ -38,7 +38,7 @@ For `tsconfig.worker.json`, no `types` change needed — it already has a narrow
 
 ### 3. Set explicit `rootDir` in tsconfig.worker.json
 
-**Decision**: Add `"rootDir": "."` to `tsconfig.worker.json`.
+**Decision**: Add `"rootDir": "app/shapedoctor"` to `tsconfig.worker.json`.
 
 **Rationale**: This file has `noEmit: false` and `outDir: "./temp_worker_compile"`. In TS5, `rootDir` was inferred from the `include` paths (effectively `app/shapedoctor/`). In TS6 it defaults to `.` (the tsconfig directory). Since this is the project root, and the include files are under `app/shapedoctor/`, the output would now be `temp_worker_compile/app/shapedoctor/solver.worker.js` instead of `temp_worker_compile/solver.worker.js`. The webpack config expects the flatter structure. Setting `"rootDir": "app/shapedoctor"` preserves the TS5 behavior.
 

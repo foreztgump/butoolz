@@ -7,6 +7,6 @@
     // This triggers TS6 deprecation TS5107. Safe to suppress until ts-jest adds TS6 support.
     "ignoreDeprecations": "6.0"
   },
-  "include": ["**/*.test.ts"],
+  "include": ["**/*.test.ts", "**/*.test.tsx"],
   "exclude": ["node_modules"]
 }
