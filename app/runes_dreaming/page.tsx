@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { RUNE_TYPES, type RuneType, type SelectableRuneValue, type Results } from "./types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -11,11 +12,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Sparkles, RefreshCw, Copy, ClipboardPaste, Info, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
-
-// Use 'as const' for stricter typing and easier iteration
-const RUNE_TYPES = ["purple", "white", "yellow", "red", "green"] as const;
-type RuneType = typeof RUNE_TYPES[number];
-type SelectableRuneValue = RuneType | 'rainbow' | '-';
+import { AccessoryPerks, ACCESSORY_STORAGE_KEY } from "./components/AccessoryPerks"
 
 interface RuneOption {
   value: SelectableRuneValue;
@@ -129,12 +126,6 @@ const VALID_RUNE_VALUES = new Set<string>(RUNE_OPTIONS.map(o => o.value));
 
 // Define types for state and results
 type RuneValues = Record<string, SelectableRuneValue>;
-type Results = {
-  [key in RuneType]: number; // Use mapped type for primary colors
-} & {
-  total: number;
-  filled: number;
-};
 
 // Initial state generation helper
 const generateInitialRuneValues = (): RuneValues => {
@@ -304,7 +295,12 @@ export default function RunesDreaming() {
 
   const exportConfiguration = useCallback(async () => {
     try {
-      const configJson = JSON.stringify({ runeValues, mountBonusEnabled }, null, 2);
+      const accessoryData = localStorage.getItem(ACCESSORY_STORAGE_KEY);
+      let parsedAccessories: unknown = null;
+      if (accessoryData) {
+        try { parsedAccessories = JSON.parse(accessoryData); } catch { /* malformed — skip */ }
+      }
+      const configJson = JSON.stringify({ runeValues, mountBonusEnabled, accessories: parsedAccessories }, null, 2);
       await navigator.clipboard.writeText(configJson);
       toast("Configuration Exported", {
         description: "Copied to clipboard — paste it somewhere safe or share it.",
@@ -328,6 +324,9 @@ export default function RunesDreaming() {
       if ("runeValues" in parsed && typeof parsed.runeValues === "object" && parsed.runeValues !== null) {
         importedRunes = parsed.runeValues;
         importedMountBonus = Boolean(parsed.mountBonusEnabled);
+        // Restore accessory selections if present in imported config
+        const accessoriesToRestore = parsed.accessories ?? { ringId: null, necklaceId: null };
+        localStorage.setItem(ACCESSORY_STORAGE_KEY, JSON.stringify(accessoriesToRestore));
       } else if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
         importedRunes = parsed;
       } else {
@@ -571,6 +570,9 @@ export default function RunesDreaming() {
                        </div>
                     </div>
                  </div>
+
+                 {/* Accessory Perks Section */}
+                 <AccessoryPerks results={results} />
               </CardContent>
               <CardFooter className="flex justify-center border-t pt-4 pb-6 px-6">
                  <p className="italic text-center text-sm text-muted-foreground max-w-md">"Don't Stop Dreaming"</p>
