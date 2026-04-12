@@ -9,9 +9,9 @@
 - [x] OpenSpec archived
 - [x] Linear updated (In Review)
 - [x] OpenMemory saved
-- [ ] PR merged
-- [ ] Branch deleted: feat/tee-87-upgrade-typescript-6
-- [ ] Worktree removed: /home/cownose/projects/butoolz-tee-87-upgrade-typescript-6
+- [x] PR merged
+- [x] Branch deleted: feat/tee-87-upgrade-typescript-6
+- [x] Worktree removed: /home/cownose/projects/butoolz-tee-87-upgrade-typescript-6
 
 ## Spec Deviations
 - `types` set to `["jest"]` instead of `[]` — preserves IDE type-checking for test files

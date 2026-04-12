@@ -1,7 +1,7 @@
 # BuTools Architecture Documentation
 
-**Generated:** 2026-04-11
-**Stack:** Next.js 16.1.6 / React 19.2 / TypeScript 5 (strict) / Tailwind CSS 4
+**Generated:** 2026-04-12
+**Stack:** Next.js 16.1.6 / React 19.2 / TypeScript 6 (strict) / Tailwind CSS 4
 
 ---
 
@@ -18,17 +18,17 @@ BuTools is a gaming utility web application for **Bless Unleashed PC** players. 
 |------------|---------|---------|
 | Next.js | 16.1.6 | App Router, SSR/RSC, API routes, standalone output |
 | React | 19.2.0 | UI library with Server Components |
-| TypeScript | ^5 | Strict mode, ES2020 target |
+| TypeScript | ^6 | Strict mode, ES2020 target |
 | Zustand | 5.0.3 | Client-side state management |
 
 ### UI & Styling
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | Tailwind CSS | 4.1.3 | Utility-first CSS framework |
-| Radix UI | Various | 16 accessible component primitives |
+| Radix UI | 1.4.3 (mono) | 16 accessible component primitives |
 | shadcn/ui | — | Pre-built component library on Radix |
 | Framer Motion | 12.6.3 | Animations (timer pulse, transitions) |
-| Lucide React | 0.575.0 | Icon library |
+| Lucide React | 1.x | Icon library |
 
 ### Maps & Geometry
 | Technology | Version | Purpose |
@@ -43,7 +43,8 @@ BuTools is a gaming utility web application for **Bless Unleashed PC** players. 
 |------------|---------|---------|
 | better-sqlite3 | 12.0.0 | SQLite read-only access |
 | mathjs | 14.4.0 | Combination calculations |
-| workerpool | 9.2.0 | Worker pool for ShapeDoctor solver |
+| dancing-links | 4.x | Algorithm X / DLX exact cover solver |
+| workerpool | 10.x | Worker pool for ShapeDoctor solver |
 
 ### Build & Dev
 | Technology | Version | Purpose |

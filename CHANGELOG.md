@@ -12,6 +12,7 @@ All notable changes to this project are documented here. Format based on [Keep a
 - **[TEE-88]** Upgraded workerpool 9 → 10
 
 ### Added
+- **[TEE-81]** Mount collection rainbow rune toggle — dedicated toggle to fill all empty slots with rainbow runes for mount gear
 - Onboarding verification: updated all operating docs (CLAUDE.md, CODE_PRINCIPLES.md, openspec/config.yaml, .coderabbit.yaml, docs/architecture.md)
 - OpenMemory checkpoints section in CLAUDE.md
 - Linear Integration section in CLAUDE.md

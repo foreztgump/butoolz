@@ -8,9 +8,9 @@
 - [x] PR open: https://github.com/foreztgump/butoolz/pull/14
 - [x] OpenSpec archived
 - [x] Linear updated
-- [ ] PR merged
-- [ ] Branch deleted: feat/tee-81-mount-rainbow-toggle
-- [ ] Worktree removed: /home/cownose/projects/butoolz-tee-81-mount-rainbow-toggle
+- [x] PR merged
+- [x] Branch deleted: feat/tee-81-mount-rainbow-toggle
+- [x] Worktree removed
 
 ## Follow-Up Items
 - None identified
