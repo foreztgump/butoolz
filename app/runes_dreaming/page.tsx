@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Sparkles, RefreshCw, Save, Download, Info, CheckCircle2 } from "lucide-react"
+import { Sparkles, RefreshCw, Copy, ClipboardPaste, Info, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 
 // Use 'as const' for stricter typing and easier iteration
@@ -123,7 +123,8 @@ const PRESETS: Readonly<Preset[]> = [
   },
 ] as const;
 
-const MOUNT_BONUS_STORAGE_KEY = "butools_runes_mount_bonus";
+const RUNES_CONFIG_STORAGE_KEY = "butools_runes_config";
+const AUTOSAVE_DEBOUNCE_MS = 500;
 
 // Define types for state and results
 type RuneValues = Record<string, SelectableRuneValue>;
@@ -144,6 +145,44 @@ const generateInitialRuneValues = (): RuneValues => {
   });
   return initialValues;
 };
+
+const LEGACY_MOUNT_BONUS_KEY = "butools_runes_mount_bonus";
+
+// Load saved config from localStorage with backward compatibility
+const loadSavedConfig = (): { runeValues: RuneValues; mountBonusEnabled: boolean } => {
+  const defaults = { runeValues: generateInitialRuneValues(), mountBonusEnabled: false };
+  try {
+    const saved = localStorage.getItem(RUNES_CONFIG_STORAGE_KEY);
+    if (!saved) {
+      // Migrate legacy mount bonus key for users who never clicked "Save Config"
+      const legacyMount = localStorage.getItem(LEGACY_MOUNT_BONUS_KEY);
+      if (legacyMount === "true") {
+        return { runeValues: generateInitialRuneValues(), mountBonusEnabled: true };
+      }
+      return defaults;
+    }
+
+    const parsed = JSON.parse(saved);
+    // New format: { runeValues, mountBonusEnabled }
+    if ("runeValues" in parsed) {
+      return { runeValues: parsed.runeValues, mountBonusEnabled: Boolean(parsed.mountBonusEnabled) };
+    }
+    // Old format: flat RuneValues object
+    return { runeValues: parsed, mountBonusEnabled: false };
+  } catch {
+    return defaults;
+  }
+};
+
+// Debounce hook — delays value updates by the specified ms
+function useDebounce<T>(value: T, delayMs: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debouncedValue;
+}
 
 // Memoized RuneSelector Component
 const RuneSelector = React.memo(({ field, value, onChange }: {
@@ -174,22 +213,27 @@ const RuneSelector = React.memo(({ field, value, onChange }: {
 RuneSelector.displayName = 'RuneSelector'; // Add display name
 
 export default function RunesDreaming() {
-  const [runeValues, setRuneValues] = useState<RuneValues>(generateInitialRuneValues);
-  const [mountBonusEnabled, setMountBonusEnabled] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(MOUNT_BONUS_STORAGE_KEY) === "true";
-    } catch {
-      return false;
-    }
-  });
+  // Load once — useState preserves the value across re-renders
+  const [initialConfig] = useState(loadSavedConfig);
+  const [runeValues, setRuneValues] = useState<RuneValues>(initialConfig.runeValues);
+  const [mountBonusEnabled, setMountBonusEnabled] = useState<boolean>(initialConfig.mountBonusEnabled);
+
+  // Auto-save: debounce the config, then persist on change (skip initial mount write)
+  const configToSave = useMemo(() => ({ runeValues, mountBonusEnabled }), [runeValues, mountBonusEnabled]);
+  const debouncedConfig = useDebounce(configToSave, AUTOSAVE_DEBOUNCE_MS);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(MOUNT_BONUS_STORAGE_KEY, String(mountBonusEnabled));
-    } catch {
-      // localStorage unavailable — silently skip
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
     }
-  }, [mountBonusEnabled]);
+    try {
+      localStorage.setItem(RUNES_CONFIG_STORAGE_KEY, JSON.stringify(debouncedConfig));
+    } catch (error) {
+      console.error("Failed to auto-save rune config:", error);
+    }
+  }, [debouncedConfig]);
 
   // Calculate results using useMemo to avoid recalculating on every render unless runeValues changes
   const results = useMemo<Results>(() => {
@@ -248,44 +292,53 @@ export default function RunesDreaming() {
     });
   }, []);
 
-  const saveConfiguration = useCallback(() => {
+  const exportConfiguration = useCallback(async () => {
     try {
-      const configToSave = { runeValues, mountBonusEnabled };
-      localStorage.setItem("butools_runes_config", JSON.stringify(configToSave));
-      toast("Configuration Saved", {
-        description: "Your rune configuration has been saved.",
+      const configJson = JSON.stringify({ runeValues, mountBonusEnabled }, null, 2);
+      await navigator.clipboard.writeText(configJson);
+      toast("Configuration Exported", {
+        description: "Copied to clipboard — paste it somewhere safe or share it.",
       });
     } catch (error) {
-      console.error("Failed to save config:", error);
-      toast.error("Save Failed", {
-        description: "Could not save configuration.",
+      console.error("Failed to export config:", error);
+      toast.error("Export Failed", {
+        description: "Could not copy to clipboard. Your browser may not support this feature.",
       });
     }
   }, [runeValues, mountBonusEnabled]);
 
-  const loadConfiguration = useCallback(() => {
+  const importConfiguration = useCallback(async () => {
     try {
-      const savedConfig = localStorage.getItem("butools_runes_config");
-      if (savedConfig) {
-        const parsedConfig = JSON.parse(savedConfig);
-        // Backward compatible: old saves are flat RuneValues, new saves are { runeValues, mountBonusEnabled }
-        if ("runeValues" in parsedConfig) {
-          setRuneValues(parsedConfig.runeValues);
-          setMountBonusEnabled(Boolean(parsedConfig.mountBonusEnabled));
-        } else {
-          setRuneValues(parsedConfig);
-          setMountBonusEnabled(false);
-        }
-        toast("Configuration Loaded", {
-          description: "Saved configuration has been loaded.",
-        });
+      const clipboardText = await navigator.clipboard.readText();
+      const parsed = JSON.parse(clipboardText);
+
+      let importedRunes: RuneValues;
+      let importedMountBonus = false;
+
+      if ("runeValues" in parsed && typeof parsed.runeValues === "object" && parsed.runeValues !== null) {
+        importedRunes = parsed.runeValues;
+        importedMountBonus = Boolean(parsed.mountBonusEnabled);
+      } else if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        importedRunes = parsed;
       } else {
-        toast.info("No Saved Configuration Found");
+        toast.error("Invalid Format", { description: "Clipboard does not contain a valid rune configuration." });
+        return;
       }
+
+      // Merge with defaults so missing keys get filled, unknown keys are ignored
+      const validConfig = { ...generateInitialRuneValues(), ...importedRunes };
+      setRuneValues(validConfig);
+      setMountBonusEnabled(importedMountBonus);
+      toast("Configuration Imported", {
+        description: "Rune configuration loaded from clipboard.",
+      });
     } catch (error) {
-      console.error("Failed to load config:", error);
-      toast.error("Load Failed", {
-        description: "Could not load configuration.",
+      console.error("Failed to import config:", error);
+      const isPermissionError = error instanceof DOMException && error.name === "NotAllowedError";
+      toast.error("Import Failed", {
+        description: isPermissionError
+          ? "Clipboard access denied. Please allow clipboard permissions."
+          : "Clipboard does not contain valid JSON. Copy a valid config first.",
       });
     }
   }, []);
@@ -351,11 +404,11 @@ export default function RunesDreaming() {
             <Button variant="outline" size="sm" className="text-xs cursor-pointer hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]" onClick={resetAll}>
               <RefreshCw className="h-3 w-3 mr-1" /> Reset All
             </Button>
-            <Button variant="outline" size="sm" className="text-xs cursor-pointer hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]" onClick={saveConfiguration}>
-              <Save className="h-3 w-3 mr-1" /> Save Config
+            <Button variant="outline" size="sm" className="text-xs cursor-pointer hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]" onClick={exportConfiguration}>
+              <Copy className="h-3 w-3 mr-1" /> Export
             </Button>
-             <Button variant="outline" size="sm" className="text-xs cursor-pointer hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]" onClick={loadConfiguration}>
-              <Download className="h-3 w-3 mr-1" /> Load Config
+             <Button variant="outline" size="sm" className="text-xs cursor-pointer hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]" onClick={importConfiguration}>
+              <ClipboardPaste className="h-3 w-3 mr-1" /> Import
             </Button>
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
