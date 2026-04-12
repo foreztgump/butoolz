@@ -21,10 +21,10 @@ function loadPersistedSelection(): { ringId: string | null; necklaceId: string |
   try {
     const saved = localStorage.getItem(ACCESSORY_STORAGE_KEY);
     if (saved) {
-      const parsed = JSON.parse(saved);
+      const parsed = JSON.parse(saved) as { ringId?: unknown; necklaceId?: unknown };
       return {
-        ringId: parsed.ringId ?? null,
-        necklaceId: parsed.necklaceId ?? null,
+        ringId: typeof parsed.ringId === "string" ? parsed.ringId : null,
+        necklaceId: typeof parsed.necklaceId === "string" ? parsed.necklaceId : null,
       };
     }
   } catch {

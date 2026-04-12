@@ -242,10 +242,14 @@ export default function RunesDreaming() {
   const saveConfiguration = useCallback(() => {
     try {
       const accessoryData = localStorage.getItem(ACCESSORY_STORAGE_KEY);
+      let parsedAccessories: unknown = null;
+      if (accessoryData) {
+        try { parsedAccessories = JSON.parse(accessoryData); } catch { /* malformed — skip */ }
+      }
       const configToSave = {
         runeValues,
         mountBonusEnabled,
-        accessories: accessoryData ? JSON.parse(accessoryData) : null,
+        accessories: parsedAccessories,
       };
       localStorage.setItem("butools_runes_config", JSON.stringify(configToSave));
       toast("Configuration Saved", {
@@ -267,9 +271,8 @@ export default function RunesDreaming() {
         if ("runeValues" in parsedConfig) {
           setRuneValues(parsedConfig.runeValues);
           setMountBonusEnabled(Boolean(parsedConfig.mountBonusEnabled));
-          if (parsedConfig.accessories) {
-            localStorage.setItem(ACCESSORY_STORAGE_KEY, JSON.stringify(parsedConfig.accessories));
-          }
+          const accessoriesToRestore = parsedConfig.accessories ?? { ringId: null, necklaceId: null };
+          localStorage.setItem(ACCESSORY_STORAGE_KEY, JSON.stringify(accessoriesToRestore));
         } else {
           setRuneValues(parsedConfig);
           setMountBonusEnabled(false);
