@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { type CheckedState } from "@radix-ui/react-checkbox"
+type CheckedState = boolean | "indeterminate"
 import { Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 
 // Reuse the CategoryInfo type if needed, or define inline props
