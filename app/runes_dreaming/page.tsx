@@ -490,20 +490,42 @@ export default function RunesDreaming() {
                 </div>
 
                  {/* Mount Collection Bonus Toggle */}
-                 <div className="mt-6 flex items-center justify-between p-4 bg-muted/50 border border-primary/20 rounded-lg">
-                    <div className="flex flex-col gap-0.5">
-                      <Label htmlFor="mount-bonus-toggle" className="text-sm font-medium cursor-pointer">
-                        Mount Collection Rainbow Rune
-                      </Label>
-                      <span className="text-xs text-muted-foreground">
-                        4 legendary mounts reward — adds +1 to all colors
-                      </span>
-                    </div>
-                    <Switch
-                      id="mount-bonus-toggle"
-                      checked={mountBonusEnabled}
-                      onCheckedChange={setMountBonusEnabled}
-                    />
+                 <div className={`mt-6 rounded-lg p-px transition-all duration-500 ${
+                   mountBonusEnabled
+                     ? 'rainbow-border rainbow-border-shimmer shadow-lg shadow-purple-500/10'
+                     : 'bg-border'
+                 }`}>
+                   <div className={`flex items-center justify-between p-4 rounded-[calc(var(--radius)-1px)] transition-colors duration-300 ${
+                     mountBonusEnabled ? 'bg-card' : 'bg-muted/30'
+                   }`}>
+                     <div className="flex items-center gap-3">
+                       <div className="flex gap-0.5">
+                         {RUNE_TYPES.map((type) => (
+                           <div
+                             key={type}
+                             className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                               mountBonusEnabled ? 'opacity-100 scale-100' : 'opacity-30 scale-75'
+                             } ${RUNE_COLOR_MAP[type]}`}
+                           />
+                         ))}
+                       </div>
+                       <div className="flex flex-col gap-0.5">
+                         <Label htmlFor="mount-bonus-toggle" className={`text-sm font-medium cursor-pointer transition-colors duration-300 ${
+                           mountBonusEnabled ? 'text-foreground' : 'text-muted-foreground'
+                         }`}>
+                           Mount Collection Rainbow Rune
+                         </Label>
+                         <span className="text-xs text-muted-foreground">
+                           4 legendary mounts reward — adds +1 to all colors
+                         </span>
+                       </div>
+                     </div>
+                     <Switch
+                       id="mount-bonus-toggle"
+                       checked={mountBonusEnabled}
+                       onCheckedChange={setMountBonusEnabled}
+                     />
+                   </div>
                  </div>
 
                  {/* Rune Distribution Section */}

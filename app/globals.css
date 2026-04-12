@@ -68,6 +68,29 @@
 
 /* Move custom styles into appropriate layers */
 @layer components {
+  /* Rainbow gradient border for Mount Collection Rainbow Rune toggle */
+  /* Colors: purple-500, gray-300, yellow-400, red-500, green-500 (matches RUNE_COLOR_MAP) */
+  .rainbow-border {
+    background: linear-gradient(90deg, #a855f7, #d1d5db, #facc15, #ef4444, #22c55e, #a855f7);
+    background-size: 200% 100%;
+  }
+
+  .rainbow-border-shimmer {
+    animation: rainbow-shimmer 6s ease infinite;
+  }
+
+  @keyframes rainbow-shimmer {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rainbow-border-shimmer {
+      animation: none;
+    }
+  }
+
   .card-hover {
     transition-property: all;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
