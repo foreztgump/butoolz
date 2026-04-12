@@ -6,6 +6,9 @@ All notable changes to this project are documented here. Format based on [Keep a
 
 ### Changed
 - **[TEE-87]** Upgraded TypeScript 5 → 6 (adapted tsconfig defaults, added `tsconfig.test.json` for Jest TS6 compatibility)
+
+### Fixed
+- Upgraded `mathjs` 14.x → 15.x (high-severity prototype pollution vulnerability, Dependabot #61)
 - **[TEE-90]** Migrated 11 individual `@radix-ui/react-*` packages to unified `radix-ui` mono package (v1.4.3)
 - **[TEE-90]** Replaced abandoned `tailwindcss-animate` plugin with `tw-animate-css` CSS import
 - **[TEE-90]** Upgraded `dancing-links` v2.1.1 → v4.3.7 (class-based solver API)

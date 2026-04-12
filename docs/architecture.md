@@ -42,7 +42,7 @@ BuTools is a gaming utility web application for **Bless Unleashed PC** players. 
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | better-sqlite3 | 12.0.0 | SQLite read-only access |
-| mathjs | 14.4.0 | Combination calculations |
+| mathjs | 15.x | Combination calculations |
 | dancing-links | 4.x | Algorithm X / DLX exact cover solver |
 | workerpool | 10.x | Worker pool for ShapeDoctor solver |
 
