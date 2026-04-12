@@ -250,7 +250,8 @@ export default function RunesDreaming() {
 
   const saveConfiguration = useCallback(() => {
     try {
-      localStorage.setItem("butools_runes_config", JSON.stringify(runeValues));
+      const configToSave = { runeValues, mountBonusEnabled };
+      localStorage.setItem("butools_runes_config", JSON.stringify(configToSave));
       toast("Configuration Saved", {
         description: "Your rune configuration has been saved.",
       });
@@ -260,17 +261,21 @@ export default function RunesDreaming() {
         description: "Could not save configuration.",
       });
     }
-  }, [runeValues]);
+  }, [runeValues, mountBonusEnabled]);
 
   const loadConfiguration = useCallback(() => {
     try {
       const savedConfig = localStorage.getItem("butools_runes_config");
       if (savedConfig) {
         const parsedConfig = JSON.parse(savedConfig);
-        setRuneValues(parsedConfig);
-        // Falls back to false for configs saved before mount bonus existed
-        const savedBonus = localStorage.getItem(MOUNT_BONUS_STORAGE_KEY);
-        setMountBonusEnabled(savedBonus === "true");
+        // Backward compatible: old saves are flat RuneValues, new saves are { runeValues, mountBonusEnabled }
+        if ("runeValues" in parsedConfig) {
+          setRuneValues(parsedConfig.runeValues);
+          setMountBonusEnabled(Boolean(parsedConfig.mountBonusEnabled));
+        } else {
+          setRuneValues(parsedConfig);
+          setMountBonusEnabled(false);
+        }
         toast("Configuration Loaded", {
           description: "Saved configuration has been loaded.",
         });

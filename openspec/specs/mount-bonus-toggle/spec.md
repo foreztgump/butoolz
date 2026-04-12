@@ -1,7 +1,7 @@
 # mount-bonus-toggle Specification
 
 ## Purpose
-TBD - created by archiving change tee-81-mount-rainbow-toggle. Update Purpose after archive.
+Defines the mount collection rainbow rune bonus toggle for the Runes Dreaming calculator. This bonus grants +1 to all 5 color counts when enabled, reflecting the 4 legendary mounts collection reward without occupying a gear slot.
 ## Requirements
 ### Requirement: Mount collection rainbow rune toggle
 The system SHALL display a toggle switch labeled "Mount Collection Rainbow Rune" in the Configuration tab of the Runes Dreaming page. The toggle SHALL default to OFF.
