@@ -17,7 +17,6 @@ import {
   Coffee,
   Copy,
   Heart,
-  Bitcoin,
   Coins,
   ExternalLink,
   Check,
@@ -31,7 +30,7 @@ export default function DonatePage() {
     {
       name: "Bitcoin (BTC)",
       address: "bc1qhgtdds3ajhagtxxx00gafcytmm34xw92n00yul", // Replace with your actual BTC address
-      icon: <Bitcoin className="h-4 w-4" />,
+      icon: <Coins className="h-4 w-4" />,
     },
     {
       name: "Ethereum (ETH)",
@@ -152,7 +151,7 @@ export default function DonatePage() {
             >
               {" "}
               {/* Applied styles from shapedoctor */}
-              <Bitcoin className="h-4 w-4" />
+              <Coins className="h-4 w-4" />
               Crypto
             </TabsTrigger>
           </TabsList>
@@ -220,7 +219,7 @@ export default function DonatePage() {
                 <CardTitle className="text-xl flex items-center gap-2">
                   {" "}
                   {/* Larger title */}
-                  <Bitcoin className="h-5 w-5 text-orange-500" />
+                  <Coins className="h-5 w-5 text-orange-500" />
                   Cryptocurrency
                 </CardTitle>
                 <CardDescription>
