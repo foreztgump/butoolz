@@ -15,7 +15,7 @@
     "better-sqlite3": "^12.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "dancing-links": "^2.1.1",
+    "dancing-links": "^4.3.7",
     "dotenv": "^17.0.0",
     "framer-motion": "^12.6.3",
     "fuse.js": "^7.0.0",
