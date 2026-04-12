@@ -43,7 +43,7 @@ The main `tsconfig.json` SHALL be updated to account for TypeScript 6.0 default 
 
 - **GIVEN** `tsconfig.json` is inspected
 - **WHEN** the `compilerOptions.types` field is checked
-- **THEN** it SHALL be set to `["jest"]` (explicit — TS6 defaults to `[]`, Jest types added for IDE support)
+- **THEN** it SHALL be set to `[]` (TS6 default — Jest types scoped to `tsconfig.test.json` only)
 
 #### Scenario: dom.iterable removed from lib
 
