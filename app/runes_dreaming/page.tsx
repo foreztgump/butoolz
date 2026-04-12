@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label"
 import { Sparkles, RefreshCw, Copy, ClipboardPaste, Info, CheckCircle2, Lock } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { AccessoryPerks, ACCESSORY_STORAGE_KEY } from "./components/AccessoryPerks"
 import {
   type GearTier, type GearTiers,
   TIER_OPTIONS, DEFAULT_TIER,
@@ -334,12 +333,7 @@ export default function RunesDreaming() {
 
   const exportConfiguration = useCallback(async () => {
     try {
-      const accessoryData = localStorage.getItem(ACCESSORY_STORAGE_KEY);
-      let parsedAccessories: unknown = null;
-      if (accessoryData) {
-        try { parsedAccessories = JSON.parse(accessoryData); } catch { /* malformed — skip */ }
-      }
-      const configJson = JSON.stringify({ runeValues, mountBonusEnabled, gearTiers, accessories: parsedAccessories }, null, 2);
+      const configJson = JSON.stringify({ runeValues, mountBonusEnabled, gearTiers }, null, 2);
       await navigator.clipboard.writeText(configJson);
       toast("Configuration Exported", {
         description: "Copied to clipboard — paste it somewhere safe or share it.",
@@ -363,9 +357,6 @@ export default function RunesDreaming() {
       if ("runeValues" in parsed && typeof parsed.runeValues === "object" && parsed.runeValues !== null) {
         importedRunes = parsed.runeValues;
         importedMountBonus = Boolean(parsed.mountBonusEnabled);
-        // Restore accessory selections if present in imported config
-        const accessoriesToRestore = parsed.accessories ?? { ringId: null, necklaceId: null };
-        localStorage.setItem(ACCESSORY_STORAGE_KEY, JSON.stringify(accessoriesToRestore));
       } else if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
         importedRunes = parsed;
       } else {
@@ -627,8 +618,6 @@ export default function RunesDreaming() {
                     </div>
                  </div>
 
-                 {/* Accessory Perks Section */}
-                 <AccessoryPerks results={results} />
               </CardContent>
               <CardFooter className="flex justify-center border-t pt-4 pb-6 px-6">
                  <p className="italic text-center text-sm text-muted-foreground max-w-md">"Don't Stop Dreaming"</p>
