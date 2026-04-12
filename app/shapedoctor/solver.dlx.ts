@@ -1,10 +1,7 @@
 // app/shapedoctor/solver.dlx.ts
 // Dedicated solver for finding EXACT K-shape tilings using dancing-links.
 
-// import * as dlxlib from 'dlxlib'; // Old library
-// import * as dlx from 'dlx'; // Previous library
-import * as dlx from 'dancing-links'; // Use the new library
-import { findAll, type SimpleConstraint, type Constraint, type Result } from 'dancing-links'; 
+import { DancingLinks, type Result } from 'dancing-links';
 import { 
     ShapeData, 
     PlacementRecord, 
@@ -24,13 +21,12 @@ interface ShapeInput { id: string };
 type ShapeDataMap = Map<string, ShapeData>; // Keep local definition
 
 // --- Matrix Generation for dancing-links ---
-// Ensure return type matches SimpleConstraint<PlacementRecord>[]
 const buildDancingLinksConstraints = (
     allShapeData: ShapeDataMap, // Use local type
     shapesToTileWith: ShapeInput[], // Use local type
     initialGridState: bigint, 
     lockedTilesMask: bigint
-): { constraints: SimpleConstraint<PlacementRecord>[], columnCount: number } => {
+): { constraints: { data: PlacementRecord, row: (0 | 1)[] }[], columnCount: number } => {
     // console.log("[DLX] Starting buildDancingLinksConstraints..."); // Reduced logging
     
     // console.log(`[DLX Build Constraints] shapesToTileWith: ${shapesToTileWith.map(s=>s.id).join(', ')}`); // Reduced logging
@@ -52,7 +48,7 @@ const buildDancingLinksConstraints = (
         return { constraints: [], columnCount: 0 };
     }
 
-    const constraints: SimpleConstraint<PlacementRecord>[] = []; 
+    const constraints: { data: PlacementRecord, row: (0 | 1)[] }[] = [];
     const columnIndexMap: Map<string, number> = new Map();
     let currentColumnIndex = 0;
 
@@ -192,7 +188,7 @@ export const findMaximalPlacement = (
         if(enableMaximalDebug) console.log(`[findMaximalPlacement Debug] Columns defined: ${numPrimaryColumns} Primary (Tiles), ${numSecondaryColumns} Secondary (Shapes)`);
 
         // 2. Define Options (Rows for the DLX matrix)
-        const dlxOptions: Constraint<PlacementRecord>[] = [];
+        const dlxOptions: { data: PlacementRecord, primaryRow: (0 | 1)[], secondaryRow: (0 | 1)[] }[] = [];
         for (const [shapeId, data] of shapeDataMap.entries()) {
             const shapeColName = `S${data.id}`;
             const secondaryShapeIndex = shapeNameToSecondaryIndex.get(shapeColName);
@@ -251,8 +247,19 @@ export const findMaximalPlacement = (
              return { maxShapes: 0, solutions: [] };
          }
 
-        // 3. Run the DLX solver
-        const solutionsRaw: Result<PlacementRecord>[][] = findAll(dlxOptions) as Result<PlacementRecord>[][]; 
+        // 3. Run the DLX solver using v4 class-based API
+        const dlx = new DancingLinks<PlacementRecord>();
+        const solver = dlx.createSolver({
+            primaryColumns: numPrimaryColumns,
+            secondaryColumns: numSecondaryColumns
+        });
+        for (const option of dlxOptions) {
+            solver.addBinaryConstraint(option.data, {
+                primaryRow: option.primaryRow,
+                secondaryRow: option.secondaryRow
+            });
+        }
+        const solutionsRaw = solver.findAll(); 
 
         // 4. Process Results
         const finalSolutions: SolutionRecord[] = [];
@@ -326,12 +333,16 @@ export function findExactKTilingSolutions(
          
         // console.log(`[DLX findExactKTilingSolutions] Constraints built (${constraints.length} rows, ${columnCount} cols). Calling findAll...`); // Reduced logging
         if (ENABLE_DLX_DEBUG_LOGGING) console.log(`[DLX Debug] Constraints built (${constraints.length} rows, ${columnCount} cols). Calling findAll...`);
-        let dlxSolutions: Result<PlacementRecord>[][] = []; // Will hold multiple solutions now
+        let dlxSolutions: Result<PlacementRecord>[][] = [];
         try {
-            // Find ALL solutions instead of just one
-            dlxSolutions = dlx.findAll(constraints); 
+            const dlx = new DancingLinks<PlacementRecord>();
+            const solver = dlx.createSolver({ columns: columnCount });
+            for (const constraint of constraints) {
+                solver.addBinaryConstraint(constraint.data, constraint.row);
+            }
+            dlxSolutions = solver.findAll();
         } catch(dlxError) {
-            console.error("[DLX findExactKTilingSolutions] Error calling findAll:", dlxError); // Corrected message
+            console.error("[DLX findExactKTilingSolutions] Error calling findAll:", dlxError);
             return { solutions: [], error: `DLX Solver Error: ${dlxError instanceof Error ? dlxError.message : String(dlxError)}` };
         }
         
