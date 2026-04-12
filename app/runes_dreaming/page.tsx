@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { RUNE_TYPES, type RuneType, type SelectableRuneValue, type Results } from "./types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -11,11 +12,6 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Sparkles, RefreshCw, Save, Download, Info, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
-
-// Use 'as const' for stricter typing and easier iteration
-const RUNE_TYPES = ["purple", "white", "yellow", "red", "green"] as const;
-type RuneType = typeof RUNE_TYPES[number];
-type SelectableRuneValue = RuneType | 'rainbow' | '-';
 
 interface RuneOption {
   value: SelectableRuneValue;
@@ -127,12 +123,6 @@ const MOUNT_BONUS_STORAGE_KEY = "butools_runes_mount_bonus";
 
 // Define types for state and results
 type RuneValues = Record<string, SelectableRuneValue>;
-type Results = {
-  [key in RuneType]: number; // Use mapped type for primary colors
-} & {
-  total: number;
-  filled: number;
-};
 
 // Initial state generation helper
 const generateInitialRuneValues = (): RuneValues => {
