@@ -125,6 +125,7 @@ const PRESETS: Readonly<Preset[]> = [
 
 const RUNES_CONFIG_STORAGE_KEY = "butools_runes_config";
 const AUTOSAVE_DEBOUNCE_MS = 500;
+const VALID_RUNE_VALUES = new Set<string>(RUNE_OPTIONS.map(o => o.value));
 
 // Define types for state and results
 type RuneValues = Record<string, SelectableRuneValue>;
@@ -163,12 +164,17 @@ const loadSavedConfig = (): { runeValues: RuneValues; mountBonusEnabled: boolean
     }
 
     const parsed = JSON.parse(saved);
-    // New format: { runeValues, mountBonusEnabled }
-    if ("runeValues" in parsed) {
-      return { runeValues: parsed.runeValues, mountBonusEnabled: Boolean(parsed.mountBonusEnabled) };
+    const rawRunes = ("runeValues" in parsed) ? parsed.runeValues : parsed;
+    const mountBonus = ("runeValues" in parsed) ? Boolean(parsed.mountBonusEnabled) : false;
+
+    // Validate: keep only known keys with valid rune values
+    const validatedRunes = generateInitialRuneValues();
+    for (const key of Object.keys(validatedRunes)) {
+      if (key in rawRunes && VALID_RUNE_VALUES.has(rawRunes[key])) {
+        validatedRunes[key] = rawRunes[key];
+      }
     }
-    // Old format: flat RuneValues object
-    return { runeValues: parsed, mountBonusEnabled: false };
+    return { runeValues: validatedRunes, mountBonusEnabled: mountBonus };
   } catch {
     return defaults;
   }
@@ -325,8 +331,13 @@ export default function RunesDreaming() {
         return;
       }
 
-      // Merge with defaults so missing keys get filled, unknown keys are ignored
-      const validConfig = { ...generateInitialRuneValues(), ...importedRunes };
+      // Merge with defaults: fill missing keys, drop unknown keys, reject invalid values
+      const defaults = generateInitialRuneValues();
+      const validConfig: RuneValues = {};
+      for (const key of Object.keys(defaults)) {
+        const imported = importedRunes[key];
+        validConfig[key] = VALID_RUNE_VALUES.has(imported) ? imported : defaults[key];
+      }
       setRuneValues(validConfig);
       setMountBonusEnabled(importedMountBonus);
       toast("Configuration Imported", {
