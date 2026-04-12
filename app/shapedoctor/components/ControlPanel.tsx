@@ -7,7 +7,7 @@ import {
   Save,
   XOctagon,
   Play,
-  Loader2,
+  LoaderCircle,
   ArrowLeft,
   ArrowRight,
   RotateCcw,
@@ -100,7 +100,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             <Ban className="h-4 w-4 mr-1" /> Cancel
           </Button>
           <span className="text-sm text-muted-foreground px-2 flex items-center">
-            <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Solving ({currentSolver ?? '...'})
+            <LoaderCircle className="h-4 w-4 mr-1 animate-spin" /> Solving ({currentSolver ?? '...'})
           </span>
         </>
       ) : (

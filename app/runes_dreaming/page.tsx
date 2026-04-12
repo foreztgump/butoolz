@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Sparkles, RefreshCw, Copy, ClipboardPaste, Info, CheckCircle2 } from "lucide-react"
+import { Sparkles, RefreshCw, Copy, ClipboardPaste, Info, CircleCheck } from "lucide-react"
 import { toast } from "sonner"
 
 // Use 'as const' for stricter typing and easier iteration
@@ -442,7 +442,7 @@ export default function RunesDreaming() {
                <Sparkles className="h-4 w-4" /> Configuration
              </TabsTrigger>
              <TabsTrigger value="presets" className="flex items-center gap-1 transition-colors duration-150 hover:text-violet-200 hover:bg-violet-900/30 data-[state=active]:text-violet-300 data-[state=active]:shadow-inner data-[state=active]:bg-violet-900/50 cursor-pointer">
-               <CheckCircle2 className="h-4 w-4" /> Presets & Tools
+               <CircleCheck className="h-4 w-4" /> Presets & Tools
              </TabsTrigger>
           </TabsList>
 
@@ -582,7 +582,7 @@ export default function RunesDreaming() {
           <TabsContent value="presets">
             <Card>
               <CardHeader className="pb-3">
-                 <CardTitle className="text-lg flex items-center gap-2"> <CheckCircle2 className="h-4 w-4 text-primary" /> Preset Configurations & Info</CardTitle>
+                 <CardTitle className="text-lg flex items-center gap-2"> <CircleCheck className="h-4 w-4 text-primary" /> Preset Configurations & Info</CardTitle>
                  <CardDescription>Apply pre-made builds or learn about runes.</CardDescription>
               </CardHeader>
               <CardContent>
