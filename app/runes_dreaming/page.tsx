@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Sparkles, RefreshCw, Save, Download, Info, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
-import { AccessoryPerks } from "./components/AccessoryPerks"
+import { AccessoryPerks, ACCESSORY_STORAGE_KEY } from "./components/AccessoryPerks"
 
 interface RuneOption {
   value: SelectableRuneValue;
@@ -241,7 +241,7 @@ export default function RunesDreaming() {
 
   const saveConfiguration = useCallback(() => {
     try {
-      const accessoryData = localStorage.getItem("butools_runes_accessories");
+      const accessoryData = localStorage.getItem(ACCESSORY_STORAGE_KEY);
       const configToSave = {
         runeValues,
         mountBonusEnabled,
@@ -268,7 +268,7 @@ export default function RunesDreaming() {
           setRuneValues(parsedConfig.runeValues);
           setMountBonusEnabled(Boolean(parsedConfig.mountBonusEnabled));
           if (parsedConfig.accessories) {
-            localStorage.setItem("butools_runes_accessories", JSON.stringify(parsedConfig.accessories));
+            localStorage.setItem(ACCESSORY_STORAGE_KEY, JSON.stringify(parsedConfig.accessories));
           }
         } else {
           setRuneValues(parsedConfig);

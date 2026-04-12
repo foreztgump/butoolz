@@ -1,24 +1,16 @@
 'use client'
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, XCircle, Gem } from "lucide-react";
 import { RINGS, NECKLACES, type Accessory } from "../data/accessories";
 import { computePerkStatus, type PerkStatus } from "../lib/computePerkStatus";
-import type { Results } from "../types";
+import { RUNE_COLOR_CLASSES, type Results } from "../types";
 
-const ACCESSORY_STORAGE_KEY = "butools_runes_accessories";
+export const ACCESSORY_STORAGE_KEY = "butools_runes_accessories";
 const NONE_VALUE = "none";
-
-const RUNE_COLOR_CLASSES: Record<string, string> = {
-  purple: "bg-purple-500",
-  white: "bg-gray-100 dark:bg-gray-300 border border-gray-300 dark:border-gray-500",
-  yellow: "bg-yellow-400",
-  red: "bg-red-500",
-  green: "bg-green-500",
-};
 
 function findAccessory(id: string | null, list: readonly Accessory[]): Accessory | null {
   if (!id || id === NONE_VALUE) return null;
@@ -96,25 +88,24 @@ export function AccessoryPerks({ results }: { results: Results }) {
   const ringPerkStatuses = useMemo(() => computePerkStatus(selectedRing, results), [selectedRing, results]);
   const necklacePerkStatuses = useMemo(() => computePerkStatus(selectedNecklace, results), [selectedNecklace, results]);
 
-  const persistSelections = useCallback((ringId: string | null, necklaceId: string | null) => {
+  useEffect(() => {
     try {
-      localStorage.setItem(ACCESSORY_STORAGE_KEY, JSON.stringify({ ringId, necklaceId }));
+      localStorage.setItem(ACCESSORY_STORAGE_KEY, JSON.stringify({
+        ringId: selectedRingId,
+        necklaceId: selectedNecklaceId,
+      }));
     } catch {
       // localStorage unavailable — silently skip
     }
-  }, []);
+  }, [selectedRingId, selectedNecklaceId]);
 
   const handleRingChange = useCallback((value: string) => {
-    const id = value === NONE_VALUE ? null : value;
-    setSelectedRingId(id);
-    persistSelections(id, selectedNecklaceId);
-  }, [selectedNecklaceId, persistSelections]);
+    setSelectedRingId(value === NONE_VALUE ? null : value);
+  }, []);
 
   const handleNecklaceChange = useCallback((value: string) => {
-    const id = value === NONE_VALUE ? null : value;
-    setSelectedNecklaceId(id);
-    persistSelections(selectedRingId, id);
-  }, [selectedRingId, persistSelections]);
+    setSelectedNecklaceId(value === NONE_VALUE ? null : value);
+  }, []);
 
   const hasSelection = selectedRing || selectedNecklace;
 
