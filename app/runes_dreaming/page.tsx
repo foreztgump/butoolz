@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import { Sparkles, RefreshCw, Save, Download, Info, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -121,6 +123,8 @@ const PRESETS: Readonly<Preset[]> = [
   },
 ] as const;
 
+const MOUNT_BONUS_STORAGE_KEY = "butools_runes_mount_bonus";
+
 // Define types for state and results
 type RuneValues = Record<string, SelectableRuneValue>;
 type Results = {
@@ -171,6 +175,21 @@ RuneSelector.displayName = 'RuneSelector'; // Add display name
 
 export default function RunesDreaming() {
   const [runeValues, setRuneValues] = useState<RuneValues>(generateInitialRuneValues);
+  const [mountBonusEnabled, setMountBonusEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(MOUNT_BONUS_STORAGE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(MOUNT_BONUS_STORAGE_KEY, String(mountBonusEnabled));
+    } catch {
+      // localStorage unavailable — silently skip
+    }
+  }, [mountBonusEnabled]);
 
   // Calculate results using useMemo to avoid recalculating on every render unless runeValues changes
   const results = useMemo<Results>(() => {
@@ -195,8 +214,14 @@ export default function RunesDreaming() {
       }
     });
 
+    if (mountBonusEnabled) {
+      RUNE_TYPES.forEach(color => {
+        counts[color]++;
+      });
+    }
+
     return { ...counts, total: TOTAL_SLOTS, filled };
-  }, [runeValues]); // Dependency array
+  }, [runeValues, mountBonusEnabled]);
 
   // Stable handlers using useCallback
   const handleRuneChange = useCallback((field: string, value: SelectableRuneValue) => {
@@ -208,6 +233,7 @@ export default function RunesDreaming() {
 
   const resetAll = useCallback(() => {
     setRuneValues(generateInitialRuneValues());
+    setMountBonusEnabled(false);
     toast("Reset Complete", {
       description: "All rune selections have been cleared.",
     });
@@ -234,15 +260,17 @@ export default function RunesDreaming() {
         description: "Could not save configuration.",
       });
     }
-  }, [runeValues]); // Depends on runeValues
+  }, [runeValues]);
 
   const loadConfiguration = useCallback(() => {
     try {
       const savedConfig = localStorage.getItem("butools_runes_config");
       if (savedConfig) {
         const parsedConfig = JSON.parse(savedConfig);
-        // Basic validation could be added here if needed
         setRuneValues(parsedConfig);
+        // Falls back to false for configs saved before mount bonus existed
+        const savedBonus = localStorage.getItem(MOUNT_BONUS_STORAGE_KEY);
+        setMountBonusEnabled(savedBonus === "true");
         toast("Configuration Loaded", {
           description: "Saved configuration has been loaded.",
         });
@@ -388,7 +416,24 @@ export default function RunesDreaming() {
                   </Table>
                 </div>
 
-                 {/* Rune Distribution Section */} 
+                 {/* Mount Collection Bonus Toggle */}
+                 <div className="mt-6 flex items-center justify-between p-4 bg-muted/50 border border-primary/20 rounded-lg">
+                    <div className="flex flex-col gap-0.5">
+                      <Label htmlFor="mount-bonus-toggle" className="text-sm font-medium cursor-pointer">
+                        Mount Collection Rainbow Rune
+                      </Label>
+                      <span className="text-xs text-muted-foreground">
+                        4 legendary mounts reward — adds +1 to all colors
+                      </span>
+                    </div>
+                    <Switch
+                      id="mount-bonus-toggle"
+                      checked={mountBonusEnabled}
+                      onCheckedChange={setMountBonusEnabled}
+                    />
+                 </div>
+
+                 {/* Rune Distribution Section */}
                  <div className="mt-8">
                     <h3 className="text-lg font-medium mb-4 text-center">Rune Distribution</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -402,7 +447,10 @@ export default function RunesDreaming() {
                                 </div>
                                 <div className="flex flex-col items-center mt-1">
                                   <div className={`w-5 h-5 ${RUNE_COLOR_MAP[type]} rounded-full`}></div>
-                                  <span className="text-base font-bold mt-0.5">{results[type]}</span>
+                                  <span className="text-base font-bold mt-0.5">
+                                    {results[type]}
+                                    {mountBonusEnabled && <span className="text-xs font-normal text-primary ml-0.5">(+1)</span>}
+                                  </span>
                                   <span className="text-xs text-muted-foreground">{RUNE_OPTIONS.find(o => o.value === type)?.label}</span>
                                 </div>
                               </div>
