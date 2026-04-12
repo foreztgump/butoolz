@@ -21,7 +21,6 @@ interface ShapeInput { id: string };
 type ShapeDataMap = Map<string, ShapeData>; // Keep local definition
 
 // --- Matrix Generation for dancing-links ---
-// Ensure return type matches SimpleConstraint<PlacementRecord>[]
 const buildDancingLinksConstraints = (
     allShapeData: ShapeDataMap, // Use local type
     shapesToTileWith: ShapeInput[], // Use local type
