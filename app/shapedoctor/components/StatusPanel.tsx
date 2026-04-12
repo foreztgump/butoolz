@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { HelpCircle, Loader2 } from "lucide-react";
+import { CircleHelp, LoaderCircle } from "lucide-react";
 import { SolutionRecord } from '../types';
 
 interface StatusPanelProps {
@@ -47,7 +47,7 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
     <Card className="flex-shrink-0 bg-card">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2 text-card-foreground">
-          <HelpCircle className="h-5 w-5 text-violet-400" /> Status & Info
+          <CircleHelp className="h-5 w-5 text-violet-400" /> Status & Info
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
@@ -70,7 +70,7 @@ const StatusPanel: React.FC<StatusPanelProps> = ({
               <div className="flex justify-between text-sm text-blue-500">
                 <span>Status:</span>
                 <span className="font-semibold flex items-center">
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" /> 
+                    <LoaderCircle className="h-4 w-4 mr-1 animate-spin" /> 
                     {currentSolver === 'maximal' && solverStatusMessage 
                         ? solverStatusMessage 
                         : `Solving (${currentSolver ?? '...'})`}

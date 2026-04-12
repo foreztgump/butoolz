@@ -17,13 +17,13 @@ import {
   Zap,
   BarChart3,
   Sparkles,
-  HelpCircle,
+  CircleHelp,
   Star,
   TrendingUp,
   TrendingDown,
   Minus,
   RefreshCw,
-  CheckCircle2,
+  CircleCheck,
   Shield,
   ShieldCheck,
   Crosshair,
@@ -107,7 +107,7 @@ const StatInput: React.FC<StatInputProps> = ({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <HelpCircle className="h-3.5 w-3.5 ml-1 text-muted-foreground cursor-help" />
+              <CircleHelp className="h-3.5 w-3.5 ml-1 text-muted-foreground cursor-help" />
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
               <p className="text-xs">{tooltip}</p>
@@ -935,7 +935,7 @@ export default function BaseAttackCalculator() {
           <Card className="border-border/60">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <CheckCircle2 size={18} className={VIOLET_ICON} /> Equipment Comparison
+                <CircleCheck size={18} className={VIOLET_ICON} /> Equipment Comparison
               </CardTitle>
               <CardDescription>Compares final mitigated damage between Equip A and Equip B.</CardDescription>
             </CardHeader>
