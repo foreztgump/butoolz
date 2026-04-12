@@ -152,6 +152,7 @@ const LEGACY_MOUNT_BONUS_KEY = "butools_runes_mount_bonus";
 // Load saved config from localStorage with backward compatibility
 const loadSavedConfig = (): { runeValues: RuneValues; mountBonusEnabled: boolean } => {
   const defaults = { runeValues: generateInitialRuneValues(), mountBonusEnabled: false };
+  if (typeof window === "undefined") return defaults;
   try {
     const saved = localStorage.getItem(RUNES_CONFIG_STORAGE_KEY);
     if (!saved) {
@@ -165,7 +166,10 @@ const loadSavedConfig = (): { runeValues: RuneValues; mountBonusEnabled: boolean
 
     const parsed = JSON.parse(saved);
     const rawRunes = ("runeValues" in parsed) ? parsed.runeValues : parsed;
-    const mountBonus = ("runeValues" in parsed) ? Boolean(parsed.mountBonusEnabled) : false;
+    // New format stores mountBonusEnabled inline; old flat format may have it in the legacy key
+    const mountBonus = ("runeValues" in parsed)
+      ? Boolean(parsed.mountBonusEnabled)
+      : localStorage.getItem(LEGACY_MOUNT_BONUS_KEY) === "true";
 
     // Validate: keep only known keys with valid rune values
     const validatedRunes = generateInitialRuneValues();
