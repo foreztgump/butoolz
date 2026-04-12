@@ -10,9 +10,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Sparkles, RefreshCw, Copy, ClipboardPaste, Info, CheckCircle2 } from "lucide-react"
+import { Sparkles, RefreshCw, Copy, ClipboardPaste, Info, CheckCircle2, Lock } from "lucide-react"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 import { AccessoryPerks, ACCESSORY_STORAGE_KEY } from "./components/AccessoryPerks"
+import {
+  type GearTier, type GearTiers,
+  TIER_OPTIONS, DEFAULT_TIER,
+  generateInitialGearTiers, sanitizeGearTiers, isSlotLocked,
+} from "./gearTierHelpers"
 
 interface RuneOption {
   value: SelectableRuneValue;
@@ -56,8 +62,7 @@ const GEAR_PIECES: Readonly<GearPiece[]> = [
   { id: "belt", label: "Waist", slots: 5, icon: "🧶" },
 ] as const;
 
-// Derive total slots using useMemo for potential performance benefit if GEAR_PIECES changed (though unlikely here)
-const TOTAL_SLOTS = GEAR_PIECES.reduce((acc, piece) => acc + piece.slots, 0);
+const GEAR_PIECE_IDS = GEAR_PIECES.map(p => p.id);
 
 // Define Presets type
 interface Preset {
@@ -141,8 +146,8 @@ const generateInitialRuneValues = (): RuneValues => {
 const LEGACY_MOUNT_BONUS_KEY = "butools_runes_mount_bonus";
 
 // Load saved config from localStorage with backward compatibility
-const loadSavedConfig = (): { runeValues: RuneValues; mountBonusEnabled: boolean } => {
-  const defaults = { runeValues: generateInitialRuneValues(), mountBonusEnabled: false };
+const loadSavedConfig = (): { runeValues: RuneValues; mountBonusEnabled: boolean; gearTiers: GearTiers } => {
+  const defaults = { runeValues: generateInitialRuneValues(), mountBonusEnabled: false, gearTiers: generateInitialGearTiers(GEAR_PIECE_IDS) };
   if (typeof window === "undefined") return defaults;
   try {
     const saved = localStorage.getItem(RUNES_CONFIG_STORAGE_KEY);
@@ -150,7 +155,7 @@ const loadSavedConfig = (): { runeValues: RuneValues; mountBonusEnabled: boolean
       // Migrate legacy mount bonus key for users who never clicked "Save Config"
       const legacyMount = localStorage.getItem(LEGACY_MOUNT_BONUS_KEY);
       if (legacyMount === "true") {
-        return { runeValues: generateInitialRuneValues(), mountBonusEnabled: true };
+        return { ...defaults, mountBonusEnabled: true };
       }
       return defaults;
     }
@@ -169,7 +174,7 @@ const loadSavedConfig = (): { runeValues: RuneValues; mountBonusEnabled: boolean
         validatedRunes[key] = rawRunes[key];
       }
     }
-    return { runeValues: validatedRunes, mountBonusEnabled: mountBonus };
+    return { runeValues: validatedRunes, mountBonusEnabled: mountBonus, gearTiers: sanitizeGearTiers(parsed.gearTiers, GEAR_PIECE_IDS) };
   } catch {
     return defaults;
   }
@@ -211,16 +216,48 @@ const RuneSelector = React.memo(({ field, value, onChange }: {
         </SelectContent>
     </Select>
 ));
-RuneSelector.displayName = 'RuneSelector'; // Add display name
+RuneSelector.displayName = 'RuneSelector';
+
+const TierSelector = React.memo(({ gearPieceId, value, onChange }: {
+  gearPieceId: string;
+  value: GearTier;
+  onChange: (gearPieceId: string, tier: GearTier) => void;
+}) => (
+  <Select value={value} onValueChange={(v) => onChange(gearPieceId, v as GearTier)}>
+    <SelectTrigger className="h-8 w-[110px] py-1 px-2 text-xs focus:ring-1 focus:ring-violet-500">
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent className="z-[100] border border-[hsl(240_3.7%_15.9%)] bg-[hsl(240_10%_4%)] max-h-60 overflow-y-auto">
+      {TIER_OPTIONS.map((option) => (
+        <SelectItem
+          key={option.value}
+          value={option.value}
+          className="hover:bg-[hsl(240_3.7%_15.9%)] text-xs px-2 py-1.5"
+        >
+          <div className="flex items-center space-x-1.5">
+            <span className={cn("inline-block w-3 h-3 rounded-sm", option.color)} />
+            <span>{option.label}</span>
+          </div>
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+));
+TierSelector.displayName = 'TierSelector';
 
 export default function RunesDreaming() {
   // Load once — useState preserves the value across re-renders
   const [initialConfig] = useState(loadSavedConfig);
   const [runeValues, setRuneValues] = useState<RuneValues>(initialConfig.runeValues);
   const [mountBonusEnabled, setMountBonusEnabled] = useState<boolean>(initialConfig.mountBonusEnabled);
+  const [gearTiers, setGearTiers] = useState<GearTiers>(initialConfig.gearTiers);
+
+  const handleTierChange = useCallback((gearPieceId: string, tier: GearTier) => {
+    setGearTiers((prev) => ({ ...prev, [gearPieceId]: tier }));
+  }, []);
 
   // Auto-save: debounce the config, then persist on change (skip initial mount write)
-  const configToSave = useMemo(() => ({ runeValues, mountBonusEnabled }), [runeValues, mountBonusEnabled]);
+  const configToSave = useMemo(() => ({ runeValues, mountBonusEnabled, gearTiers }), [runeValues, mountBonusEnabled, gearTiers]);
   const debouncedConfig = useDebounce(configToSave, AUTOSAVE_DEBOUNCE_MS);
   const isInitialMount = useRef(true);
 
@@ -242,31 +279,32 @@ export default function RunesDreaming() {
       purple: 0, white: 0, yellow: 0, red: 0, green: 0,
     };
     let filled = 0;
+    let unlockedTotal = 0;
 
-    Object.values(runeValues).forEach((value) => {
-      if (value === "-") return; // Skip empty slots
+    GEAR_PIECES.forEach((piece) => {
+      for (let slotNum = 1; slotNum <= piece.slots; slotNum++) {
+        if (isSlotLocked(piece.id, slotNum, gearTiers)) continue;
 
-      filled++; // Increment filled count for any non-empty slot
+        unlockedTotal++;
+        const value = runeValues[`${piece.id}_rune_${slotNum}`];
+        if (value === "-" || !value) continue;
 
-      if (value === "rainbow") {
-        // Increment all primary color counts
-        RUNE_TYPES.forEach(color => {
-          counts[color]++;
-        });
-      } else if (RUNE_TYPES.includes(value as RuneType)) {
-        // Increment the specific primary color count
-        counts[value as RuneType]++;
+        filled++;
+
+        if (value === "rainbow") {
+          RUNE_TYPES.forEach(color => { counts[color]++; });
+        } else if (RUNE_TYPES.includes(value as RuneType)) {
+          counts[value as RuneType]++;
+        }
       }
     });
 
     if (mountBonusEnabled) {
-      RUNE_TYPES.forEach(color => {
-        counts[color]++;
-      });
+      RUNE_TYPES.forEach(color => { counts[color]++; });
     }
 
-    return { ...counts, total: TOTAL_SLOTS, filled };
-  }, [runeValues, mountBonusEnabled]);
+    return { ...counts, total: unlockedTotal, filled };
+  }, [runeValues, mountBonusEnabled, gearTiers]);
 
   // Stable handlers using useCallback
   const handleRuneChange = useCallback((field: string, value: SelectableRuneValue) => {
@@ -278,9 +316,10 @@ export default function RunesDreaming() {
 
   const resetAll = useCallback(() => {
     setRuneValues(generateInitialRuneValues());
+    setGearTiers(generateInitialGearTiers(GEAR_PIECE_IDS));
     setMountBonusEnabled(false);
     toast("Reset Complete", {
-      description: "All rune selections have been cleared.",
+      description: "All rune selections and gear tiers have been cleared.",
     });
   }, []);
 
@@ -300,7 +339,7 @@ export default function RunesDreaming() {
       if (accessoryData) {
         try { parsedAccessories = JSON.parse(accessoryData); } catch { /* malformed — skip */ }
       }
-      const configJson = JSON.stringify({ runeValues, mountBonusEnabled, accessories: parsedAccessories }, null, 2);
+      const configJson = JSON.stringify({ runeValues, mountBonusEnabled, gearTiers, accessories: parsedAccessories }, null, 2);
       await navigator.clipboard.writeText(configJson);
       toast("Configuration Exported", {
         description: "Copied to clipboard — paste it somewhere safe or share it.",
@@ -311,7 +350,7 @@ export default function RunesDreaming() {
         description: "Could not copy to clipboard. Your browser may not support this feature.",
       });
     }
-  }, [runeValues, mountBonusEnabled]);
+  }, [runeValues, mountBonusEnabled, gearTiers]);
 
   const importConfiguration = useCallback(async () => {
     try {
@@ -343,6 +382,7 @@ export default function RunesDreaming() {
       }
       setRuneValues(validConfig);
       setMountBonusEnabled(importedMountBonus);
+      setGearTiers(sanitizeGearTiers(parsed.gearTiers, GEAR_PIECE_IDS));
       toast("Configuration Imported", {
         description: "Rune configuration loaded from clipboard.",
       });
@@ -364,33 +404,29 @@ export default function RunesDreaming() {
     }
 
     const updatedValues = { ...runeValues };
-    const emptySlotKeys = Object.entries(updatedValues)
-                               .filter(([, value]) => value === "-")
-                               .map(([key]) => key);
+    let filledCount = 0;
 
-    if (emptySlotKeys.length === 0) {
-      toast.info("No empty slots found to fill.");
+    GEAR_PIECES.forEach((piece) => {
+      for (let slotNum = 1; slotNum <= piece.slots; slotNum++) {
+        if (isSlotLocked(piece.id, slotNum, gearTiers)) continue;
+
+        const key = `${piece.id}_rune_${slotNum}`;
+        if (updatedValues[key] === "-") {
+          updatedValues[key] = runeType;
+          filledCount++;
+        }
+      }
+    });
+
+    if (filledCount === 0) {
+      toast.info("No empty unlocked slots found to fill.");
       return;
     }
 
-    let filledCount = 0;
-
-    emptySlotKeys.forEach(key => {
-      updatedValues[key] = runeType;
-      filledCount++;
-    });
-
-    if (filledCount > 0) {
-      setRuneValues(updatedValues);
-      const selectedRuneLabel = RUNE_OPTIONS.find(o => o.value === runeType)?.label || runeType;
-      toast.success(`Filled ${filledCount} empty slots with ${selectedRuneLabel} runes.`);
-    }
-  }, [runeValues]); // Depends on runeValues
-
-  // Stable color class lookup
-  const getRuneColorClass = useCallback((runeValue: SelectableRuneValue) => {
-    return RUNE_COLOR_MAP[runeValue] || RUNE_COLOR_MAP["-"];
-  }, []);
+    setRuneValues(updatedValues);
+    const selectedRuneLabel = RUNE_OPTIONS.find(o => o.value === runeType)?.label || runeType;
+    toast.success(`Filled ${filledCount} empty slots with ${selectedRuneLabel} runes.`);
+  }, [runeValues, gearTiers]);
 
   // Derived value for the most common rune (using useMemo)
   const mostCommonRune = useMemo(() => {
@@ -459,28 +495,48 @@ export default function RunesDreaming() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-[120px]">Gear Piece</TableHead>
+                        <TableHead className="w-[110px]">Tier</TableHead>
                         {[...Array(5)].map((_, i) => <TableHead key={i}>Slot {i + 1}</TableHead>)}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {GEAR_PIECES.map((piece) => (
-                        <TableRow key={piece.id}>{
-                          /* Removed whitespace between TableRow and first TableCell */
-                        }<TableCell className="font-medium">
-                             <div className="flex items-center gap-2">
-                               <span className="text-lg" aria-hidden="true">{piece.icon}</span>
-                               <span>{piece.label}</span>
-                             </div>
-                          </TableCell>{/* Generate cells based on actual piece slots */}
-                          {[...Array(piece.slots)].map((_, index) => (
-                            <TableCell key={index}>
-                              <RuneSelector
-                                field={`${piece.id}_rune_${index + 1}`}
-                                value={runeValues[`${piece.id}_rune_${index + 1}`]}
-                                onChange={handleRuneChange}
-                              />
-                            </TableCell>
-                          ))}{/* Optional: Add empty cells */}
+                        <TableRow key={piece.id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg" aria-hidden="true">{piece.icon}</span>
+                              <span>{piece.label}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <TierSelector
+                              gearPieceId={piece.id}
+                              value={gearTiers[piece.id] ?? DEFAULT_TIER}
+                              onChange={handleTierChange}
+                            />
+                          </TableCell>
+                          {[...Array(piece.slots)].map((_, index) => {
+                            const slotNumber = index + 1;
+                            const locked = isSlotLocked(piece.id, slotNumber, gearTiers);
+                            return (
+                              <TableCell key={index}>
+                                {locked ? (
+                                  <div
+                                    className="flex items-center justify-center h-8 w-full rounded-md border border-dashed border-muted-foreground/20 bg-muted/30 opacity-40"
+                                    aria-label={`Slot ${slotNumber} locked — requires higher tier`}
+                                  >
+                                    <Lock className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+                                  </div>
+                                ) : (
+                                  <RuneSelector
+                                    field={`${piece.id}_rune_${slotNumber}`}
+                                    value={runeValues[`${piece.id}_rune_${slotNumber}`]}
+                                    onChange={handleRuneChange}
+                                  />
+                                )}
+                              </TableCell>
+                            );
+                          })}
                           {[...Array(Math.max(0, 5 - piece.slots))].map((_, i) => <TableCell key={`empty-${i}`} />)}
                         </TableRow>
                       ))}
