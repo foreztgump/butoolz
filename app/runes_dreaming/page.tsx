@@ -9,7 +9,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import { Sparkles, RefreshCw, Copy, ClipboardPaste, Info, CircleCheck, Lock } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -539,11 +538,19 @@ export default function RunesDreaming() {
                  <div className={`mt-6 rounded-lg p-px transition-all duration-500 ${
                    mountBonusEnabled
                      ? 'rainbow-border rainbow-border-shimmer shadow-lg shadow-purple-500/10'
-                     : 'bg-border'
+                     : 'bg-border hover:bg-muted-foreground/30'
                  }`}>
-                   <div className={`flex items-center justify-between p-4 rounded-[calc(var(--radius)-1px)] transition-colors duration-300 ${
-                     mountBonusEnabled ? 'bg-card' : 'bg-muted/30'
-                   }`}>
+                   <div
+                     className={`flex items-center justify-between p-4 rounded-[calc(var(--radius)-1px)] cursor-pointer transition-all duration-300 ${
+                       mountBonusEnabled
+                         ? 'bg-card hover:bg-card/80'
+                         : 'bg-muted/30 hover:bg-muted/50'
+                     }`}
+                     onClick={() => setMountBonusEnabled(prev => !prev)}
+                     role="button"
+                     tabIndex={0}
+                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setMountBonusEnabled(prev => !prev); } }}
+                   >
                      <div className="flex items-center gap-3">
                        <div className="flex gap-0.5">
                          {RUNE_TYPES.map((type) => (
@@ -556,11 +563,11 @@ export default function RunesDreaming() {
                          ))}
                        </div>
                        <div className="flex flex-col gap-0.5">
-                         <Label htmlFor="mount-bonus-toggle" className={`text-sm font-medium cursor-pointer transition-colors duration-300 ${
+                         <span className={`text-sm font-medium transition-colors duration-300 ${
                            mountBonusEnabled ? 'text-foreground' : 'text-muted-foreground'
                          }`}>
                            Mount Collection Rainbow Rune
-                         </Label>
+                         </span>
                          <span className="text-xs text-muted-foreground">
                            4 legendary mounts reward — adds +1 to all colors
                          </span>
@@ -570,6 +577,7 @@ export default function RunesDreaming() {
                        id="mount-bonus-toggle"
                        checked={mountBonusEnabled}
                        onCheckedChange={setMountBonusEnabled}
+                       onClick={(e: React.MouseEvent) => e.stopPropagation()}
                      />
                    </div>
                  </div>
