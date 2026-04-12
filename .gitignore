@@ -76,3 +76,10 @@ scripts/task-complexity-report.json
 # Worker build artifacts
 public/workers/
 temp_worker_compile/
+
+# Internal tooling & docs (not for remote)
+.claude/
+CLAUDE.md
+CODE_PRINCIPLES.md
+docs/
+openspec/
